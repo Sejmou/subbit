@@ -16,6 +16,13 @@ function splitWordsAtTime(words: Word[] | undefined, t: number): [Word[] | undef
   return [left, right]
 }
 
+/** One reversible step: the project plus the selection at that moment. */
+interface HistoryEntry {
+  project: Project
+  selectedCueId: string | null
+  selectedSegment: number
+}
+
 interface ProjectState {
   project: Project | null
   selectedCueId: string | null
@@ -24,8 +31,19 @@ interface ProjectState {
   dirty: boolean
   lastSavedAt: number | null
 
+  /** Undo stack (oldest first); the last entry is what `undo` restores to. */
+  past: HistoryEntry[]
+  /** Redo stack (next entry first). */
+  future: HistoryEntry[]
+
   loadProject: (project: Project) => void
   markSaved: () => void
+
+  /** Step backward / forward through the in-session edit history. */
+  undo: () => void
+  redo: () => void
+  /** Replace the whole project (e.g. restoring a saved version); undoable. */
+  restoreProject: (project: Project) => void
 
   selectCue: (id: string | null) => void
   selectSegment: (index: number) => void
@@ -63,9 +81,48 @@ function mapCue(project: Project, cueId: string, fn: (cue: Cue) => Cue): Project
   return { ...project, cues: project.cues.map((c) => (c.id === cueId ? fn(c) : c)) }
 }
 
+/** Cap the in-memory undo stack so long sessions don't grow unbounded. */
+const HISTORY_LIMIT = 200
+/** Consecutive edits with the same tag within this window collapse into one step. */
+const COALESCE_MS = 800
+
+function snapshot(state: ProjectState): HistoryEntry {
+  return {
+    project: state.project as Project,
+    selectedCueId: state.selectedCueId,
+    selectedSegment: state.selectedSegment,
+  }
+}
+
 export const useProject = create<ProjectState>((set, getState) => {
-  const update = (fn: (p: Project) => Project) =>
-    set((state) => (state.project ? { project: fn(state.project), dirty: true } : state))
+  // Coalescing bookkeeping (lives for the store's lifetime). When several edits
+  // share a tag in quick succession (e.g. typing into one segment) we keep the
+  // single snapshot taken before the first edit instead of one per keystroke.
+  let lastTag: string | null = null
+  let lastTagAt = 0
+
+  /**
+   * Apply an immutable transform to the project, recording it on the undo
+   * stack. `tag` enables coalescing of rapid same-target edits; pass null (the
+   * default) for discrete actions that should each be their own undo step.
+   */
+  const update = (fn: (p: Project) => Project, tag: string | null = null) =>
+    set((state) => {
+      if (!state.project) return state
+      const next = fn(state.project)
+      // No-op transforms (e.g. invalid merge/split) shouldn't pollute history.
+      if (next === state.project) return state
+
+      const now = Date.now()
+      const coalesce = tag !== null && tag === lastTag && now - lastTagAt < COALESCE_MS
+      lastTag = tag
+      lastTagAt = now
+
+      const past = coalesce ? state.past : [...state.past, snapshot(state)]
+      if (past.length > HISTORY_LIMIT) past.shift()
+
+      return { project: next, dirty: true, past, future: [] }
+    })
 
   return {
     project: null,
@@ -73,34 +130,91 @@ export const useProject = create<ProjectState>((set, getState) => {
     selectedSegment: 0,
     dirty: false,
     lastSavedAt: null,
+    past: [],
+    future: [],
 
-    loadProject: (project) =>
+    loadProject: (project) => {
+      lastTag = null
       set({
         project,
         selectedCueId: project.cues[0]?.id ?? null,
         selectedSegment: 0,
         dirty: false,
         lastSavedAt: null,
-      }),
+        past: [],
+        future: [],
+      })
+    },
     markSaved: () => set({ dirty: false, lastSavedAt: Date.now() }),
+
+    undo: () =>
+      set((state) => {
+        if (!state.project || state.past.length === 0) return state
+        lastTag = null
+        const previous = state.past[state.past.length - 1]
+        return {
+          project: previous.project,
+          selectedCueId: previous.selectedCueId,
+          selectedSegment: previous.selectedSegment,
+          past: state.past.slice(0, -1),
+          future: [snapshot(state), ...state.future],
+          dirty: true,
+        }
+      }),
+    redo: () =>
+      set((state) => {
+        if (!state.project || state.future.length === 0) return state
+        lastTag = null
+        const next = state.future[0]
+        return {
+          project: next.project,
+          selectedCueId: next.selectedCueId,
+          selectedSegment: next.selectedSegment,
+          past: [...state.past, snapshot(state)],
+          future: state.future.slice(1),
+          dirty: true,
+        }
+      }),
+    restoreProject: (project) =>
+      set((state) => {
+        if (!state.project) return state
+        lastTag = null
+        const keep = project.cues.some((c) => c.id === state.selectedCueId)
+        const past = [...state.past, snapshot(state)]
+        if (past.length > HISTORY_LIMIT) past.shift()
+        return {
+          project,
+          selectedCueId: keep ? state.selectedCueId : (project.cues[0]?.id ?? null),
+          selectedSegment: 0,
+          past,
+          future: [],
+          dirty: true,
+        }
+      }),
 
     selectCue: (id) => set({ selectedCueId: id, selectedSegment: 0 }),
     selectSegment: (index) => set({ selectedSegment: Math.max(0, index) }),
 
     setSegmentText: (cueId, segIndex, text) =>
-      update((p) =>
-        mapCue(p, cueId, (c) => ({
-          ...c,
-          segments: c.segments.map((s, i) => (i === segIndex ? { ...s, text } : s)),
-        })),
+      update(
+        (p) =>
+          mapCue(p, cueId, (c) => ({
+            ...c,
+            segments: c.segments.map((s, i) => (i === segIndex ? { ...s, text } : s)),
+          })),
+        `text:${cueId}:${segIndex}`,
       ),
 
     setCueStart: (cueId, time) =>
-      update((p) =>
-        mapCue(p, cueId, (c) => ({ ...c, start: Math.min(Math.max(0, time), c.end - EPS) })),
+      update(
+        (p) => mapCue(p, cueId, (c) => ({ ...c, start: Math.min(Math.max(0, time), c.end - EPS) })),
+        `start:${cueId}`,
       ),
     setCueEnd: (cueId, time) =>
-      update((p) => mapCue(p, cueId, (c) => ({ ...c, end: Math.max(time, c.start + EPS) }))),
+      update(
+        (p) => mapCue(p, cueId, (c) => ({ ...c, end: Math.max(time, c.start + EPS) })),
+        `end:${cueId}`,
+      ),
     nudgeCueStart: (cueId, delta) => {
       const c = getState().project?.cues.find((x) => x.id === cueId)
       if (c) getState().setCueStart(cueId, c.start + delta)
@@ -219,22 +333,28 @@ export const useProject = create<ProjectState>((set, getState) => {
       ),
 
     renameSpeaker: (id, name) =>
-      update((p) => ({
-        ...p,
-        speakers: p.speakers.map((s) => (s.id === id ? { ...s, name } : s)),
-      })),
+      update(
+        (p) => ({
+          ...p,
+          speakers: p.speakers.map((s) => (s.id === id ? { ...s, name } : s)),
+        }),
+        `rename:${id}`,
+      ),
     setSpeakerColor: (id, color) =>
-      update((p) => ({
-        ...p,
-        speakers: p.speakers.map((s) => (s.id === id ? { ...s, color } : s)),
-      })),
+      update(
+        (p) => ({
+          ...p,
+          speakers: p.speakers.map((s) => (s.id === id ? { ...s, color } : s)),
+        }),
+        `color:${id}`,
+      ),
     addSpeaker: (name) => {
       const speaker: Speaker = { id: newId(), name, color: '#888888' }
       update((p) => ({ ...p, speakers: [...p.speakers, speaker] }))
       return speaker
     },
 
-    setTimecodeOffset: (offset) => update((p) => ({ ...p, timecodeOffset: offset })),
+    setTimecodeOffset: (offset) => update((p) => ({ ...p, timecodeOffset: offset }), 'offset'),
     setFps: (fps) => update((p) => ({ ...p, fps })),
   }
 })

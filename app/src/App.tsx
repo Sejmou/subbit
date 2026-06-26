@@ -11,6 +11,7 @@ import {
   ensurePermission,
   getCachedMovieHandle,
   getCachedProjectHandle,
+  hasPermission,
   isFsAccessSupported,
   parseProject,
   pickFile,
@@ -20,6 +21,7 @@ import {
   writeTextToHandle,
   type FsFileHandle,
 } from './lib/project-io'
+import { addVersion } from './lib/history'
 import { useShortcuts } from './hooks/useShortcuts'
 import { LoadScreen } from './components/LoadScreen'
 import { VideoPlayer } from './components/VideoPlayer'
@@ -27,6 +29,7 @@ import { CueList } from './components/CueList'
 import { SpeakerPanel } from './components/SpeakerPanel'
 import { Toolbar } from './components/Toolbar'
 import { HelpOverlay } from './components/HelpOverlay'
+import { HistoryPanel } from './components/HistoryPanel'
 
 const JSON_ACCEPT = { 'application/json': ['.json'] }
 const VIDEO_ACCEPT = { 'video/mp4': ['.mp4', '.m4v', '.mov'] }
@@ -37,6 +40,7 @@ export default function App() {
   const lastSavedAt = useProject((s) => s.lastSavedAt)
   const loadProject = useProject((s) => s.loadProject)
   const markSaved = useProject((s) => s.markSaved)
+  const restoreProject = useProject((s) => s.restoreProject)
 
   const [movieUrl, setMovieUrl] = useState<string | null>(null)
   const [movieName, setMovieName] = useState<string | null>(null)
@@ -45,19 +49,11 @@ export default function App() {
   const [canRestore, setCanRestore] = useState(false)
   const [delimiter, setDelimiter] = useState<Delimiter>('\t')
   const [helpOpen, setHelpOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
 
   const movieHandle = useRef<FsFileHandle | null>(null)
   const projectHandle = useRef<FsFileHandle | null>(null)
   const fsSupported = isFsAccessSupported()
-
-  // Offer to reopen the previous session if handles were cached.
-  useEffect(() => {
-    if (!fsSupported) return
-    void (async () => {
-      const [m, p] = await Promise.all([getCachedMovieHandle(), getCachedProjectHandle()])
-      if (m && p) setCanRestore(true)
-    })()
-  }, [fsSupported])
 
   const setMovieFromFile = useCallback((file: File) => {
     setMovieUrl((prev) => {
@@ -135,47 +131,76 @@ export default function App() {
     [loadSubtitlesText],
   )
 
-  const restore = useCallback(async () => {
-    setBusy('Reopening...')
-    try {
+  /**
+   * Reopen the last session from cached file handles.
+   * `silent` only proceeds if permission is already granted (used on page load,
+   * where we can't show a permission prompt without a user gesture). A button
+   * click passes silent=false and may prompt to re-grant access.
+   */
+  const doRestore = useCallback(
+    async (silent: boolean): Promise<boolean> => {
       const [m, p] = await Promise.all([getCachedMovieHandle(), getCachedProjectHandle()])
-      if (m && (await ensurePermission(m, 'read'))) {
+      if (!m || !p) return false
+
+      const check = silent ? hasPermission : ensurePermission
+      const [mOk, pOk] = await Promise.all([check(m, 'read'), check(p, 'readwrite')])
+      if (!mOk || !pOk) return false
+
+      setBusy('Reopening...')
+      try {
         movieHandle.current = m
         setMovieFromFile(await readHandleAsFile(m))
-      }
-      if (p && (await ensurePermission(p, 'readwrite'))) {
         projectHandle.current = p
         loadProject(parseProject(await (await readHandleAsFile(p)).text()))
+        setStarted(true)
+        return true
+      } finally {
+        setBusy(null)
       }
-      setStarted(true)
-    } finally {
-      setBusy(null)
-    }
-  }, [loadProject, setMovieFromFile])
+    },
+    [loadProject, setMovieFromFile],
+  )
+
+  // On load: auto-reopen if permission persisted, else offer a one-click button.
+  useEffect(() => {
+    if (!fsSupported) return
+    void (async () => {
+      if (await doRestore(true)) return
+      const [m, p] = await Promise.all([getCachedMovieHandle(), getCachedProjectHandle()])
+      if (m && p) setCanRestore(true)
+    })()
+  }, [fsSupported, doRestore])
 
   // --- save / export ---
-  const save = useCallback(async () => {
-    const current = useProject.getState().project
-    if (!current) return
-    const text = serializeProject(current)
-    try {
-      if (projectHandle.current) {
-        await writeTextToHandle(projectHandle.current, text)
-      } else if (fsSupported) {
-        const handle = await pickProjectSaveFile(`${current.videoName}.subbit.json`)
-        if (!handle) return
-        projectHandle.current = handle
-        await cacheProjectHandle(handle)
-        await writeTextToHandle(handle, text)
-      } else {
-        downloadText(`${current.videoName}.subbit.json`, text, 'application/json')
+  const save = useCallback(
+    async (opts: { auto?: boolean } = {}) => {
+      const current = useProject.getState().project
+      if (!current) return
+      const text = serializeProject(current)
+      try {
+        if (projectHandle.current) {
+          await writeTextToHandle(projectHandle.current, text)
+        } else if (fsSupported) {
+          const handle = await pickProjectSaveFile(`${current.videoName}.subbit.json`)
+          if (!handle) return
+          projectHandle.current = handle
+          await cacheProjectHandle(handle)
+          await writeTextToHandle(handle, text)
+        } else {
+          downloadText(`${current.videoName}.subbit.json`, text, 'application/json')
+        }
+        markSaved()
+        // Capture a persisted version snapshot (deduped on identical content).
+        void addVersion(current, text, { auto: opts.auto }).catch((err) =>
+          console.error('History snapshot failed', err),
+        )
+      } catch (err) {
+        console.error('Save failed', err)
+        alert('Save failed: ' + (err as Error).message)
       }
-      markSaved()
-    } catch (err) {
-      console.error('Save failed', err)
-      alert('Save failed: ' + (err as Error).message)
-    }
-  }, [fsSupported, markSaved])
+    },
+    [fsSupported, markSaved],
+  )
 
   const doExportCsv = useCallback(() => {
     const current = useProject.getState().project
@@ -207,7 +232,7 @@ export default function App() {
   // Autosave (only when a project file handle exists, to avoid surprise downloads).
   useEffect(() => {
     if (!dirty || !projectHandle.current) return
-    const id = setTimeout(() => void save(), 3000)
+    const id = setTimeout(() => void save({ auto: true }), 3000)
     return () => clearTimeout(id)
   }, [dirty, save])
 
@@ -225,7 +250,7 @@ export default function App() {
         onPickSubtitles={pickSubtitles}
         onMovieFile={onMovieFile}
         onSubtitlesFile={onSubtitlesFile}
-        onRestore={restore}
+        onRestore={() => void doRestore(false)}
         onStart={() => setStarted(true)}
       />
     )
@@ -243,8 +268,15 @@ export default function App() {
         onExportCsv={doExportCsv}
         onExportSrt={doExportSrt}
         onHelp={() => setHelpOpen(true)}
+        onHistory={() => setHistoryOpen(true)}
       />
       <HelpOverlay open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <HistoryPanel
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        project={project}
+        onRestore={restoreProject}
+      />
       <div className="main">
         <div className="left">
           {movieUrl ? <VideoPlayer src={movieUrl} /> : <div className="video-wrap empty">No movie loaded</div>}

@@ -1,6 +1,7 @@
 import type { Project } from '../types'
 import type { Delimiter } from '../lib/export-csv'
 import { useProject } from '../store/project'
+import { MOD_LABEL } from '../lib/shortcuts'
 
 interface Props {
   project: Project
@@ -12,6 +13,7 @@ interface Props {
   onExportCsv: () => void
   onExportSrt: () => void
   onHelp: () => void
+  onHistory: () => void
 }
 
 export function Toolbar({
@@ -24,8 +26,13 @@ export function Toolbar({
   onExportCsv,
   onExportSrt,
   onHelp,
+  onHistory,
 }: Props) {
-  const { setTimecodeOffset } = useProject()
+  const setTimecodeOffset = useProject((s) => s.setTimecodeOffset)
+  const undo = useProject((s) => s.undo)
+  const redo = useProject((s) => s.redo)
+  const canUndo = useProject((s) => s.past.length > 0)
+  const canRedo = useProject((s) => s.future.length > 0)
   const reviewed = project.cues.filter((c) => c.reviewed).length
   const total = project.cues.length
 
@@ -34,6 +41,15 @@ export function Toolbar({
       <strong className="brand">Subbit</strong>
       <span className="progress">
         {reviewed}/{total} reviewed
+      </span>
+
+      <span className="btn-group">
+        <button onClick={undo} disabled={!canUndo} title={`Undo (${MOD_LABEL}+Z)`}>
+          Undo
+        </button>
+        <button onClick={redo} disabled={!canRedo} title={`Redo (${MOD_LABEL}+Shift+Z)`}>
+          Redo
+        </button>
       </span>
 
       <label className="field">
@@ -59,6 +75,9 @@ export function Toolbar({
       <span className="save-state">
         {dirty ? 'Unsaved changes' : lastSavedAt ? 'Saved' : ''}
       </span>
+      <button onClick={onHistory} title="Version history">
+        History
+      </button>
       <button onClick={onSave} title="Save project (Cmd/Ctrl+S)">
         Save project
       </button>

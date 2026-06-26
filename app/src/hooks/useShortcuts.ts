@@ -46,6 +46,19 @@ export function useShortcuts() {
       const frame = frameDuration(project.fps)
 
       // --- combos that work everywhere (including while editing text) ---
+      // App-level undo/redo. We deliberately override the textarea's native undo
+      // so there's a single, consistent history across timing, metadata and text.
+      if (mod && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault()
+        if (e.shiftKey) ps.redo()
+        else ps.undo()
+        return
+      }
+      if (mod && (e.key === 'y' || e.key === 'Y')) {
+        e.preventDefault()
+        ps.redo()
+        return
+      }
       if (mod && e.key === 's' && !e.shiftKey) {
         e.preventDefault()
         window.dispatchEvent(new CustomEvent('subbit:save'))

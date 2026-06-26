@@ -57,6 +57,8 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     title: 'Project',
     shortcuts: [
+      { keys: `${MOD_LABEL} + Z`, description: 'Undo' },
+      { keys: `${MOD_LABEL} + Shift + Z`, description: 'Redo' },
       { keys: `${MOD_LABEL} + S`, description: 'Save project' },
       { keys: '?', description: 'Show / hide this help' },
     ],

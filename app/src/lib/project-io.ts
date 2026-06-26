@@ -46,6 +46,14 @@ export async function ensurePermission(
   return (await handle.requestPermission?.(opts)) === 'granted'
 }
 
+/** Silently check (no prompt) whether permission is already granted. */
+export async function hasPermission(
+  handle: FsFileHandle,
+  mode: 'read' | 'readwrite',
+): Promise<boolean> {
+  return (await handle.queryPermission?.({ mode })) === 'granted'
+}
+
 export async function pickFile(accept: Record<string, string[]>, description: string) {
   const handles = await win().showOpenFilePicker?.({
     multiple: false,
