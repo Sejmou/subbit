@@ -1,0 +1,284 @@
+import { MOD_LABEL } from './mod-label'
+import type { ShortcutContext } from './context'
+
+type KeyEvent = globalThis.KeyboardEvent
+
+export interface ShortcutDef {
+  id: string
+  group: string
+  /** Display label in the help overlay and tooltips. */
+  label: string | ((mod: string) => string)
+  description: string
+  /** When false, the shortcut works but is omitted from the help overlay. */
+  showInHelp?: boolean
+  match: (e: KeyEvent, ctx: ShortcutContext) => boolean
+  run: (ctx: ShortcutContext, e: KeyEvent) => void
+  preventDefault?: boolean
+}
+
+function mod(e: KeyEvent): boolean {
+  return e.metaKey || e.ctrlKey
+}
+
+/** Ordered list — first match wins, same priority as the original handler. */
+export const SHORTCUTS: ShortcutDef[] = [
+  {
+    id: 'help-toggle',
+    group: 'Project',
+    label: '?',
+    description: 'Show / hide this help',
+    match: (e, ctx) => !ctx.editing && e.key === '?',
+    run: () => window.dispatchEvent(new CustomEvent('subbit:help-toggle')),
+    preventDefault: true,
+  },
+  {
+    id: 'undo',
+    group: 'Project',
+    label: (m) => `${m} + Z`,
+    description: 'Undo',
+    match: (e, ctx) => !!ctx.project && mod(e) && (e.key === 'z' || e.key === 'Z') && !e.shiftKey,
+    run: (ctx) => ctx.ps.undo(),
+    preventDefault: true,
+  },
+  {
+    id: 'redo',
+    group: 'Project',
+    label: (m) => `${m} + Shift + Z`,
+    description: 'Redo',
+    match: (e, ctx) =>
+      !!ctx.project &&
+      mod(e) &&
+      ((e.key === 'z' || e.key === 'Z') && e.shiftKey || e.key === 'y' || e.key === 'Y'),
+    run: (ctx) => ctx.ps.redo(),
+    preventDefault: true,
+  },
+  {
+    id: 'save',
+    group: 'Project',
+    label: (m) => `${m} + S`,
+    description: 'Save project',
+    match: (e, ctx) => !!ctx.project && mod(e) && (e.key === 's' || e.key === 'S') && !e.shiftKey,
+    run: () => window.dispatchEvent(new CustomEvent('subbit:save')),
+    preventDefault: true,
+  },
+  {
+    id: 'split-at-caret',
+    group: 'Text & structure',
+    label: (m) => `${m} + Enter`,
+    description: 'Split cue at the caret + playhead',
+    match: (e, ctx) => !!ctx.project && mod(e) && e.key === 'Enter' && !!ctx.caret,
+    run: (ctx) => {
+      const caret = ctx.caret!
+      ctx.ps.splitCueAtCaret(caret.cueId, caret.segIndex, caret.offset, ctx.pb.currentTime)
+    },
+    preventDefault: true,
+  },
+  {
+    id: 'insert-shot-split',
+    group: 'Text & structure',
+    label: (m) => `${m} + Shift + S`,
+    description: 'Insert a shot change at the caret',
+    match: (e, ctx) =>
+      !!ctx.project && mod(e) && e.shiftKey && (e.key === 'S' || e.key === 's') && !!ctx.caret,
+    run: (ctx) => {
+      const caret = ctx.caret!
+      ctx.ps.insertShotSplit(caret.cueId, caret.segIndex, caret.offset)
+    },
+    preventDefault: true,
+  },
+  {
+    id: 'leave-text',
+    group: 'Text & structure',
+    label: 'Esc',
+    description: 'Leave the text box (back to navigation)',
+    match: (e, ctx) => ctx.editing && e.key === 'Escape',
+    run: (ctx) => (ctx.target as HTMLElement).blur(),
+  },
+  {
+    id: 'play-pause',
+    group: 'Playback & navigation',
+    label: 'Space',
+    description: 'Play / pause',
+    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === ' ',
+    run: (ctx) => ctx.pb.togglePlay(),
+    preventDefault: true,
+  },
+  {
+    id: 'next-cue',
+    group: 'Playback & navigation',
+    label: 'J / K  or  ↓ / ↑',
+    description: 'Next / previous cue',
+    match: (e, ctx) => !ctx.editing && !!ctx.cue && (e.key === 'ArrowDown' || e.key === 'j'),
+    run: (ctx) => {
+      const { project, cueIndex, ps } = ctx
+      ps.selectCue(project!.cues[Math.min(cueIndex + 1, project!.cues.length - 1)].id)
+    },
+    preventDefault: true,
+  },
+  {
+    id: 'previous-cue',
+    group: 'Playback & navigation',
+    label: 'J / K  or  ↓ / ↑',
+    description: 'Next / previous cue',
+    showInHelp: false,
+    match: (e, ctx) => !ctx.editing && !!ctx.cue && (e.key === 'ArrowUp' || e.key === 'k'),
+    run: (ctx) => {
+      const { project, cueIndex, ps } = ctx
+      ps.selectCue(project!.cues[Math.max(cueIndex - 1, 0)].id)
+    },
+    preventDefault: true,
+  },
+  {
+    id: 'jog-back',
+    group: 'Playback & navigation',
+    label: '← / →',
+    description: 'Jog playhead 1 frame',
+    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === 'ArrowLeft' && !e.shiftKey,
+    run: (ctx) => ctx.pb.seek(ctx.pb.currentTime - ctx.frame),
+    preventDefault: true,
+  },
+  {
+    id: 'jog-forward',
+    group: 'Playback & navigation',
+    label: '← / →',
+    description: 'Jog playhead 1 frame',
+    showInHelp: false,
+    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === 'ArrowRight' && !e.shiftKey,
+    run: (ctx) => ctx.pb.seek(ctx.pb.currentTime + ctx.frame),
+    preventDefault: true,
+  },
+  {
+    id: 'jog-back-second',
+    group: 'Playback & navigation',
+    label: 'Shift + ← / →',
+    description: 'Jog playhead 1 second',
+    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === 'ArrowLeft' && e.shiftKey,
+    run: (ctx) => ctx.pb.seek(ctx.pb.currentTime - 1),
+    preventDefault: true,
+  },
+  {
+    id: 'jog-forward-second',
+    group: 'Playback & navigation',
+    label: 'Shift + ← / →',
+    description: 'Jog playhead 1 second',
+    showInHelp: false,
+    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === 'ArrowRight' && e.shiftKey,
+    run: (ctx) => ctx.pb.seek(ctx.pb.currentTime + 1),
+    preventDefault: true,
+  },
+  {
+    id: 'set-in',
+    group: 'Timing',
+    label: 'I',
+    description: 'Set cue In to the playhead',
+    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === 'i',
+    run: (ctx) => ctx.ps.setCueStart(ctx.cue!.id, ctx.pb.currentTime),
+  },
+  {
+    id: 'set-out',
+    group: 'Timing',
+    label: 'O',
+    description: 'Set cue Out to the playhead',
+    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === 'o',
+    run: (ctx) => ctx.ps.setCueEnd(ctx.cue!.id, ctx.pb.currentTime),
+  },
+  {
+    id: 'nudge-in',
+    group: 'Timing',
+    label: '[',
+    description: 'Nudge In 1 frame (Shift = other direction)',
+    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === '[',
+    run: (ctx, e) => ctx.ps.nudgeCueStart(ctx.cue!.id, e.shiftKey ? ctx.frame : -ctx.frame),
+  },
+  {
+    id: 'nudge-out',
+    group: 'Timing',
+    label: ']',
+    description: 'Nudge Out 1 frame (Shift = other direction)',
+    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === ']',
+    run: (ctx, e) => ctx.ps.nudgeCueEnd(ctx.cue!.id, e.shiftKey ? -ctx.frame : ctx.frame),
+  },
+  {
+    id: 'merge',
+    group: 'Text & structure',
+    label: 'M',
+    description: 'Merge the selected cue with the next',
+    match: (e, ctx) =>
+      !ctx.editing && !!ctx.cue && (e.key === 'm' || e.key === 'M') && !e.shiftKey,
+    run: (ctx) => ctx.ps.mergeWithNext(ctx.cue!.id),
+  },
+  {
+    id: 'unmerge',
+    group: 'Text & structure',
+    label: 'Shift + M',
+    description: 'Unmerge at the active segment (split back into separate cues)',
+    match: (e, ctx) =>
+      !ctx.editing &&
+      !!ctx.cue &&
+      (e.key === 'm' || e.key === 'M') &&
+      e.shiftKey &&
+      ctx.cue!.segments[ctx.ps.selectedSegment]?.mergedWithPrevious === true &&
+      ctx.ps.selectedSegment > 0,
+    run: (ctx) => ctx.ps.splitAtMergedSegment(ctx.cue!.id, ctx.ps.selectedSegment),
+  },
+  {
+    id: 'toggle-reviewed',
+    group: 'Metadata',
+    label: 'R',
+    description: 'Toggle "reviewed"',
+    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === 'r',
+    run: (ctx) => ctx.ps.toggleReviewed(ctx.cue!.id),
+  },
+  {
+    id: 'edit-cue',
+    group: 'Text & structure',
+    label: 'Enter',
+    description: 'Edit the selected cue (focus its text)',
+    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === 'Enter' && !mod(e),
+    run: (ctx) =>
+      window.dispatchEvent(new CustomEvent('subbit:edit', { detail: ctx.cue!.id })),
+    preventDefault: true,
+  },
+  {
+    id: 'seek-to-cue',
+    group: 'Playback & navigation',
+    label: 'G',
+    description: 'Seek video to the selected cue',
+    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === 'g',
+    run: (ctx) => ctx.pb.seek(ctx.cue!.start),
+  },
+  {
+    id: 'assign-speaker',
+    group: 'Metadata',
+    label: '1 - 9',
+    description: 'Assign that speaker (Rolle) to the cue',
+    match: (e, ctx) => !ctx.editing && !!ctx.cue && /^[1-9]$/.test(e.key) && !e.shiftKey,
+    run: (ctx, e) => {
+      const speaker = ctx.project!.speakers[Number(e.key) - 1]
+      if (speaker) ctx.ps.setCueSpeaker(ctx.cue!.id, speaker.id)
+    },
+  },
+  {
+    id: 'assign-shot',
+    group: 'Metadata',
+    label: 'Shift + 1 / 2 / 3 …',
+    description: "Set the active segment's shot type",
+    match: (e, ctx) =>
+      !ctx.editing && !!ctx.cue && e.shiftKey && /^[!@#$%^&*(]$/.test(e.key),
+    run: (ctx, e) => {
+      const map = '!@#$%^&*('
+      const shot = ctx.project!.shots[map.indexOf(e.key)]
+      if (shot) ctx.ps.setSegmentShot(ctx.cue!.id, ctx.ps.selectedSegment, shot.id)
+    },
+  },
+]
+
+/** Resolve a display label for a shortcut id (e.g. toolbar tooltips). */
+export function shortcutLabel(id: string, mod: string = MOD_LABEL): string {
+  const def = SHORTCUTS.find((s) => s.id === id)
+  if (!def) return ''
+  return typeof def.label === 'function' ? def.label(mod) : def.label
+}
+
+/** Shortcut ids referenced by UI chrome outside the help overlay. */
+export const TOOLBAR_SHORTCUT_IDS = ['undo', 'redo', 'save'] as const

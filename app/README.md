@@ -67,27 +67,4 @@ Timecodes are SMPTE `HH:MM:SS:FF` at the project's fps (25) with a configurable
 start offset (default `10:00:00:00`). Default delimiter is tab; comma-CSV is
 also available (fields are quoted per RFC 4180).
 
-## Keyboard shortcuts
-
-Two modes: **navigation** (no text field focused) and **editing** (a cue's text
-box focused). Modifier combos work in both.
-
-| Key | Action |
-| --- | --- |
-| `Space` | play / pause (navigation mode) |
-| `Cmd/Ctrl+Space`* | - |
-| `j` / `k` or arrows up/down | next / previous cue |
-| `arrow left` / `right` | jog playhead 1 frame (`Shift` = 1 s) |
-| `i` / `o` | set cue In / Out to the playhead |
-| `[` / `]` | nudge In / Out by 1 frame (`Shift` flips direction) |
-| `g` | seek video to the selected cue's In |
-| `m` | merge the selected cue with the next |
-| `Shift+m` | unmerge at the active segment (split back into separate cues) |
-| `r` | toggle "reviewed" |
-| `1`-`9` | assign that speaker (Rolle) to the cue |
-| `Shift+1..` | set the active segment's shot type |
-| `Enter` | edit the selected cue's text |
-| `Esc` | leave the text box (back to navigation) |
-| `Cmd/Ctrl+Enter` | split cue at the caret + playhead |
-| `Cmd/Ctrl+Shift+S` | insert a shot change at the caret (mixed-shot subtitle) |
-| `Cmd/Ctrl+S` | save project |
+Press **`?`** in the app anytime for the full keyboard shortcut list.

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { MOD_LABEL, SHORTCUT_GROUPS } from '../lib/shortcuts'
+import { MOD_LABEL, shortcutGroups } from '../lib/shortcuts'
 
 /** Modal cheat sheet of keyboard shortcuts. Close with Esc, ?, or backdrop. */
 export function HelpOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -29,7 +29,7 @@ export function HelpOverlay({ open, onClose }: { open: boolean; onClose: () => v
           The {MOD_LABEL} combos also work while editing text.
         </p>
         <div className="help-grid">
-          {SHORTCUT_GROUPS.map((group) => (
+          {shortcutGroups().map((group) => (
             <section key={group.title}>
               <h3>{group.title}</h3>
               <dl>

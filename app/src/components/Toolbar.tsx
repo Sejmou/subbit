@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Project } from '../types'
 import type { Delimiter } from '../lib/export-csv'
 import { useProject } from '../store/project'
-import { MOD_LABEL } from '../lib/shortcuts'
+import { shortcutLabel } from '../lib/shortcuts'
 import { formatRelativeTime } from '../lib/relative-time'
 
 type SaveStateVariant = 'saving' | 'edited' | 'unsaved' | 'saved'
@@ -81,10 +81,10 @@ export function Toolbar({
       </span>
 
       <span className="btn-group">
-        <button onClick={undo} disabled={!canUndo} title={`Undo (${MOD_LABEL}+Z)`}>
+        <button onClick={undo} disabled={!canUndo} title={`Undo (${shortcutLabel('undo')})`}>
           Undo
         </button>
-        <button onClick={redo} disabled={!canRedo} title={`Redo (${MOD_LABEL}+Shift+Z)`}>
+        <button onClick={redo} disabled={!canRedo} title={`Redo (${shortcutLabel('redo')})`}>
           Redo
         </button>
       </span>
@@ -118,7 +118,7 @@ export function Toolbar({
       <button onClick={onHistory} title="Version history">
         History
       </button>
-      <button onClick={onSave} title="Save project (Cmd/Ctrl+S)">
+      <button onClick={onSave} title={`Save project (${shortcutLabel('save')})`}>
         Save project
       </button>
       <button onClick={onExportSrt}>Export .srt</button>
