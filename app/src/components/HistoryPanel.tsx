@@ -8,6 +8,7 @@ import {
   listVersions,
   type VersionMeta,
 } from '../lib/history'
+import { formatRelativeTime } from '../lib/relative-time'
 
 interface Props {
   open: boolean
@@ -19,15 +20,7 @@ interface Props {
 }
 
 function formatWhen(ts: number): string {
-  const d = new Date(ts)
-  const diff = Date.now() - ts
-  const mins = Math.round(diff / 60000)
-  let rel: string
-  if (mins < 1) rel = 'just now'
-  else if (mins < 60) rel = `${mins} min ago`
-  else if (mins < 1440) rel = `${Math.round(mins / 60)} h ago`
-  else rel = `${Math.round(mins / 1440)} d ago`
-  return `${d.toLocaleString()} · ${rel}`
+  return `${new Date(ts).toLocaleString()} · ${formatRelativeTime(ts)}`
 }
 
 function formatSize(bytes: number): string {

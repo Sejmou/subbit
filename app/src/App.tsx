@@ -50,6 +50,8 @@ export default function App() {
   const [delimiter, setDelimiter] = useState<Delimiter>('\t')
   const [helpOpen, setHelpOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [autosaveEnabled, setAutosaveEnabled] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   const movieHandle = useRef<FsFileHandle | null>(null)
   const projectHandle = useRef<FsFileHandle | null>(null)
@@ -89,10 +91,12 @@ export default function App() {
       if (Array.isArray(obj?.cues) && Array.isArray(obj?.speakers)) {
         loadProject(parseProject(text))
         projectHandle.current = projectFileHandle ?? null
+        setAutosaveEnabled(!!projectFileHandle)
         if (projectFileHandle) void cacheProjectHandle(projectFileHandle)
       } else if (Array.isArray(obj?.segments)) {
         loadProject(importWhisperx(data as Parameters<typeof importWhisperx>[0], movieName ?? 'movie'))
         projectHandle.current = null
+        setAutosaveEnabled(false)
       } else {
         throw new Error(
           'Unrecognized JSON. Expected a whisperx file (with a "segments" array) or a Subbit project (with "cues").',
@@ -151,6 +155,7 @@ export default function App() {
         movieHandle.current = m
         setMovieFromFile(await readHandleAsFile(m))
         projectHandle.current = p
+        setAutosaveEnabled(true)
         loadProject(parseProject(await (await readHandleAsFile(p)).text()))
         setStarted(true)
         return true
@@ -177,6 +182,7 @@ export default function App() {
       const current = useProject.getState().project
       if (!current) return
       const text = serializeProject(current)
+      setSaving(true)
       try {
         if (projectHandle.current) {
           await writeTextToHandle(projectHandle.current, text)
@@ -184,6 +190,7 @@ export default function App() {
           const handle = await pickProjectSaveFile(`${current.videoName}.subbit.json`)
           if (!handle) return
           projectHandle.current = handle
+          setAutosaveEnabled(true)
           await cacheProjectHandle(handle)
           await writeTextToHandle(handle, text)
         } else {
@@ -197,6 +204,8 @@ export default function App() {
       } catch (err) {
         console.error('Save failed', err)
         alert('Save failed: ' + (err as Error).message)
+      } finally {
+        setSaving(false)
       }
     },
     [fsSupported, markSaved],
@@ -262,6 +271,8 @@ export default function App() {
         project={project}
         dirty={dirty}
         lastSavedAt={lastSavedAt}
+        autosaveEnabled={autosaveEnabled}
+        saving={saving}
         delimiter={delimiter}
         setDelimiter={setDelimiter}
         onSave={() => void save()}

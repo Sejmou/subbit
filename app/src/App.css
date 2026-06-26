@@ -35,8 +35,15 @@
 }
 .toolbar .save-state {
   color: var(--text-dim);
-  min-width: 110px;
+  min-width: 120px;
   text-align: right;
+  white-space: nowrap;
+}
+.toolbar .save-state--edited {
+  color: var(--text);
+}
+.toolbar .save-state--unsaved {
+  color: var(--accent);
 }
 .toolbar .btn-group {
   display: inline-flex;

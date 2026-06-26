@@ -1,12 +1,18 @@
+import { useEffect, useState } from 'react'
 import type { Project } from '../types'
 import type { Delimiter } from '../lib/export-csv'
 import { useProject } from '../store/project'
 import { MOD_LABEL } from '../lib/shortcuts'
+import { formatRelativeTime } from '../lib/relative-time'
+
+type SaveStateVariant = 'saving' | 'edited' | 'unsaved' | 'saved'
 
 interface Props {
   project: Project
   dirty: boolean
   lastSavedAt: number | null
+  autosaveEnabled: boolean
+  saving: boolean
   delimiter: Delimiter
   setDelimiter: (d: Delimiter) => void
   onSave: () => void
@@ -16,10 +22,31 @@ interface Props {
   onHistory: () => void
 }
 
+function saveStateLabel(
+  saving: boolean,
+  dirty: boolean,
+  lastSavedAt: number | null,
+  autosaveEnabled: boolean,
+): { label: string; title?: string; variant: SaveStateVariant | null } {
+  if (saving) return { label: 'Saving…', variant: 'saving' }
+  if (dirty) {
+    if (autosaveEnabled) {
+      return { label: 'Edited', title: 'Autosaves in a few seconds', variant: 'edited' }
+    }
+    return { label: 'Unsaved changes', variant: 'unsaved' }
+  }
+  if (lastSavedAt) {
+    return { label: `Last save ${formatRelativeTime(lastSavedAt)}`, variant: 'saved' }
+  }
+  return { label: '', variant: null }
+}
+
 export function Toolbar({
   project,
   dirty,
   lastSavedAt,
+  autosaveEnabled,
+  saving,
   delimiter,
   setDelimiter,
   onSave,
@@ -35,6 +62,16 @@ export function Toolbar({
   const canRedo = useProject((s) => s.future.length > 0)
   const reviewed = project.cues.filter((c) => c.reviewed).length
   const total = project.cues.length
+
+  // Re-render periodically so "Last save … ago" stays fresh.
+  const [, tick] = useState(0)
+  useEffect(() => {
+    if (!lastSavedAt) return
+    const id = setInterval(() => tick((n) => n + 1), 30_000)
+    return () => clearInterval(id)
+  }, [lastSavedAt])
+
+  const saveState = saveStateLabel(saving, dirty, lastSavedAt, autosaveEnabled)
 
   return (
     <div className="toolbar">
@@ -72,8 +109,11 @@ export function Toolbar({
 
       <span className="spacer" />
 
-      <span className="save-state">
-        {dirty ? 'Unsaved changes' : lastSavedAt ? 'Saved' : ''}
+      <span
+        className={saveState.variant ? `save-state save-state--${saveState.variant}` : 'save-state'}
+        title={saveState.title}
+      >
+        {saveState.label}
       </span>
       <button onClick={onHistory} title="Version history">
         History
