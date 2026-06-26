@@ -1,4 +1,5 @@
 import type { Cue, Project } from '../types'
+import { cuePlainText } from './export-text'
 
 /** SRT timestamp "HH:MM:SS,mmm" from media seconds (no broadcast offset). */
 function srtTime(seconds: number): string {
@@ -12,8 +13,7 @@ function srtTime(seconds: number): string {
 }
 
 function cueText(cue: Cue): string {
-  // Standard SRT has no shot metadata; join segment texts with a space.
-  return cue.segments.map((s) => s.text.trim()).join(' ').trim()
+  return cuePlainText(cue)
 }
 
 /** Export plain SRT for round-tripping in other subtitle tools. */

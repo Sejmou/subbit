@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import { useProject } from './store/project'
-import { exportCsv, type Delimiter } from './lib/export-csv'
-import { exportSrt } from './lib/export-srt'
+import { buildExport, type ExportRequest } from './lib/export-format'
 import {
   parseSubtitleJsonText,
   projectFromSubtitleData,
@@ -33,6 +32,7 @@ import { VideoPlayer } from './components/VideoPlayer'
 import { CueList } from './components/CueList'
 import { SpeakerPanel } from './components/SpeakerPanel'
 import { Toolbar } from './components/Toolbar'
+import { ExportDialog } from './components/ExportDialog'
 import { HelpOverlay } from './components/HelpOverlay'
 import { HistoryPanel } from './components/HistoryPanel'
 import { UnsavedDialog } from './components/UnsavedDialog'
@@ -71,9 +71,9 @@ export default function App() {
   const [started, setStarted] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [canRestore, setCanRestore] = useState(false)
-  const [delimiter, setDelimiter] = useState<Delimiter>('\t')
   const [helpOpen, setHelpOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
   const [autosaveEnabled, setAutosaveEnabled] = useState(false)
   const [saving, setSaving] = useState(false)
   const [unsavedOpen, setUnsavedOpen] = useState(false)
@@ -239,17 +239,11 @@ export default function App() {
     [fsSupported, markSaved],
   )
 
-  const doExportCsv = useCallback(() => {
+  const doExport = useCallback((request: ExportRequest) => {
     const current = useProject.getState().project
     if (!current) return
-    const ext = delimiter === '\t' ? 'tsv' : 'csv'
-    downloadText(`${current.videoName}.${ext}`, exportCsv(current, delimiter), 'text/csv')
-  }, [delimiter])
-
-  const doExportSrt = useCallback(() => {
-    const current = useProject.getState().project
-    if (!current) return
-    downloadText(`${current.videoName}.srt`, exportSrt(current), 'text/plain')
+    const { content, ext, mime } = buildExport(current, request)
+    downloadText(`${current.videoName}.${ext}`, content, mime)
   }, [])
 
   /** Returns true when it's safe to leave or replace the current project. */
@@ -467,11 +461,8 @@ export default function App() {
         lastSavedAt={lastSavedAt}
         autosaveEnabled={autosaveEnabled}
         saving={saving}
-        delimiter={delimiter}
-        setDelimiter={setDelimiter}
         onSave={() => void save()}
-        onExportCsv={doExportCsv}
-        onExportSrt={doExportSrt}
+        onExport={() => setExportOpen(true)}
         onHelp={() => setHelpOpen(true)}
         onHistory={() => setHistoryOpen(true)}
         onOpenProject={() => void doOpenProject()}
@@ -480,6 +471,11 @@ export default function App() {
         onImportWaveform={() => void doImportWaveform()}
         onCloseProject={() => void doCloseProject()}
         waveformLoaded={waveformLoaded}
+      />
+      <ExportDialog
+        open={exportOpen}
+        onExport={doExport}
+        onClose={() => setExportOpen(false)}
       />
       <UnsavedDialog
         open={unsavedOpen}

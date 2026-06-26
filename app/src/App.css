@@ -91,6 +91,26 @@
   border-top-right-radius: 6px;
   border-bottom-right-radius: 6px;
 }
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 14px;
+  border-left: 1px solid var(--border);
+}
+.toolbar .save-btn.primary {
+  position: relative;
+}
+.toolbar .save-btn.primary::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warn);
+}
 .toolbar button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -151,6 +171,62 @@
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.export-modal {
+  width: min(440px, 92vw);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 24px;
+}
+.export-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.export-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.export-hint {
+  margin: 8px 0 16px;
+}
+.export-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.export-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  cursor: pointer;
+}
+.export-check input {
+  margin: 0;
+}
+.export-action {
+  margin-top: 8px;
+}
+.export-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: var(--text-dim);
+}
+.export-modal .hint {
+  margin: 0 0 12px;
+  color: var(--text-dim);
+  line-height: 1.45;
+}
+.export-field select,
+.export-field input {
+  flex: 1;
 }
 
 /* ---- layout ---- */
