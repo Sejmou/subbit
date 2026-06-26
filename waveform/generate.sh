@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-PIXELS_PER_SECOND=20
+PIXELS_PER_SECOND=80
 FORMAT=dat
 
 usage() {

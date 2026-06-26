@@ -14,8 +14,11 @@
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.4",
     "idb-keyval": "^6.2.5",
+    "konva": "^9.3.22",
+    "peaks.js": "^4.0.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "waveform-data": "^4.5.2",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },

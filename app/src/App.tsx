@@ -37,6 +37,7 @@ import { HelpOverlay } from './components/HelpOverlay'
 import { HistoryPanel } from './components/HistoryPanel'
 import { UnsavedDialog } from './components/UnsavedDialog'
 import { VideoMismatchBanner } from './components/VideoMismatchBanner'
+import { WaveformTimeline } from './components/WaveformTimeline'
 import { useVideoIdentity } from './hooks/useVideoIdentity'
 import { useWaveform, waveformCacheKey } from './store/waveform'
 import { cacheWaveformPeaks } from './lib/waveform-cache'
@@ -500,6 +501,7 @@ export default function App() {
         </div>
         <CueList project={project} />
       </div>
+      {waveformLoaded && <WaveformTimeline project={project} />}
     </div>
   )
 }

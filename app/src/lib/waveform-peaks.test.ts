@@ -4,6 +4,8 @@ import {
   parseWaveformDat,
   parseWaveformJsonText,
   peaksDuration,
+  peaksMaxZoomVisibleSeconds,
+  peaksZoomLevels,
 } from './waveform-peaks'
 
 /** Build a minimal v2 8-bit mono .dat header + one min/max pair. */
@@ -62,6 +64,19 @@ describe('parseWaveformJsonText', () => {
     expect(parsed.meta.channels).toBe(1)
     expect(parsed.meta.duration).toBeCloseTo((2 * 256) / 48000)
     expect(parsed.input.kind).toBe('json')
+  })
+})
+
+describe('peaksZoomLevels', () => {
+  it('starts at native samples_per_pixel and doubles', () => {
+    expect(peaksZoomLevels(2205)).toEqual([2205, 4410, 8820, 17640, 35280, 70560])
+  })
+})
+
+describe('peaksMaxZoomVisibleSeconds', () => {
+  it('computes minimum visible span at native zoom', () => {
+    // 800px, 2205 samples/px, 44100 Hz → 40s
+    expect(peaksMaxZoomVisibleSeconds(2205, 44100, 800)).toBeCloseTo(40)
   })
 })
 

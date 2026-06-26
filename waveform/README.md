@@ -37,8 +37,11 @@ Options:
 # JSON instead of binary (larger, easier to inspect; peaks.js accepts both)
 ./waveform/generate.sh movie.mp4 ./data/movie.waveform.json --json
 
-# More detail in the waveform (larger file, default is 20 px/sec)
-./waveform/generate.sh movie.mp4 --pixels-per-second 40
+# Lower resolution (smaller file)
+./waveform/generate.sh movie.mp4 --pixels-per-second 20
+
+# More detail in the waveform (larger file)
+./waveform/generate.sh movie.mp4 --pixels-per-second 100
 ```
 
 ## What the script does
@@ -50,7 +53,7 @@ Equivalent manual commands:
 
 ```bash
 ffmpeg -i movie.mp4 -vn -ac 1 -ar 44100 -f wav -  \
-  | audiowaveform -i - -o movie.dat -b 8 --pixels-per-second 20
+  | audiowaveform -i - -o movie.dat -b 8 --pixels-per-second 80
 ```
 
 ### Why not ffmpeg alone?
@@ -62,7 +65,7 @@ ffmpeg can render a PNG waveform image, but peaks.js needs **structured peak dat
 | Option | Value | Reason |
 |--------|-------|--------|
 | `-b 8` | 8-bit peaks | Required by peaks.js; keeps files small |
-| `--pixels-per-second 20` | 20 peaks/sec | Good balance for 90+ min movies (~200 KB) |
+| `--pixels-per-second 80` | 80 peaks/sec | Default — ~10 s max zoom, ~880 KB for 90 min |
 | `-ac 1` (ffmpeg) | mono | Peaks.js overview uses a single channel |
 
 ## Using peaks in the app
@@ -109,7 +112,29 @@ data/
 
 Approximate `.dat` size ≈ `duration_seconds × pixels_per_second × 2 bytes` (8-bit mono).
 
-| Duration | 20 px/sec | 100 px/sec |
-|----------|-----------|------------|
-| 90 min   | ~220 KB   | ~1.1 MB    |
-| 120 min  | ~290 KB   | ~1.4 MB    |
+| Duration | 20 px/sec | 80 px/sec (default) | 100 px/sec |
+|----------|-----------|---------------------|------------|
+| 90 min   | ~220 KB   | ~880 KB             | ~1.1 MB    |
+| 120 min  | ~290 KB   | ~1.2 MB             | ~1.4 MB    |
+
+## Zoom depth vs `--pixels-per-second`
+
+Max zoom-in is limited by the peaks file: you cannot magnify past its native
+resolution. Roughly, the narrowest time window you can fill the timeline with
+(at ~800 px wide, 44.1 kHz audio) is:
+
+| `--pixels-per-second` | ~Min visible span |
+|----------------------|-------------------|
+| 20                   | ~40 s             |
+| 40                   | ~20 s             |
+| 80 (default)         | ~10 s             |
+| 100                  | ~8 s              |
+
+After changing `--pixels-per-second`, regenerate and re-import:
+
+```bash
+./waveform/generate.sh movie.mp4 ./data/movie.dat --pixels-per-second 80
+```
+
+Then **File → Import waveform…** again (or delete the IndexedDB cache by
+changing videos / clearing site data).

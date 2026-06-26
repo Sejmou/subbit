@@ -40,6 +40,38 @@ export function peaksDuration(meta: Pick<WaveformPeaksMeta, 'length' | 'samplesP
   return (meta.length * meta.samplesPerPixel) / meta.sampleRate
 }
 
+/**
+ * peaks.js zoomLevels are samples-per-pixel values in ascending order.
+ * Cannot zoom in past the precomputed file's native samples_per_pixel.
+ */
+export function peaksZoomLevels(samplesPerPixel: number, steps = 6): number[] {
+  const min = Math.max(1, Math.ceil(samplesPerPixel))
+  const levels = [min]
+  let level = min
+  for (let i = 1; i < steps; i++) {
+    level = Math.ceil(level * 2)
+    levels.push(level)
+  }
+  return levels
+}
+
+/** Shortest span (seconds) visible when zoomed in to the peaks file's native limit. */
+export function peaksMaxZoomVisibleSeconds(
+  samplesPerPixel: number,
+  sampleRate: number,
+  viewWidthPx: number,
+): number {
+  return (viewWidthPx * samplesPerPixel) / sampleRate
+}
+
+/** Target `--pixels-per-second` when regenerating peaks (~targetSeconds at max zoom). */
+export function peaksPixelsPerSecondForZoom(
+  targetMinVisibleSeconds: number,
+  viewWidthPx: number,
+): number {
+  return Math.ceil(viewWidthPx / targetMinVisibleSeconds)
+}
+
 function parseDatHeader(view: DataView): WaveformPeaksMeta {
   if (view.byteLength < 20) {
     throw new Error('Waveform .dat file is too small to contain a valid header.')
