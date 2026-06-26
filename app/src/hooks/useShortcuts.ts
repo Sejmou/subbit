@@ -6,6 +6,9 @@ import { handleShortcut } from '../lib/shortcuts'
  *  - navigation (no text field focused): single-key shortcuts
  *  - editing (a cue textarea focused): typing works; only modifier combos act
  *
+ * Capture phase so we can preventDefault before the focused <video> element
+ * applies its own Space / arrow bindings (which would double-toggle playback).
+ *
  * Bindings are defined in lib/shortcuts/registry.ts.
  */
 export function useShortcuts() {
@@ -14,7 +17,7 @@ export function useShortcuts() {
       handleShortcut(e)
     }
 
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
   }, [])
 }

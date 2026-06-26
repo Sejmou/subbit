@@ -1,5 +1,13 @@
 import { create } from 'zustand'
 
+/** Subtract this from the playhead when marking timing during playback (reaction delay). */
+export const REACTION_DELAY_S = 0.5
+
+/** Playhead time for cue In/Out/insert; shifted back while the video is playing. */
+export function reactionAdjustedPlayhead(time: number, playing: boolean): number {
+  return Math.max(0, playing ? time - REACTION_DELAY_S : time)
+}
+
 /**
  * Transient playback state, kept separate from the project so frequent
  * timeupdate events don't re-render editing components unnecessarily.
@@ -16,6 +24,8 @@ interface PlaybackState {
   setPlaying: (p: boolean) => void
   /** Seek the underlying media element (also updates currentTime). */
   seek: (t: number) => void
+  /** Seek to `t` and start playback. */
+  playFrom: (t: number) => void
   togglePlay: () => void
 }
 
@@ -33,6 +43,15 @@ export const usePlayback = create<PlaybackState>((set, getState) => ({
     const clamped = Math.max(0, t)
     if (videoEl) videoEl.currentTime = clamped
     set({ currentTime: clamped })
+  },
+  playFrom: (t) => {
+    const { videoEl } = getState()
+    const clamped = Math.max(0, t)
+    if (videoEl) {
+      videoEl.currentTime = clamped
+      void videoEl.play()
+    }
+    set({ currentTime: clamped, playing: true })
   },
   togglePlay: () => {
     const { videoEl, playing } = getState()

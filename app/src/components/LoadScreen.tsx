@@ -50,7 +50,7 @@ export function LoadScreen(props: Props) {
           </li>
 
           <li>
-            <span>2. Subtitles</span>
+            <span>2. Subtitles (optional)</span>
             <button
               onClick={fs ? props.onPickSubtitles : () => subtitlesInput.current?.click()}
               disabled={!!props.busy}
@@ -68,7 +68,7 @@ export function LoadScreen(props: Props) {
               {props.hasSubtitles ? (
                 <span className="ok">loaded</span>
               ) : (
-                'Pick the whisperx audio.json for a new project, or a saved .subbit.json to resume.'
+                'Optional — import whisperx or a saved project, or start with a blank project.'
               )}
             </span>
           </li>
@@ -76,7 +76,7 @@ export function LoadScreen(props: Props) {
 
         <button
           className="primary wide"
-          disabled={!props.movieName || !props.hasSubtitles || !!props.busy}
+          disabled={!props.movieName || !!props.busy}
           onClick={props.onStart}
         >
           {props.busy ?? 'Start editing'}

@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 
 interface Props {
   onOpenProject: () => void
-  onNewFromWhisperx: () => void
+  onNewBlankProject: () => void
+  onImportWhisperx: () => void
   onCloseProject: () => void
 }
 
-export function FileMenu({ onOpenProject, onNewFromWhisperx, onCloseProject }: Props) {
+export function FileMenu({ onOpenProject, onNewBlankProject, onImportWhisperx, onCloseProject }: Props) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
@@ -34,8 +35,11 @@ export function FileMenu({ onOpenProject, onNewFromWhisperx, onCloseProject }: P
           <button type="button" role="menuitem" onClick={() => run(onOpenProject)}>
             Open project…
           </button>
-          <button type="button" role="menuitem" onClick={() => run(onNewFromWhisperx)}>
-            New from whisperx…
+          <button type="button" role="menuitem" onClick={() => run(onNewBlankProject)}>
+            New blank project…
+          </button>
+          <button type="button" role="menuitem" onClick={() => run(onImportWhisperx)}>
+            Import whisperx…
           </button>
           <hr />
           <button type="button" role="menuitem" onClick={() => run(onCloseProject)}>

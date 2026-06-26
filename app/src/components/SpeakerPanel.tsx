@@ -1,9 +1,20 @@
+import { useState } from 'react'
 import type { Project } from '../types'
 import { useProject } from '../store/project'
 
 /** Maps diarization labels (SPEAKER_00) to real character names (Rolle). */
 export function SpeakerPanel({ project }: { project: Project }) {
-  const { renameSpeaker, setSpeakerColor } = useProject()
+  const { renameSpeaker, setSpeakerColor, addSpeaker } = useProject()
+  const [adding, setAdding] = useState(false)
+  const [newName, setNewName] = useState('')
+
+  const commitNewSpeaker = () => {
+    const name = newName.trim()
+    if (!name) return
+    addSpeaker(name)
+    setNewName('')
+    setAdding(false)
+  }
 
   return (
     <div className="speaker-panel">
@@ -30,6 +41,34 @@ export function SpeakerPanel({ project }: { project: Project }) {
             </span>
           </li>
         ))}
+        {adding ? (
+          <li className="add-speaker-row">
+            <input
+              className="speaker-name"
+              value={newName}
+              placeholder="Character name"
+              autoFocus
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitNewSpeaker()
+                if (e.key === 'Escape') {
+                  setNewName('')
+                  setAdding(false)
+                }
+              }}
+              onBlur={() => {
+                if (newName.trim()) commitNewSpeaker()
+                else setAdding(false)
+              }}
+            />
+          </li>
+        ) : (
+          <li>
+            <button type="button" className="add-speaker-btn" onClick={() => setAdding(true)}>
+              + Add role
+            </button>
+          </li>
+        )}
       </ul>
     </div>
   )

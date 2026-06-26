@@ -64,8 +64,10 @@ function ctx(overrides: Partial<ShortcutContext> = {}): ShortcutContext {
   }
   const pb = {
     togglePlay: vi.fn(),
+    playFrom: vi.fn(),
     seek: vi.fn(),
     currentTime: 2,
+    playing: false,
   }
   return {
     editing: false,
@@ -121,6 +123,36 @@ describe('resolveShortcut', () => {
     expect(resolveShortcut(modKey('y'), ctx())?.id).toBe('redo')
   })
 
+  it('handles playback bindings with an open project even when no cues exist', () => {
+    const empty = ctx({ cue: null, cueIndex: -1, project: { ...project, cues: [] } })
+    expect(resolveShortcut(makeKeyEvent(' '), empty)?.id).toBe('play-pause')
+    expect(resolveShortcut(makeKeyEvent('ArrowLeft'), empty)?.id).toBe('jog-back')
+    expect(resolveShortcut(makeKeyEvent('ArrowRight', { shiftKey: true }), empty)?.id).toBe(
+      'jog-forward-frames',
+    )
+    expect(resolveShortcut(modKey('ArrowRight', { shiftKey: true }), empty)?.id).toBe(
+      'jog-forward-frame',
+    )
+    expect(resolveShortcut(makeKeyEvent('j'), empty)).toBeNull()
+    expect(resolveShortcut(makeKeyEvent(' ', { shiftKey: true }), empty)).toBeNull()
+  })
+
+  it('applies reaction delay to timing keys while playing', () => {
+    const playing = ctx({ pb: { ...ctx().pb, currentTime: 10, playing: true } })
+    resolveShortcut(makeKeyEvent('i'), playing)?.run(playing, makeKeyEvent('i'))
+    expect(playing.ps.setCueStart).toHaveBeenCalledWith('cue-1', 9.5)
+
+    const paused = ctx()
+    resolveShortcut(makeKeyEvent('o'), paused)?.run(paused, makeKeyEvent('o'))
+    expect(paused.ps.setCueEnd).toHaveBeenCalledWith('cue-1', 2)
+  })
+
+  it('plays from the selected cue In on shift+space', () => {
+    const c = ctx()
+    resolveShortcut(makeKeyEvent(' ', { shiftKey: true }), c)?.run(c, makeKeyEvent(' ', { shiftKey: true }))
+    expect(c.pb.playFrom).toHaveBeenCalledWith(cue.start)
+  })
+
   it('handles navigation bindings when a cue is selected', () => {
     const c = ctx()
     resolveShortcut(makeKeyEvent(' '), c)?.run(c, makeKeyEvent(' '))
@@ -130,8 +162,9 @@ describe('resolveShortcut', () => {
     expect(resolveShortcut(makeKeyEvent('k'), ctx())?.id).toBe('previous-cue')
     expect(resolveShortcut(makeKeyEvent('ArrowLeft'), ctx())?.id).toBe('jog-back')
     expect(resolveShortcut(makeKeyEvent('ArrowRight', { shiftKey: true }), ctx())?.id).toBe(
-      'jog-forward-second',
+      'jog-forward-frames',
     )
+    expect(resolveShortcut(modKey('ArrowLeft', { shiftKey: true }), ctx())?.id).toBe('jog-back-frame')
   })
 
   it('ignores navigation shortcuts while editing text', () => {

@@ -2,6 +2,14 @@ import { create } from 'zustand'
 import type { Cue, Project, Segment, ShotId, Speaker, Word } from '../types'
 
 const EPS = 0.001
+const DEFAULT_CUE_DURATION = 2
+
+const SPEAKER_PALETTE = [
+  '#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4',
+  '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#008080',
+  '#9a6324', '#fffac8', '#800000', '#aaffc3', '#808000',
+  '#ffd8b1', '#000075', '#a9a9a9',
+]
 
 function newId(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -99,6 +107,8 @@ interface ProjectState {
   splitAtMergedSegment: (cueId: string, segIndex: number) => void
   insertShotSplit: (cueId: string, segIndex: number, charOffset: number) => void
   removeShotSplit: (cueId: string, segIndex: number) => void
+  insertCueAtPlayhead: (time: number) => string | null
+  deleteCue: (cueId: string) => void
 
   // speakers
   renameSpeaker: (id: string, name: string) => void
@@ -112,6 +122,20 @@ interface ProjectState {
 
 function mapCue(project: Project, cueId: string, fn: (cue: Cue) => Cue): Project {
   return { ...project, cues: project.cues.map((c) => (c.id === cueId ? fn(c) : c)) }
+}
+
+function clampCueStart(cue: Cue, time: number, prev: Cue | undefined): number {
+  const min = prev ? prev.end : 0
+  const max = cue.end - EPS
+  if (min > max) return cue.start
+  return Math.min(Math.max(min, time), max)
+}
+
+function clampCueEnd(cue: Cue, time: number, next: Cue | undefined): number {
+  const min = cue.start + EPS
+  const max = next ? next.start : Infinity
+  if (min > max) return cue.end
+  return Math.min(Math.max(min, time), max)
 }
 
 /** Cap the in-memory undo stack so long sessions don't grow unbounded. */
@@ -251,15 +275,23 @@ export const useProject = create<ProjectState>((set, getState) => {
       ),
 
     setCueStart: (cueId, time) =>
-      update(
-        (p) => mapCue(p, cueId, (c) => ({ ...c, start: Math.min(Math.max(0, time), c.end - EPS) })),
-        `start:${cueId}`,
-      ),
+      update((p) => {
+        const idx = p.cues.findIndex((c) => c.id === cueId)
+        if (idx === -1) return p
+        const c = p.cues[idx]
+        const start = clampCueStart(c, time, p.cues[idx - 1])
+        if (start === c.start) return p
+        return mapCue(p, cueId, (cue) => ({ ...cue, start }))
+      }, `start:${cueId}`),
     setCueEnd: (cueId, time) =>
-      update(
-        (p) => mapCue(p, cueId, (c) => ({ ...c, end: Math.max(time, c.start + EPS) })),
-        `end:${cueId}`,
-      ),
+      update((p) => {
+        const idx = p.cues.findIndex((c) => c.id === cueId)
+        if (idx === -1) return p
+        const c = p.cues[idx]
+        const end = clampCueEnd(c, time, p.cues[idx + 1])
+        if (end === c.end) return p
+        return mapCue(p, cueId, (cue) => ({ ...cue, end }))
+      }, `end:${cueId}`),
     nudgeCueStart: (cueId, delta) => {
       const c = getState().project?.cues.find((x) => x.id === cueId)
       if (c) getState().setCueStart(cueId, c.start + delta)
@@ -432,6 +464,75 @@ export const useProject = create<ProjectState>((set, getState) => {
         }),
       ),
 
+    insertCueAtPlayhead: (time) => {
+      let insertedId: string | null = null
+      set((state) => {
+        if (!state.project) return state
+        const p = state.project
+        const start = Math.max(0, time)
+
+        let insertIdx = p.cues.findIndex((c) => c.start >= start)
+        if (insertIdx === -1) insertIdx = p.cues.length
+
+        const nextCue = p.cues[insertIdx]
+        const end = nextCue
+          ? Math.max(start + EPS, Math.min(start + DEFAULT_CUE_DURATION, nextCue.start - EPS))
+          : start + DEFAULT_CUE_DURATION
+        if (end <= start + EPS) return state
+
+        insertedId = newId()
+        const newCue: Cue = {
+          id: insertedId,
+          start,
+          end,
+          speakerId: null,
+          segments: [{ text: '', shot: p.defaultShot }],
+          reviewed: false,
+        }
+
+        const cues = [...p.cues.slice(0, insertIdx), newCue, ...p.cues.slice(insertIdx)]
+        const project = { ...p, cues }
+
+        lastTag = null
+        const past = [...state.past, snapshot(state)]
+        if (past.length > HISTORY_LIMIT) past.shift()
+
+        return {
+          project,
+          selectedCueId: insertedId,
+          selectedSegment: 0,
+          dirty: true,
+          past,
+          future: [],
+        }
+      })
+      return insertedId
+    },
+
+    deleteCue: (cueId) =>
+      set((state) => {
+        if (!state.project) return state
+        const idx = state.project.cues.findIndex((c) => c.id === cueId)
+        if (idx === -1) return state
+
+        const cues = [...state.project.cues.slice(0, idx), ...state.project.cues.slice(idx + 1)]
+        const project = { ...state.project, cues }
+        const nextSelected = cues[Math.min(idx, cues.length - 1)]?.id ?? null
+
+        lastTag = null
+        const past = [...state.past, snapshot(state)]
+        if (past.length > HISTORY_LIMIT) past.shift()
+
+        return {
+          project,
+          selectedCueId: nextSelected,
+          selectedSegment: 0,
+          dirty: true,
+          past,
+          future: [],
+        }
+      }),
+
     renameSpeaker: (id, name) =>
       update(
         (p) => ({
@@ -449,7 +550,12 @@ export const useProject = create<ProjectState>((set, getState) => {
         `color:${id}`,
       ),
     addSpeaker: (name) => {
-      const speaker: Speaker = { id: newId(), name, color: '#888888' }
+      const count = getState().project?.speakers.length ?? 0
+      const speaker: Speaker = {
+        id: newId(),
+        name,
+        color: SPEAKER_PALETTE[count % SPEAKER_PALETTE.length],
+      }
       update((p) => ({ ...p, speakers: [...p.speakers, speaker] }))
       return speaker
     },

@@ -22,7 +22,8 @@ interface Props {
   onHelp: () => void
   onHistory: () => void
   onOpenProject: () => void
-  onNewFromWhisperx: () => void
+  onNewBlankProject: () => void
+  onImportWhisperx: () => void
   onCloseProject: () => void
 }
 
@@ -59,7 +60,8 @@ export function Toolbar({
   onHelp,
   onHistory,
   onOpenProject,
-  onNewFromWhisperx,
+  onNewBlankProject,
+  onImportWhisperx,
   onCloseProject,
 }: Props) {
   const setTimecodeOffset = useProject((s) => s.setTimecodeOffset)
@@ -85,7 +87,8 @@ export function Toolbar({
       <strong className="brand">Subbit</strong>
       <FileMenu
         onOpenProject={onOpenProject}
-        onNewFromWhisperx={onNewFromWhisperx}
+        onNewBlankProject={onNewBlankProject}
+        onImportWhisperx={onImportWhisperx}
         onCloseProject={onCloseProject}
       />
       <span className="progress">

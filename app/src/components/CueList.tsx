@@ -3,6 +3,8 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import type { Project } from '../types'
 import { useProject } from '../store/project'
 import { usePlayback } from '../store/playback'
+import { shortcutLabel } from '../lib/shortcuts'
+import { focusCueForEdit } from '../lib/focus-cue'
 import { CueRow } from './CueRow'
 
 /** Binary search for the cue whose [start,end) contains t. */
@@ -22,7 +24,10 @@ function findActive(cues: Project['cues'], t: number): number {
 export function CueList({ project }: { project: Project }) {
   const parentRef = useRef<HTMLDivElement>(null)
   const selectedCueId = useProject((s) => s.selectedCueId)
+  const insertCueAtPlayhead = useProject((s) => s.insertCueAtPlayhead)
+  const currentTime = usePlayback((s) => s.currentTime)
   const [activeIndex, setActiveIndex] = useState(-1)
+  const isEmpty = project.cues.length === 0
 
   const virtualizer = useVirtualizer({
     count: project.cues.length,
@@ -33,6 +38,7 @@ export function CueList({ project }: { project: Project }) {
 
   // Track the active cue from the playhead without re-rendering every frame.
   useEffect(() => {
+    if (isEmpty) return
     let last = -1
     return usePlayback.subscribe((state) => {
       const idx = findActive(project.cues, state.currentTime)
@@ -41,13 +47,36 @@ export function CueList({ project }: { project: Project }) {
         setActiveIndex(idx)
       }
     })
-  }, [project.cues])
+  }, [project.cues, isEmpty])
 
   // Keep the selected cue visible during keyboard navigation.
   useEffect(() => {
+    if (isEmpty) return
     const idx = project.cues.findIndex((c) => c.id === selectedCueId)
     if (idx >= 0) virtualizer.scrollToIndex(idx, { align: 'auto' })
-  }, [selectedCueId, project.cues, virtualizer])
+  }, [selectedCueId, project.cues, virtualizer, isEmpty])
+
+  if (isEmpty) {
+    return (
+      <div className="cue-list cue-list--empty">
+        <p>No subtitles yet.</p>
+        <p className="hint">
+          Press <kbd>{shortcutLabel('insert-cue')}</kbd> to add a cue at the playhead, or use{' '}
+          <strong>File → Import whisperx…</strong>
+        </p>
+        <button
+          type="button"
+          className="primary"
+          onClick={() => {
+            const id = insertCueAtPlayhead(currentTime)
+            if (id) focusCueForEdit(id)
+          }}
+        >
+          Add cue at playhead
+        </button>
+      </div>
+    )
+  }
 
   const items = virtualizer.getVirtualItems()
 

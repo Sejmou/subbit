@@ -26,6 +26,7 @@ import {
   type FsFileHandle,
 } from './lib/project-io'
 import { addVersion } from './lib/history'
+import { createEmptyProject } from './lib/create-empty-project'
 import { useShortcuts } from './hooks/useShortcuts'
 import { LoadScreen } from './components/LoadScreen'
 import { VideoPlayer } from './components/VideoPlayer'
@@ -281,7 +282,7 @@ export default function App() {
     }
   }, [guardUnsaved, loadSubtitlesText])
 
-  const doNewFromWhisperx = useCallback(async () => {
+  const doImportWhisperx = useCallback(async () => {
     if (!(await guardUnsaved())) return
     const handle = await pickFile(JSON_ACCEPT, 'whisperx JSON')
     if (!handle) return
@@ -295,6 +296,38 @@ export default function App() {
       alert((err as Error).message)
     }
   }, [guardUnsaved, loadProject, movieName])
+
+  const doNewBlankProject = useCallback(async () => {
+    if (!(await guardUnsaved())) return
+
+    if (fsSupported) {
+      const handle = await pickFile(VIDEO_ACCEPT, 'Movie')
+      if (!handle) return
+      movieHandle.current = handle
+      await cacheMovieHandle(handle)
+      const file = await readHandleAsFile(handle)
+      setMovieFromFile(file)
+      loadProject(createEmptyProject(file.name))
+    } else if (movieName) {
+      loadProject(createEmptyProject(movieName))
+    } else {
+      closeProject()
+      return
+    }
+
+    projectHandle.current = null
+    setAutosaveEnabled(false)
+    setStarted(true)
+  }, [guardUnsaved, fsSupported, movieName, setMovieFromFile, loadProject, closeProject])
+
+  const startEditing = useCallback(() => {
+    if (!useProject.getState().project) {
+      loadProject(createEmptyProject(movieName ?? 'movie'))
+      projectHandle.current = null
+      setAutosaveEnabled(false)
+    }
+    setStarted(true)
+  }, [loadProject, movieName])
 
   // Cmd/Ctrl+S from the shortcut hook.
   useEffect(() => {
@@ -343,7 +376,7 @@ export default function App() {
         onMovieFile={onMovieFile}
         onSubtitlesFile={onSubtitlesFile}
         onRestore={() => void doRestore(false)}
-        onStart={() => setStarted(true)}
+        onStart={startEditing}
       />
     )
   }
@@ -364,7 +397,8 @@ export default function App() {
         onHelp={() => setHelpOpen(true)}
         onHistory={() => setHistoryOpen(true)}
         onOpenProject={() => void doOpenProject()}
-        onNewFromWhisperx={() => void doNewFromWhisperx()}
+        onNewBlankProject={() => void doNewBlankProject()}
+        onImportWhisperx={() => void doImportWhisperx()}
         onCloseProject={() => void doCloseProject()}
       />
       <UnsavedDialog

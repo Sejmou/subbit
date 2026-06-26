@@ -1,5 +1,7 @@
 import { MOD_LABEL } from './mod-label'
 import type { ShortcutContext } from './context'
+import { reactionAdjustedPlayhead } from '../../store/playback'
+import { focusCueForEdit } from '../focus-cue'
 
 type KeyEvent = globalThis.KeyboardEvent
 
@@ -24,6 +26,18 @@ function mod(e: KeyEvent): boolean {
 function plainKey(e: KeyEvent): boolean {
   return !e.metaKey && !e.ctrlKey && !e.altKey
 }
+
+/** Video transport works whenever a project is open, even before the first cue exists. */
+function canPlayback(e: KeyEvent, ctx: ShortcutContext): boolean {
+  return plainKey(e) && !ctx.editing && !!ctx.project
+}
+
+/** Modifier + shift jog (1 frame). */
+function canModShiftPlayback(e: KeyEvent, ctx: ShortcutContext): boolean {
+  return mod(e) && e.shiftKey && !ctx.editing && !!ctx.project
+}
+
+const JOG_FRAMES = 10
 
 /** Ordered list — first match wins, same priority as the original handler. */
 export const SHORTCUTS: ShortcutDef[] = [
@@ -100,11 +114,20 @@ export const SHORTCUTS: ShortcutDef[] = [
     run: (ctx) => (ctx.target as HTMLElement).blur(),
   },
   {
+    id: 'play-from-cue',
+    group: 'Playback & navigation',
+    label: 'Shift + Space',
+    description: 'Play from the selected cue In',
+    match: (e, ctx) => canPlayback(e, ctx) && e.shiftKey && e.key === ' ' && !!ctx.cue,
+    run: (ctx) => ctx.pb.playFrom(ctx.cue!.start),
+    preventDefault: true,
+  },
+  {
     id: 'play-pause',
     group: 'Playback & navigation',
     label: 'Space',
     description: 'Play / pause',
-    match: (e, ctx) => plainKey(e) && !ctx.editing && !!ctx.cue && e.key === ' ',
+    match: (e, ctx) => canPlayback(e, ctx) && !e.shiftKey && e.key === ' ',
     run: (ctx) => ctx.pb.togglePlay(),
     preventDefault: true,
   },
@@ -114,7 +137,11 @@ export const SHORTCUTS: ShortcutDef[] = [
     label: 'J / K  or  ↓ / ↑',
     description: 'Next / previous cue',
     match: (e, ctx) =>
-      plainKey(e) && !ctx.editing && !!ctx.cue && (e.key === 'ArrowDown' || e.key === 'j'),
+      plainKey(e) &&
+      !ctx.editing &&
+      !!ctx.project &&
+      ctx.project.cues.length > 0 &&
+      (e.key === 'ArrowDown' || e.key === 'j'),
     run: (ctx) => {
       const { project, cueIndex, ps } = ctx
       ps.selectCue(project!.cues[Math.min(cueIndex + 1, project!.cues.length - 1)].id)
@@ -128,7 +155,11 @@ export const SHORTCUTS: ShortcutDef[] = [
     description: 'Next / previous cue',
     showInHelp: false,
     match: (e, ctx) =>
-      plainKey(e) && !ctx.editing && !!ctx.cue && (e.key === 'ArrowUp' || e.key === 'k'),
+      plainKey(e) &&
+      !ctx.editing &&
+      !!ctx.project &&
+      ctx.project.cues.length > 0 &&
+      (e.key === 'ArrowUp' || e.key === 'k'),
     run: (ctx) => {
       const { project, cueIndex, ps } = ctx
       ps.selectCue(project!.cues[Math.max(cueIndex - 1, 0)].id)
@@ -139,59 +170,76 @@ export const SHORTCUTS: ShortcutDef[] = [
     id: 'jog-back',
     group: 'Playback & navigation',
     label: '← / →',
-    description: 'Jog playhead 1 frame',
-    match: (e, ctx) =>
-      plainKey(e) && !ctx.editing && !!ctx.cue && e.key === 'ArrowLeft' && !e.shiftKey,
-    run: (ctx) => ctx.pb.seek(ctx.pb.currentTime - ctx.frame),
+    description: 'Jog playhead 1 second',
+    match: (e, ctx) => canPlayback(e, ctx) && e.key === 'ArrowLeft' && !e.shiftKey,
+    run: (ctx) => ctx.pb.seek(ctx.pb.currentTime - 1),
     preventDefault: true,
   },
   {
     id: 'jog-forward',
     group: 'Playback & navigation',
     label: '← / →',
+    description: 'Jog playhead 1 second',
+    showInHelp: false,
+    match: (e, ctx) => canPlayback(e, ctx) && e.key === 'ArrowRight' && !e.shiftKey,
+    run: (ctx) => ctx.pb.seek(ctx.pb.currentTime + 1),
+    preventDefault: true,
+  },
+  {
+    id: 'jog-back-frames',
+    group: 'Playback & navigation',
+    label: 'Shift + ← / →',
+    description: 'Jog playhead 10 frames',
+    match: (e, ctx) => canPlayback(e, ctx) && e.shiftKey && e.key === 'ArrowLeft',
+    run: (ctx) => ctx.pb.seek(ctx.pb.currentTime - ctx.frame * JOG_FRAMES),
+    preventDefault: true,
+  },
+  {
+    id: 'jog-forward-frames',
+    group: 'Playback & navigation',
+    label: 'Shift + ← / →',
+    description: 'Jog playhead 10 frames',
+    showInHelp: false,
+    match: (e, ctx) => canPlayback(e, ctx) && e.shiftKey && e.key === 'ArrowRight',
+    run: (ctx) => ctx.pb.seek(ctx.pb.currentTime + ctx.frame * JOG_FRAMES),
+    preventDefault: true,
+  },
+  {
+    id: 'jog-back-frame',
+    group: 'Playback & navigation',
+    label: (m) => `${m} + Shift + ← / →`,
+    description: 'Jog playhead 1 frame',
+    match: (e, ctx) => canModShiftPlayback(e, ctx) && e.key === 'ArrowLeft',
+    run: (ctx) => ctx.pb.seek(ctx.pb.currentTime - ctx.frame),
+    preventDefault: true,
+  },
+  {
+    id: 'jog-forward-frame',
+    group: 'Playback & navigation',
+    label: (m) => `${m} + Shift + ← / →`,
     description: 'Jog playhead 1 frame',
     showInHelp: false,
-    match: (e, ctx) =>
-      plainKey(e) && !ctx.editing && !!ctx.cue && e.key === 'ArrowRight' && !e.shiftKey,
+    match: (e, ctx) => canModShiftPlayback(e, ctx) && e.key === 'ArrowRight',
     run: (ctx) => ctx.pb.seek(ctx.pb.currentTime + ctx.frame),
-    preventDefault: true,
-  },
-  {
-    id: 'jog-back-second',
-    group: 'Playback & navigation',
-    label: 'Shift + ← / →',
-    description: 'Jog playhead 1 second',
-    match: (e, ctx) =>
-      plainKey(e) && !ctx.editing && !!ctx.cue && e.key === 'ArrowLeft' && e.shiftKey,
-    run: (ctx) => ctx.pb.seek(ctx.pb.currentTime - 1),
-    preventDefault: true,
-  },
-  {
-    id: 'jog-forward-second',
-    group: 'Playback & navigation',
-    label: 'Shift + ← / →',
-    description: 'Jog playhead 1 second',
-    showInHelp: false,
-    match: (e, ctx) =>
-      plainKey(e) && !ctx.editing && !!ctx.cue && e.key === 'ArrowRight' && e.shiftKey,
-    run: (ctx) => ctx.pb.seek(ctx.pb.currentTime + 1),
     preventDefault: true,
   },
   {
     id: 'set-in',
     group: 'Timing',
     label: 'I',
-    description: 'Set cue In to the playhead',
+    description: 'Set cue In to the playhead (500 ms earlier while playing)',
     match: (e, ctx) => plainKey(e) && !ctx.editing && !!ctx.cue && e.key === 'i',
-    run: (ctx) => ctx.ps.setCueStart(ctx.cue!.id, ctx.pb.currentTime),
+    run: (ctx) =>
+      ctx.ps.setCueStart(ctx.cue!.id, reactionAdjustedPlayhead(ctx.pb.currentTime, ctx.pb.playing)),
   },
   {
     id: 'set-out',
     group: 'Timing',
     label: 'O',
-    description: 'Set cue Out to the playhead',
+    description: 'Set cue Out to the playhead (500 ms earlier while playing)',
     match: (e, ctx) => plainKey(e) && !ctx.editing && !!ctx.cue && e.key === 'o',
-    run: (ctx) => ctx.ps.setCueEnd(ctx.cue!.id, ctx.pb.currentTime),
+    run: (ctx) =>
+      ctx.ps.setCueEnd(ctx.cue!.id, reactionAdjustedPlayhead(ctx.pb.currentTime, ctx.pb.playing)),
   },
   {
     id: 'nudge-in',
@@ -208,6 +256,33 @@ export const SHORTCUTS: ShortcutDef[] = [
     description: 'Nudge Out 1 frame (Shift = other direction)',
     match: (e, ctx) => plainKey(e) && !ctx.editing && !!ctx.cue && e.key === ']',
     run: (ctx, e) => ctx.ps.nudgeCueEnd(ctx.cue!.id, e.shiftKey ? -ctx.frame : ctx.frame),
+  },
+  {
+    id: 'insert-cue',
+    group: 'Text & structure',
+    label: 'N',
+    description: 'Add a cue at the playhead (500 ms earlier while playing)',
+    match: (e, ctx) => plainKey(e) && !ctx.editing && !!ctx.project && (e.key === 'n' || e.key === 'N'),
+    run: (ctx) => {
+      const id = ctx.ps.insertCueAtPlayhead(
+        reactionAdjustedPlayhead(ctx.pb.currentTime, ctx.pb.playing),
+      )
+      if (id) focusCueForEdit(id)
+    },
+    preventDefault: true,
+  },
+  {
+    id: 'delete-cue',
+    group: 'Text & structure',
+    label: 'Delete / Backspace',
+    description: 'Delete the selected cue',
+    match: (e, ctx) =>
+      plainKey(e) &&
+      !ctx.editing &&
+      !!ctx.cue &&
+      (e.key === 'Delete' || e.key === 'Backspace'),
+    run: (ctx) => ctx.ps.deleteCue(ctx.cue!.id),
+    preventDefault: true,
   },
   {
     id: 'merge',

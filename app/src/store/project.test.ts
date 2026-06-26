@@ -115,12 +115,36 @@ describe('coalescing', () => {
   })
 
   it('keeps timing nudges to one cue as a single step', () => {
-    store().nudgeCueEnd('c1', 0.04)
-    store().nudgeCueEnd('c1', 0.04)
+    store().nudgeCueEnd('c2', 0.04)
+    store().nudgeCueEnd('c2', 0.04)
     expect(store().past).toHaveLength(1)
 
     store().undo()
-    expect(store().project!.cues[0].end).toBeCloseTo(2, 5)
+    expect(store().project!.cues[1].end).toBeCloseTo(4, 5)
+  })
+})
+
+describe('cue boundary clamping', () => {
+  it('does not let In extend past the previous cue Out', () => {
+    store().setCueStart('c2', 1)
+    expect(store().project!.cues[1].start).toBe(2)
+  })
+
+  it('does not let Out extend past the next cue In', () => {
+    store().setCueEnd('c1', 3)
+    expect(store().project!.cues[0].end).toBe(2)
+  })
+
+  it('still allows touching boundaries', () => {
+    store().setCueEnd('c1', 2.5)
+    expect(store().project!.cues[0].end).toBe(2)
+    store().setCueStart('c2', 2)
+    expect(store().project!.cues[1].start).toBe(2)
+  })
+
+  it('does not record a no-op when clamping blocks the edit', () => {
+    store().setCueEnd('c1', 10)
+    expect(store().past).toHaveLength(0)
   })
 })
 
@@ -218,5 +242,41 @@ describe('restoreProject', () => {
 
     store().restoreProject(restored)
     expect(store().selectedCueId).toBe('c1')
+  })
+})
+
+describe('insertCueAtPlayhead / deleteCue', () => {
+  it('inserts an empty cue at the playhead and selects it', () => {
+    const id = store().insertCueAtPlayhead(1)
+    expect(store().project!.cues).toHaveLength(3)
+    const inserted = store().project!.cues[1]
+    expect(id).toBe(inserted.id)
+    expect(inserted.start).toBe(1)
+    expect(inserted.end).toBeCloseTo(1.999)
+    expect(inserted.segments[0].text).toBe('')
+    expect(store().selectedCueId).toBe(inserted.id)
+  })
+
+  it('inserts at the end when the playhead is past existing cues', () => {
+    store().insertCueAtPlayhead(10)
+    expect(store().project!.cues).toHaveLength(3)
+    const inserted = store().project!.cues[2]
+    expect(inserted.start).toBe(10)
+    expect(inserted.end).toBe(12)
+  })
+
+  it('deletes the selected cue and selects a neighbor', () => {
+    store().selectCue('c1')
+    store().deleteCue('c1')
+    expect(store().project!.cues).toHaveLength(1)
+    expect(store().project!.cues[0].id).toBe('c2')
+    expect(store().selectedCueId).toBe('c2')
+  })
+
+  it('clears selection when the last cue is deleted', () => {
+    store().loadProject({ ...makeProject(), cues: [makeProject().cues[0]] })
+    store().deleteCue('c1')
+    expect(store().project!.cues).toHaveLength(0)
+    expect(store().selectedCueId).toBeNull()
   })
 })
