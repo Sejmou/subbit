@@ -258,6 +258,42 @@ export const SHORTCUTS: ShortcutDef[] = [
     run: (ctx, e) => ctx.ps.nudgeCueEnd(ctx.cue!.id, e.shiftKey ? -ctx.frame : ctx.frame),
   },
   {
+    id: 'seek-program-start',
+    group: 'Program sync',
+    label: 'Home',
+    description: 'Seek to program start (or file start if unset)',
+    match: (e, ctx) => plainKey(e) && !ctx.editing && !!ctx.project && e.key === 'Home' && !e.shiftKey,
+    run: (ctx) => {
+      const start = ctx.project!.contentStartSeconds ?? 0
+      ctx.pb.seek(start > 0 ? start : 0)
+    },
+    preventDefault: true,
+  },
+  {
+    id: 'set-program-start',
+    group: 'Program sync',
+    label: 'Shift + Home',
+    description: 'Set program start to the playhead (skip leader on export)',
+    match: (e, ctx) => plainKey(e) && !ctx.editing && !!ctx.project && e.key === 'Home' && e.shiftKey,
+    run: (ctx) => {
+      const duration = ctx.pb.duration
+      const t = Math.max(0, ctx.pb.currentTime)
+      const seconds =
+        Number.isFinite(duration) && duration > 0 ? Math.min(t, Math.max(0, duration - ctx.frame)) : t
+      ctx.ps.setContentStartSeconds(seconds <= 0 ? 0 : seconds)
+    },
+    preventDefault: true,
+  },
+  {
+    id: 'clear-program-start',
+    group: 'Program sync',
+    label: 'Shift + End',
+    description: 'Clear program start',
+    match: (e, ctx) => plainKey(e) && !ctx.editing && !!ctx.project && e.key === 'End' && e.shiftKey,
+    run: (ctx) => ctx.ps.setContentStartSeconds(0),
+    preventDefault: true,
+  },
+  {
     id: 'insert-cue',
     group: 'Text & structure',
     label: 'N',

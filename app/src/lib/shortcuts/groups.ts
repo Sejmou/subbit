@@ -8,6 +8,7 @@ export interface ShortcutGroup {
 
 const GROUP_ORDER = [
   'Playback & navigation',
+  'Program sync',
   'Timing',
   'Metadata',
   'Text & structure',

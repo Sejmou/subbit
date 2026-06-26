@@ -1,6 +1,7 @@
 import type { DiarizedExportOptions } from './export-format'
 import type { Project, Speaker } from '../types'
 import { cuePlainText, speakerForCue, speakerRoleName } from './export-text'
+import { contentStartSeconds, fileTimeToProgramTime } from './program-start'
 
 /** WebVTT timestamp HH:MM:SS.mmm */
 function vttTime(seconds: number): string {
@@ -36,6 +37,7 @@ export function exportVtt(project: Project, options: DiarizedExportOptions): str
     }
   }
 
+  const contentStart = contentStartSeconds(project)
   const cues = project.cues.map((cue) => {
     const text = escapeVttText(cuePlainText(cue))
     const speaker = speakerForCue(project, cue)
@@ -54,7 +56,7 @@ export function exportVtt(project: Project, options: DiarizedExportOptions): str
       }
     }
 
-    return `${vttTime(cue.start)} --> ${vttTime(cue.end)}\n${body}\n`
+    return `${vttTime(fileTimeToProgramTime(cue.start, contentStart))} --> ${vttTime(fileTimeToProgramTime(cue.end, contentStart))}\n${body}\n`
   })
 
   const blocks = ['WEBVTT', '']

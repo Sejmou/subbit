@@ -7,7 +7,7 @@ import { usePlayback } from '../store/playback'
  */
 export function VideoPlayer({ src }: { src: string }) {
   const ref = useRef<HTMLVideoElement>(null)
-  const { setVideoEl, setTime, setDuration, setPlaying } = usePlayback()
+  const { setVideoEl, setTime, setDuration, setPlaying, togglePlay } = usePlayback()
 
   useEffect(() => {
     const el = ref.current
@@ -51,7 +51,13 @@ export function VideoPlayer({ src }: { src: string }) {
 
   return (
     <div className="video-wrap">
-      <video ref={ref} src={src} controls preload="metadata" />
+      <video
+        ref={ref}
+        src={src}
+        preload="metadata"
+        onClick={() => togglePlay()}
+        title="Click or press Space to play / pause"
+      />
     </div>
   )
 }

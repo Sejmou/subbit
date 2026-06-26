@@ -1,5 +1,6 @@
 import { secondsToTimecode } from './timecode'
 import type { Cue, Project } from '../types'
+import { fileTimeToProgramTime, contentStartSeconds } from './program-start'
 
 export type Delimiter = '\t' | ','
 
@@ -37,14 +38,15 @@ function escapeField(value: string, delimiter: Delimiter): string {
  */
 export function exportCsv(project: Project, delimiter: Delimiter = '\t'): string {
   const { fps, timecodeOffset } = project
+  const contentStart = contentStartSeconds(project)
   const rows: string[][] = [HEADER]
 
   project.cues.forEach((cue, i) => {
     const { info, subtitle } = joinSegments(cue)
     rows.push([
       String(i + 1),
-      secondsToTimecode(cue.start, fps, timecodeOffset),
-      secondsToTimecode(cue.end, fps, timecodeOffset),
+      secondsToTimecode(fileTimeToProgramTime(cue.start, contentStart), fps, timecodeOffset),
+      secondsToTimecode(fileTimeToProgramTime(cue.end, contentStart), fps, timecodeOffset),
       roleName(project, cue),
       info,
       subtitle,

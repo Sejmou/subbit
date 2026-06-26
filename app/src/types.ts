@@ -86,6 +86,11 @@ export interface Project {
   fps: number
   /** Broadcast start offset, SMPTE "HH:MM:SS:FF" (default 10:00:00:00). */
   timecodeOffset: string
+  /**
+   * Seconds into the movie file where exported program time 0:00:00:00 begins
+   * (skips leader/black/slate without re-encoding). Cue times stay in file time.
+   */
+  contentStartSeconds?: number
   defaultShot: ShotId
   shots: ShotType[]
   speakers: Speaker[]

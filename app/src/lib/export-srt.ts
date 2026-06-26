@@ -1,5 +1,6 @@
 import type { Cue, Project } from '../types'
 import { cuePlainText } from './export-text'
+import { fileTimeToProgramTime, contentStartSeconds } from './program-start'
 
 /** SRT timestamp "HH:MM:SS,mmm" from media seconds (no broadcast offset). */
 function srtTime(seconds: number): string {
@@ -18,10 +19,11 @@ function cueText(cue: Cue): string {
 
 /** Export plain SRT for round-tripping in other subtitle tools. */
 export function exportSrt(project: Project): string {
+  const contentStart = contentStartSeconds(project)
   return project.cues
     .map((cue, i) => {
       const text = cueText(cue)
-      return `${i + 1}\n${srtTime(cue.start)} --> ${srtTime(cue.end)}\n${text}\n`
+      return `${i + 1}\n${srtTime(fileTimeToProgramTime(cue.start, contentStart))} --> ${srtTime(fileTimeToProgramTime(cue.end, contentStart))}\n${text}\n`
     })
     .join('\n')
 }

@@ -1,6 +1,7 @@
 import type { DiarizedExportOptions } from './export-format'
 import type { Project, Speaker } from '../types'
 import { cuePlainText, speakerForCue, speakerRoleName } from './export-text'
+import { contentStartSeconds, fileTimeToProgramTime } from './program-start'
 
 /** ASS timestamp H:MM:SS.cc (centiseconds). */
 function assTime(seconds: number): string {
@@ -66,6 +67,7 @@ export function exportAss(project: Project, options: DiarizedExportOptions): str
     }
   }
 
+  const contentStart = contentStartSeconds(project)
   const dialogues = project.cues.map((cue) => {
     const text = assEscape(cuePlainText(cue))
     const speaker = speakerForCue(project, cue)
@@ -74,7 +76,7 @@ export function exportAss(project: Project, options: DiarizedExportOptions): str
         ? (styleBySpeakerId.get(speaker.id) ?? 'Default')
         : 'Default'
     const name = speakerLabels && speaker ? speakerRoleName(project, cue) : ''
-    return `Dialogue: 0,${assTime(cue.start)},${assTime(cue.end)},${style},${name},0,0,0,,${text}`
+    return `Dialogue: 0,${assTime(fileTimeToProgramTime(cue.start, contentStart))},${assTime(fileTimeToProgramTime(cue.end, contentStart))},${style},${name},0,0,0,,${text}`
   })
 
   return [

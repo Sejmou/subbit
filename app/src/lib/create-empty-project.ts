@@ -13,6 +13,7 @@ export function createEmptyProject(videoName: string): Project {
     videoName,
     fps: DEFAULT_FPS,
     timecodeOffset: DEFAULT_TIMECODE_OFFSET,
+    contentStartSeconds: 0,
     defaultShot: DEFAULT_SHOTS[0].id,
     shots: DEFAULT_SHOTS,
     speakers: [],

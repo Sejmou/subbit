@@ -15,6 +15,12 @@ import {
   padViewRange,
   withPriorityCues,
 } from '../lib/visible-cues'
+import {
+  PROGRAM_START_POINT_ID,
+  clampProgramStart,
+  contentStartSeconds,
+} from '../lib/program-start'
+import { ProgramStartPanel } from './ProgramStartPanel'
 
 /** Peaks.js + Konva struggle with hundreds of segment overlays at once. */
 const MAX_VISIBLE_SEGMENTS = 200
@@ -68,6 +74,9 @@ export function WaveformTimeline({ project }: Props) {
   const setCueTimes = useProject((s) => s.setCueTimes)
   const selectCue = useProject((s) => s.selectCue)
   const insertCueAtPlayhead = useProject((s) => s.insertCueAtPlayhead)
+  const setContentStartSeconds = useProject((s) => s.setContentStartSeconds)
+
+  const contentStart = contentStartSeconds(project)
 
   const selectedCueIdRef = useRef(selectedCueId)
   selectedCueIdRef.current = selectedCueId
@@ -83,12 +92,75 @@ export function WaveformTimeline({ project }: Props) {
   selectCueRef.current = selectCue
   insertCueAtPlayheadRef.current = insertCueAtPlayhead
 
+  const setContentStartSecondsRef = useRef(setContentStartSeconds)
+  setContentStartSecondsRef.current = setContentStartSeconds
+
+  const contentStartRef = useRef(contentStart)
+  contentStartRef.current = contentStart
+
   const durationRef = useRef(duration)
   durationRef.current = duration
 
   const [ready, setReady] = useState(false)
   const [initError, setInitError] = useState<string | null>(null)
   const [subtitlesHidden, setSubtitlesHidden] = useState(false)
+  const [leaderWidthPx, setLeaderWidthPx] = useState(0)
+
+  const updateLeaderOverlay = useCallback(() => {
+    const start = contentStartRef.current
+    if (start <= 0) {
+      setLeaderWidthPx(0)
+      return
+    }
+    const zoomview = peaksRef.current?.views.getView('zoomview')
+    const container = zoomRef.current
+    if (!zoomview || !container) return
+
+    const viewStart = zoomview.getStartTime()
+    const viewEnd = zoomview.getEndTime()
+    const span = viewEnd - viewStart
+    const width = container.clientWidth
+    if (span <= 0 || width <= 0) return
+
+    if (start <= viewStart) {
+      setLeaderWidthPx(0)
+      return
+    }
+    if (start >= viewEnd) {
+      setLeaderWidthPx(width)
+      return
+    }
+    setLeaderWidthPx(((start - viewStart) / span) * width)
+  }, [])
+
+  const syncProgramStartPoint = useCallback(() => {
+    const peaks = peaksRef.current
+    if (!peaks) return
+
+    const start = contentStartRef.current
+    const existing = peaks.points.getPoint(PROGRAM_START_POINT_ID)
+
+    if (start <= 0) {
+      if (existing) peaks.points.removeById(PROGRAM_START_POINT_ID)
+      setLeaderWidthPx(0)
+      return
+    }
+
+    if (existing) {
+      if (Math.abs(existing.time - start) > 0.0001) {
+        existing.update({ time: start, labelText: 'Program start' })
+      }
+    } else {
+      peaks.points.add({
+        id: PROGRAM_START_POINT_ID,
+        time: start,
+        editable: true,
+        color: '#ffb74d',
+        labelText: 'Program start',
+      })
+    }
+    updateLeaderOverlay()
+  }, [updateLeaderOverlay])
 
   const zoomViewByFactor = useCallback((factor: number, anchorX?: number) => {
     const zoomview = peaksRef.current?.views.getView('zoomview')
@@ -251,6 +323,7 @@ export function WaveformTimeline({ project }: Props) {
       cancelAnimationFrame(viewSyncRaf)
       viewSyncRaf = requestAnimationFrame(() => {
         syncVisibleSegmentsRef.current(startTime, endTime)
+        updateLeaderOverlay()
       })
     }
 
@@ -302,6 +375,15 @@ export function WaveformTimeline({ project }: Props) {
         }
       })
 
+      peaks.on('points.dragend', (event) => {
+        if (event.point.id !== PROGRAM_START_POINT_ID) return
+        const clamped = clampProgramStart(event.point.time, durationRef.current)
+        setContentStartSecondsRef.current(clamped)
+        if (Math.abs(clamped - event.point.time) > 0.0001) {
+          event.point.update({ time: clamped })
+        }
+      })
+
       peaks.on('zoomview.dblclick', (event) => {
         const id = insertCueAtPlayheadRef.current(
           event.time,
@@ -327,6 +409,7 @@ export function WaveformTimeline({ project }: Props) {
         scheduleViewSync(zoomview.getStartTime(), zoomview.getEndTime())
       }
       peaks.views.getScrollbar()?.fitToContainer()
+      syncProgramStartPoint()
       setReady(true)
     })
 
@@ -337,7 +420,12 @@ export function WaveformTimeline({ project }: Props) {
       peaksRef.current = null
       setReady(false)
     }
-  }, [videoEl, peaksInput, samplesPerPixel, sampleRate, duration])
+  }, [videoEl, peaksInput, samplesPerPixel, sampleRate, duration, syncProgramStartPoint, updateLeaderOverlay])
+
+  useEffect(() => {
+    if (!ready) return
+    syncProgramStartPoint()
+  }, [contentStart, ready, syncProgramStartPoint])
 
   useEffect(() => {
     if (!ready) return
@@ -428,6 +516,7 @@ export function WaveformTimeline({ project }: Props) {
     <div className="waveform-pane">
       <div className="waveform-toolbar">
         <span className="waveform-toolbar-label">Timeline</span>
+        <ProgramStartPanel project={project} ready={ready} />
         <span className="waveform-toolbar-actions">
           <button type="button" onClick={zoomOut} disabled={!ready} title="Zoom out">
             −
@@ -445,11 +534,14 @@ export function WaveformTimeline({ project }: Props) {
           <span className="waveform-hint">Zoom in to see subtitles</span>
         )}
         {ready && !subtitlesHidden && !initError && (
-          <span className="waveform-hint">Scroll to zoom · Shift+scroll to pan · Double-click to add</span>
+          <span className="waveform-hint">Drag the orange marker to skip leader · Shift+Home sets from playhead</span>
         )}
       </div>
       <div className="waveform-scroll" ref={scrollRef} />
-      <div className="waveform-zoom" ref={zoomRef} title="Scroll to zoom; Shift+scroll to pan" />
+      <div className="waveform-view-wrap">
+        {leaderWidthPx > 0 && <div className="program-start-leader" style={{ width: leaderWidthPx }} />}
+        <div className="waveform-zoom" ref={zoomRef} title="Scroll to zoom; Shift+scroll to pan" />
+      </div>
     </div>
   )
 }

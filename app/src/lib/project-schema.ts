@@ -75,6 +75,7 @@ export const projectSchema = z.object({
   video: videoIdentitySchema.optional(),
   fps: z.number().positive(),
   timecodeOffset: z.string(),
+  contentStartSeconds: z.number().nonnegative().optional(),
   defaultShot: z.string(),
   shots: z.array(shotTypeSchema),
   speakers: z.array(speakerSchema),

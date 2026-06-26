@@ -281,10 +281,109 @@
   height: 12px;
   background: #1a1d24;
 }
+.waveform-view-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.program-start-leader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  z-index: 1;
+  border-right: 1px dashed rgba(255, 183, 77, 0.7);
+}
 .waveform-zoom {
   flex: 1;
   min-height: 0;
+  height: 100%;
   background: #12151a;
+}
+.program-start-panel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.program-start-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+  cursor: help;
+}
+.program-start-input {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  padding: 1px 4px;
+  width: 9.5em;
+}
+.program-start-input--error {
+  border-color: #ff8a80;
+}
+.program-start-panel button {
+  font-size: 11px;
+  padding: 2px 6px;
+}
+.program-start-playhead {
+  font-size: 10px;
+  font-family: ui-monospace, monospace;
+  color: var(--text-dim);
+}
+.program-start-warn {
+  font-size: 11px;
+  color: #ffb74d;
+}
+.program-start-error {
+  font-size: 11px;
+  color: #ff8a80;
+}
+.export-program-start {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-2);
+}
+.export-program-start strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+.export-preview {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.export-preview strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.export-preview-grid {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 11px;
+}
+.export-preview-grid dt {
+  color: var(--text-dim);
+  font-weight: 500;
+}
+.export-preview-grid dd {
+  margin: 0;
+  font-family: ui-monospace, monospace;
+}
+.export-warn {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #ffb74d;
 }
 
 .left {
@@ -304,6 +403,7 @@
 .video-wrap video {
   width: 100%;
   display: block;
+  cursor: pointer;
 }
 .video-wrap.empty {
   display: flex;

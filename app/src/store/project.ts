@@ -120,6 +120,7 @@ interface ProjectState {
 
   // settings
   setTimecodeOffset: (offset: string) => void
+  setContentStartSeconds: (seconds: number) => void
   setFps: (fps: number) => void
   /** Bind timeline identity (duration + frame rate) from the loaded movie. */
   setVideoIdentity: (video: VideoIdentity) => void
@@ -605,6 +606,14 @@ export const useProject = create<ProjectState>((set, getState) => {
     },
 
     setTimecodeOffset: (offset) => update((p) => ({ ...p, timecodeOffset: offset }), 'offset'),
+    setContentStartSeconds: (seconds) =>
+      update(
+        (p) => ({
+          ...p,
+          contentStartSeconds: seconds <= 0 ? undefined : seconds,
+        }),
+        'program-start',
+      ),
     setFps: (fps) => update((p) => ({ ...p, fps })),
     setVideoIdentity: (video) => update((p) => ({ ...p, video }), 'video'),
   }
