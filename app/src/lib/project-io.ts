@@ -1,5 +1,6 @@
 import { get, set, del } from 'idb-keyval'
 import type { Project } from '../types'
+import { parseProjectData } from './project-schema'
 
 /**
  * File access layer. Prefers the File System Access API (Chrome/Edge) so the
@@ -116,9 +117,13 @@ export function serializeProject(project: Project): string {
 }
 
 export function parseProject(text: string): Project {
-  const data = JSON.parse(text)
-  if (!data || !Array.isArray(data.cues) || !Array.isArray(data.speakers)) {
-    throw new Error('Not a valid Subbit project file.')
+  let data: unknown
+  try {
+    data = JSON.parse(text)
+  } catch {
+    throw new Error('That file is not valid JSON.')
   }
-  return data as Project
+  return parseProjectData(data)
 }
+
+export { parseProjectData, isSubbitProject } from './project-schema'

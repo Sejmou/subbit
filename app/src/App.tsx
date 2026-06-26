@@ -14,6 +14,7 @@ import {
   hasPermission,
   isFsAccessSupported,
   parseProject,
+  parseProjectData,
   pickFile,
   pickProjectSaveFile,
   readHandleAsFile,
@@ -89,7 +90,7 @@ export default function App() {
       }
       const obj = data as Record<string, unknown>
       if (Array.isArray(obj?.cues) && Array.isArray(obj?.speakers)) {
-        loadProject(parseProject(text))
+        loadProject(parseProjectData(data))
         projectHandle.current = projectFileHandle ?? null
         setAutosaveEnabled(!!projectFileHandle)
         if (projectFileHandle) void cacheProjectHandle(projectFileHandle)
