@@ -16,6 +16,37 @@ function splitWordsAtTime(words: Word[] | undefined, t: number): [Word[] | undef
   return [left, right]
 }
 
+function stripMergeMeta(seg: Segment): Segment {
+  const { mergedWithPrevious: _m, mergedSpeakerId: _s, ...rest } = seg
+  return rest
+}
+
+/** Infer a split time at the boundary before `segIndex`, using words when available. */
+function splitTimeAtSegment(cue: Cue, segIndex: number): number {
+  if (segIndex <= 0 || segIndex >= cue.segments.length) return cue.start
+
+  const words = cue.words
+  if (words && words.length > 0) {
+    const weights = cue.segments.map((s) => s.text.length || 1)
+    const totalWeight = weights.reduce((a, b) => a + b, 0)
+    let wordIdx = 0
+    for (let s = 0; s < segIndex; s++) {
+      wordIdx += Math.round((weights[s] / totalWeight) * words.length)
+    }
+    wordIdx = Math.min(Math.max(wordIdx, 1), words.length)
+    const t = words[wordIdx - 1]?.end ?? words[wordIdx]?.start ?? cue.start
+    return Math.max(cue.start + EPS, Math.min(t, cue.end - EPS))
+  }
+
+  const totalChars = cue.segments.reduce((n, s) => n + s.text.length, 0) || 1
+  const leftChars = cue.segments.slice(0, segIndex).reduce((n, s) => n + s.text.length, 0)
+  const ratio = leftChars / totalChars
+  return Math.max(
+    cue.start + EPS,
+    Math.min(cue.start + (cue.end - cue.start) * ratio, cue.end - EPS),
+  )
+}
+
 /** One reversible step: the project plus the selection at that moment. */
 interface HistoryEntry {
   project: Project
@@ -64,6 +95,7 @@ interface ProjectState {
   // structural ops
   splitCueAtCaret: (cueId: string, segIndex: number, charOffset: number, time: number) => void
   mergeWithNext: (cueId: string) => void
+  splitAtMergedSegment: (cueId: string, segIndex: number) => void
   insertShotSplit: (cueId: string, segIndex: number, charOffset: number) => void
   removeShotSplit: (cueId: string, segIndex: number) => void
 
@@ -288,13 +320,62 @@ export const useProject = create<ProjectState>((set, getState) => {
         const merged: Cue = {
           ...a,
           end: b.end,
-          segments: [...a.segments, ...b.segments],
+          segments: [
+            ...a.segments,
+            ...b.segments.map((s, i) =>
+              i === 0 ? { ...s, mergedWithPrevious: true, mergedSpeakerId: b.speakerId ?? null } : s,
+            ),
+          ],
           words: a.words || b.words ? [...(a.words ?? []), ...(b.words ?? [])] : undefined,
           reviewed: false,
           multiSpeaker: a.multiSpeaker || b.multiSpeaker,
         }
         const cues = [...p.cues.slice(0, idx), merged, ...p.cues.slice(idx + 2)]
         return { ...p, cues }
+      }),
+
+    splitAtMergedSegment: (cueId, segIndex) =>
+      set((state) => {
+        if (!state.project) return state
+        const idx = state.project.cues.findIndex((c) => c.id === cueId)
+        if (idx === -1) return state
+        const c = state.project.cues[idx]
+        const seg = c.segments[segIndex]
+        if (!seg?.mergedWithPrevious || segIndex <= 0) return state
+
+        const t = splitTimeAtSegment(c, segIndex)
+        const leftSegments = c.segments.slice(0, segIndex).map(stripMergeMeta)
+        const rightSegments = c.segments.slice(segIndex).map(stripMergeMeta)
+        const [lw, rw] = splitWordsAtTime(c.words, t)
+        const rightId = newId()
+
+        const left: Cue = { ...c, end: t, segments: leftSegments, words: lw, reviewed: false }
+        const right: Cue = {
+          ...c,
+          id: rightId,
+          start: t,
+          end: c.end,
+          speakerId: seg.mergedSpeakerId ?? c.speakerId,
+          segments: rightSegments,
+          words: rw,
+          reviewed: false,
+        }
+
+        const cues = [...state.project.cues.slice(0, idx), left, right, ...state.project.cues.slice(idx + 1)]
+        const project = { ...state.project, cues }
+
+        lastTag = null
+        const past = [...state.past, snapshot(state)]
+        if (past.length > HISTORY_LIMIT) past.shift()
+
+        return {
+          project,
+          selectedCueId: rightId,
+          selectedSegment: 0,
+          dirty: true,
+          past,
+          future: [],
+        }
       }),
 
     insertShotSplit: (cueId, segIndex, charOffset) =>
@@ -322,7 +403,13 @@ export const useProject = create<ProjectState>((set, getState) => {
           if (segIndex <= 0 || segIndex >= c.segments.length) return c
           const prev = c.segments[segIndex - 1]
           const cur = c.segments[segIndex]
-          const merged: Segment = { text: `${prev.text} ${cur.text}`.trim(), shot: prev.shot }
+          const merged: Segment = {
+            text: `${prev.text} ${cur.text}`.trim(),
+            shot: prev.shot,
+            ...(cur.mergedWithPrevious
+              ? { mergedWithPrevious: true, mergedSpeakerId: cur.mergedSpeakerId }
+              : {}),
+          }
           const segments = [
             ...c.segments.slice(0, segIndex - 1),
             merged,

@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef } from 'react'
+import { memo, useEffect, useRef, Fragment } from 'react'
 import type { Cue, Project } from '../types'
 import { useProject } from '../store/project'
 import { usePlayback } from '../store/playback'
@@ -21,6 +21,7 @@ function CueRowImpl({ cue, index, project, selected, active }: Props) {
     setCueSpeaker,
     setSegmentShot,
     toggleReviewed,
+    splitAtMergedSegment,
   } = useProject()
   const seek = usePlayback((s) => s.seek)
 
@@ -80,33 +81,50 @@ function CueRowImpl({ cue, index, project, selected, active }: Props) {
 
       <div className="cue-segments">
         {cue.segments.map((seg, i) => (
-          <div className="segment" key={i}>
-            <select
-              className="shot-select"
-              value={seg.shot}
-              onChange={(e) => setSegmentShot(cue.id, i, e.target.value)}
-              title="Shot type (Info)"
-            >
-              {project.shots.map((sh) => (
-                <option key={sh.id} value={sh.id}>
-                  {sh.id}
-                </option>
-              ))}
-            </select>
-            <textarea
-              ref={i === 0 ? firstTextarea : undefined}
-              className="seg-text"
-              data-cue-id={cue.id}
-              data-seg-index={i}
-              rows={1}
-              value={seg.text}
-              onFocus={() => {
-                selectCue(cue.id)
-                selectSegment(i)
-              }}
-              onChange={(e) => setSegmentText(cue.id, i, e.target.value)}
-            />
-          </div>
+          <Fragment key={i}>
+            {seg.mergedWithPrevious && (
+              <div className="segment-seam">
+                <button
+                  type="button"
+                  className="segment-seam-btn"
+                  title="Split back into separate cues (Shift+M)"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    splitAtMergedSegment(cue.id, i)
+                  }}
+                >
+                  Unmerge
+                </button>
+              </div>
+            )}
+            <div className="segment">
+              <select
+                className="shot-select"
+                value={seg.shot}
+                onChange={(e) => setSegmentShot(cue.id, i, e.target.value)}
+                title="Shot type (Info)"
+              >
+                {project.shots.map((sh) => (
+                  <option key={sh.id} value={sh.id}>
+                    {sh.id}
+                  </option>
+                ))}
+              </select>
+              <textarea
+                ref={i === 0 ? firstTextarea : undefined}
+                className="seg-text"
+                data-cue-id={cue.id}
+                data-seg-index={i}
+                rows={1}
+                value={seg.text}
+                onFocus={() => {
+                  selectCue(cue.id)
+                  selectSegment(i)
+                }}
+                onChange={(e) => setSegmentText(cue.id, i, e.target.value)}
+              />
+            </div>
+          </Fragment>
         ))}
       </div>
     </div>

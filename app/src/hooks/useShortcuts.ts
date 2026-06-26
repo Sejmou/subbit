@@ -126,7 +126,15 @@ export function useShortcuts() {
           ps.nudgeCueEnd(cue.id, e.shiftKey ? -frame : frame)
           return
         case 'm':
-          ps.mergeWithNext(cue.id)
+        case 'M':
+          if (e.shiftKey) {
+            const seg = cue.segments[ps.selectedSegment]
+            if (seg?.mergedWithPrevious && ps.selectedSegment > 0) {
+              ps.splitAtMergedSegment(cue.id, ps.selectedSegment)
+            }
+          } else {
+            ps.mergeWithNext(cue.id)
+          }
           return
         case 'r':
           ps.toggleReviewed(cue.id)

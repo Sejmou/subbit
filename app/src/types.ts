@@ -12,6 +12,10 @@ export type ShotId = string
 export interface Segment {
   text: string
   shot: ShotId
+  /** Set on the first segment absorbed by merge-with-next; enables unmerge at this seam. */
+  mergedWithPrevious?: boolean
+  /** Speaker of the cue that was merged in (restored on unmerge). */
+  mergedSpeakerId?: string | null
 }
 
 /** Word-level timing carried over from whisperx, used for fast splitting. */

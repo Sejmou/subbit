@@ -50,6 +50,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: 'Enter', description: 'Edit the selected cue (focus its text)' },
       { keys: 'Esc', description: 'Leave the text box (back to navigation)' },
       { keys: 'M', description: 'Merge the selected cue with the next' },
+      { keys: 'Shift + M', description: 'Unmerge at the active segment (split back into separate cues)' },
       { keys: `${MOD_LABEL} + Enter`, description: 'Split cue at the caret + playhead' },
       { keys: `${MOD_LABEL} + Shift + S`, description: 'Insert a shot change at the caret' },
     ],

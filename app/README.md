@@ -82,6 +82,7 @@ box focused). Modifier combos work in both.
 | `[` / `]` | nudge In / Out by 1 frame (`Shift` flips direction) |
 | `g` | seek video to the selected cue's In |
 | `m` | merge the selected cue with the next |
+| `Shift+m` | unmerge at the active segment (split back into separate cues) |
 | `r` | toggle "reviewed" |
 | `1`-`9` | assign that speaker (Rolle) to the cue |
 | `Shift+1..` | set the active segment's shot type |
