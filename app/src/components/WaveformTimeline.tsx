@@ -389,8 +389,14 @@ export function WaveformTimeline({ project }: Props) {
       e.preventDefault()
 
       if (panGesture) {
-        const delta = e.shiftKey ? e.deltaY : e.deltaX
-        if (delta !== 0) zoomview.scrollWaveform({ pixels: delta })
+        // Shift+scroll: browsers may send vertical delta (Windows) or horizontal (macOS).
+        let delta = e.shiftKey ? (absY >= absX ? e.deltaY : e.deltaX) : e.deltaX
+        if (delta === 0) return
+
+        if (e.deltaMode === WheelEvent.DOM_DELTA_LINE) delta *= 16
+        else if (e.deltaMode === WheelEvent.DOM_DELTA_PAGE) delta *= el.clientWidth
+
+        zoomview.scrollWaveform({ pixels: Math.trunc(delta) })
         return
       }
 
@@ -403,8 +409,8 @@ export function WaveformTimeline({ project }: Props) {
       }
     }
 
-    el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
+    el.addEventListener('wheel', onWheel, { passive: false, capture: true })
+    return () => el.removeEventListener('wheel', onWheel, { capture: true })
   }, [ready, zoomViewByFactor])
 
   const zoomIn = () => zoomViewByFactor(ZOOM_IN_FACTOR)
