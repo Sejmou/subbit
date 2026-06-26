@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Cue, Project, Segment, ShotId, Speaker, Word } from '../types'
+import type { Cue, Project, Segment, ShotId, Speaker, VideoIdentity, Word } from '../types'
 
 const EPS = 0.001
 const DEFAULT_CUE_DURATION = 2
@@ -118,6 +118,8 @@ interface ProjectState {
   // settings
   setTimecodeOffset: (offset: string) => void
   setFps: (fps: number) => void
+  /** Bind timeline identity (duration + frame rate) from the loaded movie. */
+  setVideoIdentity: (video: VideoIdentity) => void
 }
 
 function mapCue(project: Project, cueId: string, fn: (cue: Cue) => Cue): Project {
@@ -562,5 +564,6 @@ export const useProject = create<ProjectState>((set, getState) => {
 
     setTimecodeOffset: (offset) => update((p) => ({ ...p, timecodeOffset: offset }), 'offset'),
     setFps: (fps) => update((p) => ({ ...p, fps })),
+    setVideoIdentity: (video) => update((p) => ({ ...p, video }), 'video'),
   }
 })

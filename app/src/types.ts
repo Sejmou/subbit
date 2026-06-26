@@ -61,9 +61,27 @@ export interface ShotType {
   label: string
 }
 
+/**
+ * Timeline identity for the source video. Captured when the movie is loaded in
+ * the browser — whisperx JSON does not need to provide any of this.
+ * `fileName` is a hint only; validation ignores it so renamed files still match.
+ */
+export interface VideoIdentity {
+  fileName?: string
+  duration: number
+  frameRateNumerator?: number
+  frameRateDenominator?: number
+  /** @deprecated Legacy sparse-hash identity — ignored on compare, stripped on save. */
+  fileSize?: number
+  fingerprint?: string
+  fingerprintVersion?: number
+}
+
 export interface Project {
   version: number
   videoName: string
+  /** Timeline identity of the movie (duration + container frame rate). */
+  video?: VideoIdentity
   /** Frames per second for SMPTE timecode (movie.mp4 is 25). */
   fps: number
   /** Broadcast start offset, SMPTE "HH:MM:SS:FF" (default 10:00:00:00). */

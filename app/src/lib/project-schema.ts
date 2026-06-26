@@ -38,9 +38,41 @@ const shotTypeSchema = z.object({
   label: z.string(),
 })
 
+const videoIdentitySchema = z
+  .object({
+    fileName: z.string().optional(),
+    duration: z.number().nonnegative(),
+    frameRateNumerator: z.number().int().positive().optional(),
+    frameRateDenominator: z.number().int().positive().optional(),
+    fileSize: z.number().int().nonnegative().optional(),
+    fingerprint: z.string().optional(),
+    fingerprintVersion: z.number().int().positive().optional(),
+  })
+  .superRefine((val, ctx) => {
+    const hasNum = val.frameRateNumerator !== undefined
+    const hasDen = val.frameRateDenominator !== undefined
+    if (hasNum !== hasDen) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'frameRateNumerator and frameRateDenominator must appear together',
+      })
+    }
+  })
+  .transform((val) => ({
+    fileName: val.fileName,
+    duration: val.duration,
+    ...(val.frameRateNumerator !== undefined && val.frameRateDenominator !== undefined
+      ? {
+          frameRateNumerator: val.frameRateNumerator,
+          frameRateDenominator: val.frameRateDenominator,
+        }
+      : {}),
+  }))
+
 export const projectSchema = z.object({
   version: z.number(),
   videoName: z.string(),
+  video: videoIdentitySchema.optional(),
   fps: z.number().positive(),
   timecodeOffset: z.string(),
   defaultShot: z.string(),

@@ -36,6 +36,8 @@ import { Toolbar } from './components/Toolbar'
 import { HelpOverlay } from './components/HelpOverlay'
 import { HistoryPanel } from './components/HistoryPanel'
 import { UnsavedDialog } from './components/UnsavedDialog'
+import { VideoMismatchBanner } from './components/VideoMismatchBanner'
+import { useVideoIdentity } from './hooks/useVideoIdentity'
 
 const JSON_ACCEPT = { 'application/json': ['.json'] }
 const VIDEO_ACCEPT = { 'video/mp4': ['.mp4', '.m4v', '.mov'] }
@@ -51,6 +53,8 @@ export default function App() {
 
   const [movieUrl, setMovieUrl] = useState<string | null>(null)
   const [movieName, setMovieName] = useState<string | null>(null)
+  const [movieFile, setMovieFile] = useState<File | null>(null)
+  const [videoMismatchDismissed, setVideoMismatchDismissed] = useState(false)
   const [started, setStarted] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [canRestore, setCanRestore] = useState(false)
@@ -67,6 +71,8 @@ export default function App() {
   const fsSupported = isFsAccessSupported()
 
   const setMovieFromFile = useCallback((file: File) => {
+    setMovieFile(file)
+    setVideoMismatchDismissed(false)
     setMovieUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev)
       return URL.createObjectURL(file)
@@ -99,6 +105,7 @@ export default function App() {
         Array.isArray((data as Record<string, unknown>).speakers)
 
       loadProject(parsed)
+      setVideoMismatchDismissed(false)
       if (isSubbitProject) {
         projectHandle.current = projectFileHandle ?? null
         setAutosaveEnabled(!!projectFileHandle)
@@ -162,6 +169,7 @@ export default function App() {
         projectHandle.current = p
         setAutosaveEnabled(true)
         loadProject(parseProject(await (await readHandleAsFile(p)).text()))
+        setVideoMismatchDismissed(false)
         setStarted(true)
         return true
       } finally {
@@ -363,9 +371,22 @@ export default function App() {
 
   useShortcuts()
 
+  const { status: videoIdentityStatus, message: videoMismatchMessage } = useVideoIdentity(movieFile)
+  const showVideoMismatch =
+    !videoMismatchDismissed &&
+    (videoIdentityStatus === 'mismatch' || videoIdentityStatus === 'missing') &&
+    !!videoMismatchMessage
+
   if (!started || !project) {
     return (
-      <LoadScreen
+      <>
+        {showVideoMismatch && (
+          <VideoMismatchBanner
+            message={videoMismatchMessage}
+            onDismiss={() => setVideoMismatchDismissed(true)}
+          />
+        )}
+        <LoadScreen
         fsSupported={fsSupported}
         movieName={movieName}
         hasSubtitles={!!project}
@@ -377,12 +398,19 @@ export default function App() {
         onSubtitlesFile={onSubtitlesFile}
         onRestore={() => void doRestore(false)}
         onStart={startEditing}
-      />
+        />
+      </>
     )
   }
 
   return (
     <div className="app">
+      {showVideoMismatch && (
+        <VideoMismatchBanner
+          message={videoMismatchMessage}
+          onDismiss={() => setVideoMismatchDismissed(true)}
+        />
+      )}
       <Toolbar
         project={project}
         dirty={dirty}

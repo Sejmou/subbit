@@ -4,6 +4,29 @@
   height: 100vh;
 }
 
+.video-mismatch-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  background: #4a2c00;
+  border-bottom: 1px solid #8a5a12;
+  color: #ffe8c8;
+  font-size: 13px;
+}
+.video-mismatch-dismiss {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid #8a5a12;
+  color: inherit;
+  font-size: 12px;
+  padding: 2px 8px;
+}
+.video-mismatch-dismiss:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
 /* ---- toolbar ---- */
 .toolbar {
   display: flex;

@@ -112,7 +112,6 @@ export function Toolbar({
           size={11}
         />
       </label>
-      <span className="field">fps {project.fps}</span>
 
       <label className="field">
         Export as

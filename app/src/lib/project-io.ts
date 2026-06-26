@@ -1,5 +1,5 @@
 import { get, set, del } from 'idb-keyval'
-import type { Project } from '../types'
+import type { Project, VideoIdentity } from '../types'
 import { parseProjectData } from './project-schema'
 
 /**
@@ -112,8 +112,22 @@ export function downloadText(filename: string, text: string, mime = 'text/plain'
 
 // --- serialization ---
 
+function normalizeVideoIdentityForSave(video: VideoIdentity): VideoIdentity {
+  const out: VideoIdentity = { duration: video.duration }
+  if (video.fileName) out.fileName = video.fileName
+  if (video.frameRateNumerator !== undefined && video.frameRateDenominator !== undefined) {
+    out.frameRateNumerator = video.frameRateNumerator
+    out.frameRateDenominator = video.frameRateDenominator
+  }
+  return out
+}
+
 export function serializeProject(project: Project): string {
-  return JSON.stringify(project, null, 2)
+  const payload =
+    project.video === undefined
+      ? project
+      : { ...project, video: normalizeVideoIdentityForSave(project.video) }
+  return JSON.stringify(payload, null, 2)
 }
 
 export function parseProject(text: string): Project {

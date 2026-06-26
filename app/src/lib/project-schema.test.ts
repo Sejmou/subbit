@@ -44,6 +44,19 @@ describe('parseProjectData', () => {
     ).toThrow(/segments/)
   })
 
+  it('accepts legacy video identity blocks and strips hash fields', () => {
+    const parsed = parseProjectData({
+      ...fixture,
+      video: {
+        fileSize: 123,
+        duration: 100,
+        fingerprint: 'abc',
+        fingerprintVersion: 1,
+      },
+    })
+    expect(parsed.video).toEqual({ duration: 100 })
+  })
+
   it('rejects invalid JSON via parseProject', () => {
     expect(() => parseProject('{not json')).toThrow(/whisperx audio\.json/)
   })
