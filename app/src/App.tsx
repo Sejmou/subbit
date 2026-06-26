@@ -38,9 +38,21 @@ import { HistoryPanel } from './components/HistoryPanel'
 import { UnsavedDialog } from './components/UnsavedDialog'
 import { VideoMismatchBanner } from './components/VideoMismatchBanner'
 import { useVideoIdentity } from './hooks/useVideoIdentity'
+import { useWaveform, waveformCacheKey } from './store/waveform'
+import { cacheWaveformPeaks } from './lib/waveform-cache'
+import { buildVideoIdentity } from './lib/video-identity'
+import {
+  formatWaveformDurationMismatch,
+  parseWaveformPeaksFile,
+} from './lib/waveform-peaks'
+import { usePlayback } from './store/playback'
 
 const JSON_ACCEPT = { 'application/json': ['.json'] }
 const VIDEO_ACCEPT = { 'video/mp4': ['.mp4', '.m4v', '.mov'] }
+const WAVEFORM_ACCEPT = {
+  'application/octet-stream': ['.dat'],
+  'application/json': ['.json', '.waveform.json'],
+}
 
 export default function App() {
   const project = useProject((s) => s.project)
@@ -272,6 +284,7 @@ export default function App() {
     setAutosaveEnabled(false)
     setStarted(false)
     clearProject()
+    useWaveform.getState().clearPeaks()
   }, [clearProject])
 
   const doCloseProject = useCallback(async () => {
@@ -304,6 +317,33 @@ export default function App() {
       alert((err as Error).message)
     }
   }, [guardUnsaved, loadProject, movieName])
+
+  const doImportWaveform = useCallback(async () => {
+    const current = useProject.getState().project
+    if (!current) return
+    const videoDuration = usePlayback.getState().duration
+    if (!movieFile || !Number.isFinite(videoDuration) || videoDuration <= 0) {
+      alert('Load a movie first so waveform peaks can be matched to the video.')
+      return
+    }
+
+    const handle = await pickFile(WAVEFORM_ACCEPT, 'waveform peaks')
+    if (!handle) return
+
+    try {
+      const file = await readHandleAsFile(handle)
+      const parsed = await parseWaveformPeaksFile(file)
+      const mismatch = formatWaveformDurationMismatch(parsed.meta.duration, videoDuration)
+      if (mismatch && !window.confirm(`${mismatch}\n\nImport anyway?`)) return
+
+      const identity = current.video ?? (await buildVideoIdentity(movieFile, videoDuration))
+      const key = waveformCacheKey(identity)
+      useWaveform.getState().setPeaks(parsed, file.name, key)
+      await cacheWaveformPeaks(key, parsed)
+    } catch (err) {
+      alert((err as Error).message)
+    }
+  }, [movieFile])
 
   const doNewBlankProject = useCallback(async () => {
     if (!(await guardUnsaved())) return
@@ -371,7 +411,16 @@ export default function App() {
 
   useShortcuts()
 
+  const waveformLoaded = useWaveform((s) => s.peaks !== null)
+  const restoreWaveform = useWaveform((s) => s.restoreFromCache)
+
   const { status: videoIdentityStatus, message: videoMismatchMessage } = useVideoIdentity(movieFile)
+
+  // Restore cached waveform peaks when video identity is known.
+  useEffect(() => {
+    if (!started || !project?.video) return
+    void restoreWaveform(project.video)
+  }, [started, project?.video, restoreWaveform])
   const showVideoMismatch =
     !videoMismatchDismissed &&
     (videoIdentityStatus === 'mismatch' || videoIdentityStatus === 'missing') &&
@@ -427,7 +476,9 @@ export default function App() {
         onOpenProject={() => void doOpenProject()}
         onNewBlankProject={() => void doNewBlankProject()}
         onImportWhisperx={() => void doImportWhisperx()}
+        onImportWaveform={() => void doImportWaveform()}
         onCloseProject={() => void doCloseProject()}
+        waveformLoaded={waveformLoaded}
       />
       <UnsavedDialog
         open={unsavedOpen}

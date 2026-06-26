@@ -4,10 +4,17 @@ interface Props {
   onOpenProject: () => void
   onNewBlankProject: () => void
   onImportWhisperx: () => void
+  onImportWaveform: () => void
   onCloseProject: () => void
 }
 
-export function FileMenu({ onOpenProject, onNewBlankProject, onImportWhisperx, onCloseProject }: Props) {
+export function FileMenu({
+  onOpenProject,
+  onNewBlankProject,
+  onImportWhisperx,
+  onImportWaveform,
+  onCloseProject,
+}: Props) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
@@ -40,6 +47,9 @@ export function FileMenu({ onOpenProject, onNewBlankProject, onImportWhisperx, o
           </button>
           <button type="button" role="menuitem" onClick={() => run(onImportWhisperx)}>
             Import whisperx…
+          </button>
+          <button type="button" role="menuitem" onClick={() => run(onImportWaveform)}>
+            Import waveform…
           </button>
           <hr />
           <button type="button" role="menuitem" onClick={() => run(onCloseProject)}>

@@ -56,6 +56,14 @@
 .toolbar .progress {
   color: var(--text-dim);
 }
+.toolbar .waveform-badge {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--accent-dim, #1a3d2e);
+  color: var(--accent, #00e180);
+  border: 1px solid var(--accent, #00e180);
+}
 .toolbar .save-state {
   color: var(--text-dim);
   min-width: 120px;

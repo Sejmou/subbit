@@ -24,7 +24,9 @@ interface Props {
   onOpenProject: () => void
   onNewBlankProject: () => void
   onImportWhisperx: () => void
+  onImportWaveform: () => void
   onCloseProject: () => void
+  waveformLoaded: boolean
 }
 
 function saveStateLabel(
@@ -62,7 +64,9 @@ export function Toolbar({
   onOpenProject,
   onNewBlankProject,
   onImportWhisperx,
+  onImportWaveform,
   onCloseProject,
+  waveformLoaded,
 }: Props) {
   const setTimecodeOffset = useProject((s) => s.setTimecodeOffset)
   const undo = useProject((s) => s.undo)
@@ -89,8 +93,14 @@ export function Toolbar({
         onOpenProject={onOpenProject}
         onNewBlankProject={onNewBlankProject}
         onImportWhisperx={onImportWhisperx}
+        onImportWaveform={onImportWaveform}
         onCloseProject={onCloseProject}
       />
+      {waveformLoaded && (
+        <span className="waveform-badge" title="Waveform peaks loaded (ready for timeline)">
+          Waveform
+        </span>
+      )}
       <span className="progress">
         {reviewed}/{total} reviewed
       </span>
