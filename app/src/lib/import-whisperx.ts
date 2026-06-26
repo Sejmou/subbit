@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import {
   DEFAULT_FPS,
   DEFAULT_SHOTS,
@@ -9,26 +10,40 @@ import {
   type Word,
 } from '../types'
 
+const whisperxWordSchema = z.object({
+  word: z.string(),
+  start: z.number().optional(),
+  end: z.number().optional(),
+  score: z.number().optional(),
+  speaker: z.string().nullable().optional(),
+})
+
+const whisperxSegmentSchema = z
+  .object({
+    start: z.number(),
+    end: z.number(),
+    text: z.string(),
+    speaker: z.string().nullable().optional(),
+    words: z.array(whisperxWordSchema).optional(),
+  })
+  .passthrough()
+
+export const whisperxSchema = z
+  .object({
+    segments: z.array(whisperxSegmentSchema),
+    language: z.string().optional(),
+  })
+  .passthrough()
+
 /** Shape of the whisperx `audio.json` output we care about. */
-interface WhisperxWord {
-  word: string
-  start?: number
-  end?: number
-  score?: number
-  speaker?: string | null
-}
+export type WhisperxWord = z.infer<typeof whisperxWordSchema>
+export type WhisperxSegment = z.infer<typeof whisperxSegmentSchema>
+export type WhisperxJson = z.infer<typeof whisperxSchema>
 
-interface WhisperxSegment {
-  start: number
-  end: number
-  text: string
-  speaker?: string | null
-  words?: WhisperxWord[]
-}
-
-interface WhisperxJson {
-  segments: WhisperxSegment[]
-  language?: string
+function formatWhisperxValidationError(error: z.ZodError): string {
+  const issue = error.issues[0]
+  const path = issue.path.length ? `${issue.path.join('.')}: ` : ''
+  return `Not a valid whisperx file. ${path}${issue.message}`
 }
 
 const SPEAKER_PALETTE = [
@@ -111,11 +126,22 @@ function buildSpeakers(segments: WhisperxSegment[]): Speaker[] {
     }))
 }
 
+/** Validate parsed JSON as whisperx output. */
+export function parseWhisperxData(data: unknown): WhisperxJson {
+  const result = whisperxSchema.safeParse(data)
+  if (!result.success) throw new Error(formatWhisperxValidationError(result.error))
+  return result.data
+}
+
 /** Parse + validate a JSON string as whisperx output. */
 export function parseWhisperxJson(text: string): WhisperxJson {
-  const data = JSON.parse(text)
-  if (!data || !Array.isArray(data.segments)) {
-    throw new Error('Not a whisperx JSON file (missing "segments" array).')
+  let data: unknown
+  try {
+    data = JSON.parse(text)
+  } catch {
+    throw new Error(
+      'Could not parse file as JSON. Select a whisperx audio.json or a saved .subbit.json project file.',
+    )
   }
-  return data as WhisperxJson
+  return parseWhisperxData(data)
 }

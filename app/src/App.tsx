@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import { useProject } from './store/project'
-import { importWhisperx } from './lib/import-whisperx'
 import { exportCsv, type Delimiter } from './lib/export-csv'
 import { exportSrt } from './lib/export-srt'
+import {
+  parseSubtitleJsonText,
+  projectFromSubtitleData,
+  projectFromWhisperxData,
+} from './lib/load-subtitles'
 import {
   cacheMovieHandle,
   cacheProjectHandle,
@@ -14,7 +18,6 @@ import {
   hasPermission,
   isFsAccessSupported,
   parseProject,
-  parseProjectData,
   pickFile,
   pickProjectSaveFile,
   readHandleAsFile,
@@ -86,26 +89,22 @@ export default function App() {
    */
   const loadSubtitlesText = useCallback(
     (text: string, projectFileHandle?: FsFileHandle) => {
-      let data: unknown
-      try {
-        data = JSON.parse(text)
-      } catch {
-        throw new Error('That file is not valid JSON.')
-      }
-      const obj = data as Record<string, unknown>
-      if (Array.isArray(obj?.cues) && Array.isArray(obj?.speakers)) {
-        loadProject(parseProjectData(data))
+      const data = parseSubtitleJsonText(text)
+      const parsed = projectFromSubtitleData(data, movieName ?? 'movie')
+      const isSubbitProject =
+        typeof data === 'object' &&
+        data !== null &&
+        Array.isArray((data as Record<string, unknown>).cues) &&
+        Array.isArray((data as Record<string, unknown>).speakers)
+
+      loadProject(parsed)
+      if (isSubbitProject) {
         projectHandle.current = projectFileHandle ?? null
         setAutosaveEnabled(!!projectFileHandle)
         if (projectFileHandle) void cacheProjectHandle(projectFileHandle)
-      } else if (Array.isArray(obj?.segments)) {
-        loadProject(importWhisperx(data as Parameters<typeof importWhisperx>[0], movieName ?? 'movie'))
+      } else {
         projectHandle.current = null
         setAutosaveEnabled(false)
-      } else {
-        throw new Error(
-          'Unrecognized JSON. Expected a whisperx file (with a "segments" array) or a Subbit project (with "cues").',
-        )
       }
     },
     [loadProject, movieName],
@@ -288,20 +287,14 @@ export default function App() {
     if (!handle) return
     try {
       const text = await (await readHandleAsFile(handle)).text()
-      let data: unknown
-      try {
-        data = JSON.parse(text)
-      } catch {
-        throw new Error('That file is not valid JSON.')
-      }
-      if (!Array.isArray((data as Record<string, unknown>)?.segments)) {
-        throw new Error('Expected a whisperx JSON file (with a "segments" array).')
-      }
-      loadSubtitlesText(text)
+      const data = parseSubtitleJsonText(text)
+      loadProject(projectFromWhisperxData(data, movieName ?? 'movie'))
+      projectHandle.current = null
+      setAutosaveEnabled(false)
     } catch (err) {
       alert((err as Error).message)
     }
-  }, [guardUnsaved, loadSubtitlesText])
+  }, [guardUnsaved, loadProject, movieName])
 
   // Cmd/Ctrl+S from the shortcut hook.
   useEffect(() => {

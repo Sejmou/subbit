@@ -45,7 +45,7 @@ describe('parseProjectData', () => {
   })
 
   it('rejects invalid JSON via parseProject', () => {
-    expect(() => parseProject('{not json')).toThrow(/not valid JSON/)
+    expect(() => parseProject('{not json')).toThrow(/whisperx audio\.json/)
   })
 })
 

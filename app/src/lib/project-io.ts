@@ -121,7 +121,9 @@ export function parseProject(text: string): Project {
   try {
     data = JSON.parse(text)
   } catch {
-    throw new Error('That file is not valid JSON.')
+    throw new Error(
+      'Could not parse file as JSON. Select a whisperx audio.json or a saved .subbit.json project file.',
+    )
   }
   return parseProjectData(data)
 }
