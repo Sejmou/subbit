@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { Cue, Project, Segment, ShotId, Speaker, VideoIdentity, Word } from '../types'
+import { computeInsertCueRange, findInsertCueIndex } from '../lib/cue-insert'
 
 const EPS = 0.001
 const DEFAULT_CUE_DURATION = 2
@@ -109,7 +110,7 @@ interface ProjectState {
   splitAtMergedSegment: (cueId: string, segIndex: number) => void
   insertShotSplit: (cueId: string, segIndex: number, charOffset: number) => void
   removeShotSplit: (cueId: string, segIndex: number) => void
-  insertCueAtPlayhead: (time: number) => string | null
+  insertCueAtPlayhead: (time: number, duration?: number, maxTime?: number) => string | null
   deleteCue: (cueId: string) => void
 
   // speakers
@@ -512,21 +513,16 @@ export const useProject = create<ProjectState>((set, getState) => {
         }),
       ),
 
-    insertCueAtPlayhead: (time) => {
+    insertCueAtPlayhead: (time, duration = DEFAULT_CUE_DURATION, maxTime = Infinity) => {
       let insertedId: string | null = null
       set((state) => {
         if (!state.project) return state
         const p = state.project
-        const start = Math.max(0, time)
+        const range = computeInsertCueRange(p.cues, Math.max(0, time), duration, maxTime)
+        if (!range) return state
 
-        let insertIdx = p.cues.findIndex((c) => c.start >= start)
-        if (insertIdx === -1) insertIdx = p.cues.length
-
-        const nextCue = p.cues[insertIdx]
-        const end = nextCue
-          ? Math.max(start + EPS, Math.min(start + DEFAULT_CUE_DURATION, nextCue.start - EPS))
-          : start + DEFAULT_CUE_DURATION
-        if (end <= start + EPS) return state
+        const { start, end } = range
+        const insertIdx = findInsertCueIndex(p.cues, start)
 
         insertedId = newId()
         const newCue: Cue = {

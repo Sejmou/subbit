@@ -5,7 +5,7 @@ import { useProject } from '../store/project'
 import { usePlayback } from '../store/playback'
 import { findActiveCueIndex } from '../lib/active-cue'
 import { shortcutLabel } from '../lib/shortcuts'
-import { focusCueForEdit } from '../lib/focus-cue'
+import { focusCueForEdit, type FocusCueDetail } from '../lib/focus-cue'
 import { CueRow } from './CueRow'
 
 export function CueList({ project }: { project: Project }) {
@@ -42,6 +42,27 @@ export function CueList({ project }: { project: Project }) {
     const idx = project.cues.findIndex((c) => c.id === selectedCueId)
     if (idx >= 0) virtualizer.scrollToIndex(idx, { align: 'auto' })
   }, [selectedCueId, project.cues, virtualizer, isEmpty])
+
+  // Scroll (optional align) then focus — used by timeline double-click, shortcuts, etc.
+  useEffect(() => {
+    if (isEmpty) return
+
+    function onFocusCue(e: Event) {
+      const { cueId, scroll } = (e as CustomEvent<FocusCueDetail>).detail
+      const idx = project.cues.findIndex((c) => c.id === cueId)
+      if (idx < 0) return
+
+      virtualizer.scrollToIndex(idx, { align: scroll })
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.dispatchEvent(new CustomEvent('subbit:edit', { detail: cueId }))
+        })
+      })
+    }
+
+    window.addEventListener('subbit:focus-cue', onFocusCue)
+    return () => window.removeEventListener('subbit:focus-cue', onFocusCue)
+  }, [project.cues, virtualizer, isEmpty])
 
   if (isEmpty) {
     return (

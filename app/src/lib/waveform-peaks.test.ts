@@ -5,6 +5,7 @@ import {
   parseWaveformJsonText,
   peaksDuration,
   peaksMaxZoomVisibleSeconds,
+  peaksInitialZoomSeconds,
   peaksZoomLevels,
 } from './waveform-peaks'
 
@@ -77,6 +78,17 @@ describe('peaksMaxZoomVisibleSeconds', () => {
   it('computes minimum visible span at native zoom', () => {
     // 800px, 2205 samples/px, 44100 Hz → 40s
     expect(peaksMaxZoomVisibleSeconds(2205, 44100, 800)).toBeCloseTo(40)
+  })
+})
+
+describe('peaksInitialZoomSeconds', () => {
+  it('uses max zoom span capped by movie duration', () => {
+    expect(
+      peaksInitialZoomSeconds({ samplesPerPixel: 2205, sampleRate: 44100 }, 800, 7200),
+    ).toBeCloseTo(40)
+    expect(
+      peaksInitialZoomSeconds({ samplesPerPixel: 2205, sampleRate: 44100 }, 800, 30),
+    ).toBe(30)
   })
 })
 

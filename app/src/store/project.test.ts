@@ -259,15 +259,41 @@ describe('restoreProject', () => {
 })
 
 describe('insertCueAtPlayhead / deleteCue', () => {
-  it('inserts an empty cue at the playhead and selects it', () => {
-    const id = store().insertCueAtPlayhead(1)
+  it('inserts an empty cue in a gap and selects it', () => {
+    store().loadProject({
+      ...makeProject(),
+      cues: [
+        { id: 'c1', start: 0, end: 1, speakerId: 'SPEAKER_00', segments: [{ text: 'hello', shot: 'ON' }] },
+        { id: 'c2', start: 4, end: 6, speakerId: 'SPEAKER_00', segments: [{ text: 'world', shot: 'ON' }] },
+      ],
+    })
+    const id = store().insertCueAtPlayhead(1.5)
     expect(store().project!.cues).toHaveLength(3)
     const inserted = store().project!.cues[1]
     expect(id).toBe(inserted.id)
-    expect(inserted.start).toBe(1)
-    expect(inserted.end).toBeCloseTo(1.999)
+    expect(inserted.start).toBe(1.5)
+    expect(inserted.end).toBe(3.5)
     expect(inserted.segments[0].text).toBe('')
     expect(store().selectedCueId).toBe(inserted.id)
+  })
+
+  it('does not insert inside an existing cue', () => {
+    expect(store().insertCueAtPlayhead(1)).toBeNull()
+    expect(store().project!.cues).toHaveLength(2)
+  })
+
+  it('shortens the cue when the next section is nearby', () => {
+    store().loadProject({
+      ...makeProject(),
+      cues: [
+        { id: 'c1', start: 0, end: 1, speakerId: 'SPEAKER_00', segments: [{ text: 'hello', shot: 'ON' }] },
+        { id: 'c2', start: 2.5, end: 4, speakerId: 'SPEAKER_00', segments: [{ text: 'world', shot: 'ON' }] },
+      ],
+    })
+    store().insertCueAtPlayhead(1.2)
+    const inserted = store().project!.cues[1]
+    expect(inserted.start).toBe(1.2)
+    expect(inserted.end).toBe(2.5)
   })
 
   it('inserts at the end when the playhead is past existing cues', () => {

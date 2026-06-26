@@ -5,9 +5,11 @@ import { useProject } from '../store/project'
 import { usePlayback } from '../store/playback'
 import { useWaveform } from '../store/waveform'
 import { findActiveCueId } from '../lib/active-cue'
+import { focusCueForEdit } from '../lib/focus-cue'
+import { TIMELINE_NEW_CUE_DURATION } from '../lib/cue-insert'
 import { buildCueSegmentAddOptions, buildCueSegmentUpdatePatch } from '../lib/waveform-segments'
 import type { WaveformPeaksInput } from '../lib/waveform-peaks'
-import { peaksZoomLevels } from '../lib/waveform-peaks'
+import { peaksZoomLevels, peaksInitialZoomSeconds } from '../lib/waveform-peaks'
 import {
   findCuesOverlappingRange,
   padViewRange,
@@ -56,6 +58,7 @@ export function WaveformTimeline({ project }: Props) {
 
   const peaksInput = useWaveform((s) => s.peaks?.input ?? null)
   const samplesPerPixel = useWaveform((s) => s.peaks?.meta.samplesPerPixel ?? null)
+  const sampleRate = useWaveform((s) => s.peaks?.meta.sampleRate ?? null)
   const videoEl = usePlayback((s) => s.videoEl)
   const duration = usePlayback((s) => s.duration)
 
@@ -64,6 +67,7 @@ export function WaveformTimeline({ project }: Props) {
   const setCueEnd = useProject((s) => s.setCueEnd)
   const setCueTimes = useProject((s) => s.setCueTimes)
   const selectCue = useProject((s) => s.selectCue)
+  const insertCueAtPlayhead = useProject((s) => s.insertCueAtPlayhead)
 
   const selectedCueIdRef = useRef(selectedCueId)
   selectedCueIdRef.current = selectedCueId
@@ -72,10 +76,15 @@ export function WaveformTimeline({ project }: Props) {
   const setCueEndRef = useRef(setCueEnd)
   const setCueTimesRef = useRef(setCueTimes)
   const selectCueRef = useRef(selectCue)
+  const insertCueAtPlayheadRef = useRef(insertCueAtPlayhead)
   setCueStartRef.current = setCueStart
   setCueEndRef.current = setCueEnd
   setCueTimesRef.current = setCueTimes
   selectCueRef.current = selectCue
+  insertCueAtPlayheadRef.current = insertCueAtPlayhead
+
+  const durationRef = useRef(duration)
+  durationRef.current = duration
 
   const [ready, setReady] = useState(false)
   const [initError, setInitError] = useState<string | null>(null)
@@ -192,7 +201,7 @@ export function WaveformTimeline({ project }: Props) {
   }, [])
 
   useEffect(() => {
-    if (!videoEl || !peaksInput || !samplesPerPixel || !zoomRef.current || !scrollRef.current) return
+    if (!videoEl || !peaksInput || !samplesPerPixel || !sampleRate || !zoomRef.current || !scrollRef.current) return
     if (!Number.isFinite(duration) || duration <= 0) return
 
     let cancelled = false
@@ -270,6 +279,14 @@ export function WaveformTimeline({ project }: Props) {
         if (id) selectCueRef.current(id)
       })
 
+      peaks.on('segments.dblclick', (event) => {
+        const id = event.segment.id
+        if (!id) return
+        event.preventViewEvent()
+        selectCueRef.current(id)
+        focusCueForEdit(id, { scroll: 'end' })
+      })
+
       peaks.on('segments.dragstart', (event) => {
         if (event.segment.id) selectCueRef.current(event.segment.id)
       })
@@ -285,9 +302,28 @@ export function WaveformTimeline({ project }: Props) {
         }
       })
 
+      peaks.on('zoomview.dblclick', (event) => {
+        const id = insertCueAtPlayheadRef.current(
+          event.time,
+          TIMELINE_NEW_CUE_DURATION,
+          durationRef.current,
+        )
+        if (id) focusCueForEdit(id, { scroll: 'end' })
+      })
+
       if (zoomview && duration > 0) {
-        zoomview.setZoom({ seconds: duration })
         zoomview.fitToContainer()
+        const width = zoomRef.current?.clientWidth ?? 0
+        const initialSpan = peaksInitialZoomSeconds(
+          { samplesPerPixel, sampleRate },
+          width,
+          duration,
+        )
+        zoomview.setZoom({ seconds: initialSpan })
+        const playhead = videoEl.currentTime
+        zoomview.setStartTime(
+          Math.max(0, Math.min(playhead - initialSpan / 2, duration - initialSpan)),
+        )
         scheduleViewSync(zoomview.getStartTime(), zoomview.getEndTime())
       }
       peaks.views.getScrollbar()?.fitToContainer()
@@ -301,7 +337,7 @@ export function WaveformTimeline({ project }: Props) {
       peaksRef.current = null
       setReady(false)
     }
-  }, [videoEl, peaksInput, samplesPerPixel, duration])
+  }, [videoEl, peaksInput, samplesPerPixel, sampleRate, duration])
 
   useEffect(() => {
     if (!ready) return
@@ -403,7 +439,7 @@ export function WaveformTimeline({ project }: Props) {
           <span className="waveform-hint">Zoom in to see subtitles</span>
         )}
         {ready && !subtitlesHidden && !initError && (
-          <span className="waveform-hint">Scroll to zoom · Shift+scroll to pan</span>
+          <span className="waveform-hint">Scroll to zoom · Shift+scroll to pan · Double-click to add</span>
         )}
       </div>
       <div className="waveform-scroll" ref={scrollRef} />

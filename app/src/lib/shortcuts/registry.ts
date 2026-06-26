@@ -322,8 +322,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     label: 'Enter',
     description: 'Edit the selected cue (focus its text)',
     match: (e, ctx) => plainKey(e) && !ctx.editing && !!ctx.cue && e.key === 'Enter',
-    run: (ctx) =>
-      window.dispatchEvent(new CustomEvent('subbit:edit', { detail: ctx.cue!.id })),
+    run: (ctx) => focusCueForEdit(ctx.cue!.id),
     preventDefault: true,
   },
   {

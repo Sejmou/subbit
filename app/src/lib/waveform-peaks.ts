@@ -64,6 +64,20 @@ export function peaksMaxZoomVisibleSeconds(
   return (viewWidthPx * samplesPerPixel) / sampleRate
 }
 
+/** Default zoomview span on load: max zoom allowed by the imported peaks file. */
+export function peaksInitialZoomSeconds(
+  meta: Pick<WaveformPeaksMeta, 'samplesPerPixel' | 'sampleRate'>,
+  viewWidthPx: number,
+  duration: number,
+): number {
+  const maxZoomSpan = peaksMaxZoomVisibleSeconds(
+    meta.samplesPerPixel,
+    meta.sampleRate,
+    viewWidthPx,
+  )
+  return Math.min(Math.max(maxZoomSpan, 0.5), duration)
+}
+
 /** Target `--pixels-per-second` when regenerating peaks (~targetSeconds at max zoom). */
 export function peaksPixelsPerSecondForZoom(
   targetMinVisibleSeconds: number,
