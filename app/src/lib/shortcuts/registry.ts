@@ -20,6 +20,11 @@ function mod(e: KeyEvent): boolean {
   return e.metaKey || e.ctrlKey
 }
 
+/** True when no platform modifier is held — avoids stealing Cmd+R, Cmd+S in the browser, etc. */
+function plainKey(e: KeyEvent): boolean {
+  return !e.metaKey && !e.ctrlKey && !e.altKey
+}
+
 /** Ordered list — first match wins, same priority as the original handler. */
 export const SHORTCUTS: ShortcutDef[] = [
   {
@@ -27,7 +32,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     group: 'Project',
     label: '?',
     description: 'Show / hide this help',
-    match: (e, ctx) => !ctx.editing && e.key === '?',
+    match: (e, ctx) => plainKey(e) && !ctx.editing && e.key === '?',
     run: () => window.dispatchEvent(new CustomEvent('subbit:help-toggle')),
     preventDefault: true,
   },
@@ -99,7 +104,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     group: 'Playback & navigation',
     label: 'Space',
     description: 'Play / pause',
-    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === ' ',
+    match: (e, ctx) => plainKey(e) && !ctx.editing && !!ctx.cue && e.key === ' ',
     run: (ctx) => ctx.pb.togglePlay(),
     preventDefault: true,
   },
@@ -108,7 +113,8 @@ export const SHORTCUTS: ShortcutDef[] = [
     group: 'Playback & navigation',
     label: 'J / K  or  ↓ / ↑',
     description: 'Next / previous cue',
-    match: (e, ctx) => !ctx.editing && !!ctx.cue && (e.key === 'ArrowDown' || e.key === 'j'),
+    match: (e, ctx) =>
+      plainKey(e) && !ctx.editing && !!ctx.cue && (e.key === 'ArrowDown' || e.key === 'j'),
     run: (ctx) => {
       const { project, cueIndex, ps } = ctx
       ps.selectCue(project!.cues[Math.min(cueIndex + 1, project!.cues.length - 1)].id)
@@ -121,7 +127,8 @@ export const SHORTCUTS: ShortcutDef[] = [
     label: 'J / K  or  ↓ / ↑',
     description: 'Next / previous cue',
     showInHelp: false,
-    match: (e, ctx) => !ctx.editing && !!ctx.cue && (e.key === 'ArrowUp' || e.key === 'k'),
+    match: (e, ctx) =>
+      plainKey(e) && !ctx.editing && !!ctx.cue && (e.key === 'ArrowUp' || e.key === 'k'),
     run: (ctx) => {
       const { project, cueIndex, ps } = ctx
       ps.selectCue(project!.cues[Math.max(cueIndex - 1, 0)].id)
@@ -133,7 +140,8 @@ export const SHORTCUTS: ShortcutDef[] = [
     group: 'Playback & navigation',
     label: '← / →',
     description: 'Jog playhead 1 frame',
-    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === 'ArrowLeft' && !e.shiftKey,
+    match: (e, ctx) =>
+      plainKey(e) && !ctx.editing && !!ctx.cue && e.key === 'ArrowLeft' && !e.shiftKey,
     run: (ctx) => ctx.pb.seek(ctx.pb.currentTime - ctx.frame),
     preventDefault: true,
   },
@@ -143,7 +151,8 @@ export const SHORTCUTS: ShortcutDef[] = [
     label: '← / →',
     description: 'Jog playhead 1 frame',
     showInHelp: false,
-    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === 'ArrowRight' && !e.shiftKey,
+    match: (e, ctx) =>
+      plainKey(e) && !ctx.editing && !!ctx.cue && e.key === 'ArrowRight' && !e.shiftKey,
     run: (ctx) => ctx.pb.seek(ctx.pb.currentTime + ctx.frame),
     preventDefault: true,
   },
@@ -152,7 +161,8 @@ export const SHORTCUTS: ShortcutDef[] = [
     group: 'Playback & navigation',
     label: 'Shift + ← / →',
     description: 'Jog playhead 1 second',
-    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === 'ArrowLeft' && e.shiftKey,
+    match: (e, ctx) =>
+      plainKey(e) && !ctx.editing && !!ctx.cue && e.key === 'ArrowLeft' && e.shiftKey,
     run: (ctx) => ctx.pb.seek(ctx.pb.currentTime - 1),
     preventDefault: true,
   },
@@ -162,7 +172,8 @@ export const SHORTCUTS: ShortcutDef[] = [
     label: 'Shift + ← / →',
     description: 'Jog playhead 1 second',
     showInHelp: false,
-    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === 'ArrowRight' && e.shiftKey,
+    match: (e, ctx) =>
+      plainKey(e) && !ctx.editing && !!ctx.cue && e.key === 'ArrowRight' && e.shiftKey,
     run: (ctx) => ctx.pb.seek(ctx.pb.currentTime + 1),
     preventDefault: true,
   },
@@ -171,7 +182,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     group: 'Timing',
     label: 'I',
     description: 'Set cue In to the playhead',
-    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === 'i',
+    match: (e, ctx) => plainKey(e) && !ctx.editing && !!ctx.cue && e.key === 'i',
     run: (ctx) => ctx.ps.setCueStart(ctx.cue!.id, ctx.pb.currentTime),
   },
   {
@@ -179,7 +190,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     group: 'Timing',
     label: 'O',
     description: 'Set cue Out to the playhead',
-    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === 'o',
+    match: (e, ctx) => plainKey(e) && !ctx.editing && !!ctx.cue && e.key === 'o',
     run: (ctx) => ctx.ps.setCueEnd(ctx.cue!.id, ctx.pb.currentTime),
   },
   {
@@ -187,7 +198,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     group: 'Timing',
     label: '[',
     description: 'Nudge In 1 frame (Shift = other direction)',
-    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === '[',
+    match: (e, ctx) => plainKey(e) && !ctx.editing && !!ctx.cue && e.key === '[',
     run: (ctx, e) => ctx.ps.nudgeCueStart(ctx.cue!.id, e.shiftKey ? ctx.frame : -ctx.frame),
   },
   {
@@ -195,7 +206,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     group: 'Timing',
     label: ']',
     description: 'Nudge Out 1 frame (Shift = other direction)',
-    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === ']',
+    match: (e, ctx) => plainKey(e) && !ctx.editing && !!ctx.cue && e.key === ']',
     run: (ctx, e) => ctx.ps.nudgeCueEnd(ctx.cue!.id, e.shiftKey ? -ctx.frame : ctx.frame),
   },
   {
@@ -204,7 +215,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     label: 'M',
     description: 'Merge the selected cue with the next',
     match: (e, ctx) =>
-      !ctx.editing && !!ctx.cue && (e.key === 'm' || e.key === 'M') && !e.shiftKey,
+      plainKey(e) && !ctx.editing && !!ctx.cue && (e.key === 'm' || e.key === 'M') && !e.shiftKey,
     run: (ctx) => ctx.ps.mergeWithNext(ctx.cue!.id),
   },
   {
@@ -213,6 +224,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     label: 'Shift + M',
     description: 'Unmerge at the active segment (split back into separate cues)',
     match: (e, ctx) =>
+      plainKey(e) &&
       !ctx.editing &&
       !!ctx.cue &&
       (e.key === 'm' || e.key === 'M') &&
@@ -226,7 +238,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     group: 'Metadata',
     label: 'R',
     description: 'Toggle "reviewed"',
-    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === 'r',
+    match: (e, ctx) => plainKey(e) && !ctx.editing && !!ctx.cue && e.key === 'r',
     run: (ctx) => ctx.ps.toggleReviewed(ctx.cue!.id),
   },
   {
@@ -234,7 +246,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     group: 'Text & structure',
     label: 'Enter',
     description: 'Edit the selected cue (focus its text)',
-    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === 'Enter' && !mod(e),
+    match: (e, ctx) => plainKey(e) && !ctx.editing && !!ctx.cue && e.key === 'Enter',
     run: (ctx) =>
       window.dispatchEvent(new CustomEvent('subbit:edit', { detail: ctx.cue!.id })),
     preventDefault: true,
@@ -244,7 +256,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     group: 'Playback & navigation',
     label: 'G',
     description: 'Seek video to the selected cue',
-    match: (e, ctx) => !ctx.editing && !!ctx.cue && e.key === 'g',
+    match: (e, ctx) => plainKey(e) && !ctx.editing && !!ctx.cue && e.key === 'g',
     run: (ctx) => ctx.pb.seek(ctx.cue!.start),
   },
   {
@@ -252,7 +264,8 @@ export const SHORTCUTS: ShortcutDef[] = [
     group: 'Metadata',
     label: '1 - 9',
     description: 'Assign that speaker (Rolle) to the cue',
-    match: (e, ctx) => !ctx.editing && !!ctx.cue && /^[1-9]$/.test(e.key) && !e.shiftKey,
+    match: (e, ctx) =>
+      plainKey(e) && !ctx.editing && !!ctx.cue && /^[1-9]$/.test(e.key) && !e.shiftKey,
     run: (ctx, e) => {
       const speaker = ctx.project!.speakers[Number(e.key) - 1]
       if (speaker) ctx.ps.setCueSpeaker(ctx.cue!.id, speaker.id)
@@ -264,7 +277,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     label: 'Shift + 1 / 2 / 3 …',
     description: "Set the active segment's shot type",
     match: (e, ctx) =>
-      !ctx.editing && !!ctx.cue && e.shiftKey && /^[!@#$%^&*(]$/.test(e.key),
+      plainKey(e) && !ctx.editing && !!ctx.cue && e.shiftKey && /^[!@#$%^&*(]$/.test(e.key),
     run: (ctx, e) => {
       const map = '!@#$%^&*('
       const shot = ctx.project!.shots[map.indexOf(e.key)]

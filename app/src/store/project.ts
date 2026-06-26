@@ -68,6 +68,7 @@ interface ProjectState {
   future: HistoryEntry[]
 
   loadProject: (project: Project) => void
+  clearProject: () => void
   markSaved: () => void
 
   /** Step backward / forward through the in-session edit history. */
@@ -170,6 +171,18 @@ export const useProject = create<ProjectState>((set, getState) => {
       set({
         project,
         selectedCueId: project.cues[0]?.id ?? null,
+        selectedSegment: 0,
+        dirty: false,
+        lastSavedAt: null,
+        past: [],
+        future: [],
+      })
+    },
+    clearProject: () => {
+      lastTag = null
+      set({
+        project: null,
+        selectedCueId: null,
         selectedSegment: 0,
         dirty: false,
         lastSavedAt: null,

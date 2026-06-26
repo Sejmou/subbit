@@ -149,6 +149,12 @@ describe('resolveShortcut', () => {
     )
   })
 
+  it('ignores browser modifier combos for single-key bindings', () => {
+    expect(resolveShortcut(modKey('r'), ctx())).toBeNull()
+    expect(resolveShortcut(modKey('s'), ctx())?.id).toBe('save')
+    expect(resolveShortcut(makeKeyEvent('r'), ctx())?.id).toBe('toggle-reviewed')
+  })
+
   it('assigns speaker and shot from number keys', () => {
     const c = ctx()
     resolveShortcut(makeKeyEvent('1'), c)?.run(c, makeKeyEvent('1'))

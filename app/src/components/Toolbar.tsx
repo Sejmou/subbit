@@ -4,6 +4,7 @@ import type { Delimiter } from '../lib/export-csv'
 import { useProject } from '../store/project'
 import { shortcutLabel } from '../lib/shortcuts'
 import { formatRelativeTime } from '../lib/relative-time'
+import { FileMenu } from './FileMenu'
 
 type SaveStateVariant = 'saving' | 'edited' | 'unsaved' | 'saved'
 
@@ -20,6 +21,9 @@ interface Props {
   onExportSrt: () => void
   onHelp: () => void
   onHistory: () => void
+  onOpenProject: () => void
+  onNewFromWhisperx: () => void
+  onCloseProject: () => void
 }
 
 function saveStateLabel(
@@ -54,6 +58,9 @@ export function Toolbar({
   onExportSrt,
   onHelp,
   onHistory,
+  onOpenProject,
+  onNewFromWhisperx,
+  onCloseProject,
 }: Props) {
   const setTimecodeOffset = useProject((s) => s.setTimecodeOffset)
   const undo = useProject((s) => s.undo)
@@ -76,6 +83,11 @@ export function Toolbar({
   return (
     <div className="toolbar">
       <strong className="brand">Subbit</strong>
+      <FileMenu
+        onOpenProject={onOpenProject}
+        onNewFromWhisperx={onNewFromWhisperx}
+        onCloseProject={onCloseProject}
+      />
       <span className="progress">
         {reviewed}/{total} reviewed
       </span>

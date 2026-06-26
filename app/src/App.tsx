@@ -31,6 +31,7 @@ import { SpeakerPanel } from './components/SpeakerPanel'
 import { Toolbar } from './components/Toolbar'
 import { HelpOverlay } from './components/HelpOverlay'
 import { HistoryPanel } from './components/HistoryPanel'
+import { UnsavedDialog } from './components/UnsavedDialog'
 
 const JSON_ACCEPT = { 'application/json': ['.json'] }
 const VIDEO_ACCEPT = { 'video/mp4': ['.mp4', '.m4v', '.mov'] }
@@ -40,6 +41,7 @@ export default function App() {
   const dirty = useProject((s) => s.dirty)
   const lastSavedAt = useProject((s) => s.lastSavedAt)
   const loadProject = useProject((s) => s.loadProject)
+  const clearProject = useProject((s) => s.clearProject)
   const markSaved = useProject((s) => s.markSaved)
   const restoreProject = useProject((s) => s.restoreProject)
 
@@ -53,9 +55,11 @@ export default function App() {
   const [historyOpen, setHistoryOpen] = useState(false)
   const [autosaveEnabled, setAutosaveEnabled] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [unsavedOpen, setUnsavedOpen] = useState(false)
 
   const movieHandle = useRef<FsFileHandle | null>(null)
   const projectHandle = useRef<FsFileHandle | null>(null)
+  const unsavedResolver = useRef<((proceed: boolean) => void) | null>(null)
   const fsSupported = isFsAccessSupported()
 
   const setMovieFromFile = useCallback((file: File) => {
@@ -179,9 +183,9 @@ export default function App() {
 
   // --- save / export ---
   const save = useCallback(
-    async (opts: { auto?: boolean } = {}) => {
+    async (opts: { auto?: boolean } = {}): Promise<boolean> => {
       const current = useProject.getState().project
-      if (!current) return
+      if (!current) return false
       const text = serializeProject(current)
       setSaving(true)
       try {
@@ -189,7 +193,7 @@ export default function App() {
           await writeTextToHandle(projectHandle.current, text)
         } else if (fsSupported) {
           const handle = await pickProjectSaveFile(`${current.videoName}.subbit.json`)
-          if (!handle) return
+          if (!handle) return false
           projectHandle.current = handle
           setAutosaveEnabled(true)
           await cacheProjectHandle(handle)
@@ -202,9 +206,11 @@ export default function App() {
         void addVersion(current, text, { auto: opts.auto }).catch((err) =>
           console.error('History snapshot failed', err),
         )
+        return true
       } catch (err) {
         console.error('Save failed', err)
         alert('Save failed: ' + (err as Error).message)
+        return false
       } finally {
         setSaving(false)
       }
@@ -224,6 +230,78 @@ export default function App() {
     if (!current) return
     downloadText(`${current.videoName}.srt`, exportSrt(current), 'text/plain')
   }, [])
+
+  /** Returns true when it's safe to leave or replace the current project. */
+  const guardUnsaved = useCallback((): Promise<boolean> => {
+    if (!useProject.getState().dirty) return Promise.resolve(true)
+    return new Promise((resolve) => {
+      unsavedResolver.current = resolve
+      setUnsavedOpen(true)
+    })
+  }, [])
+
+  const resolveUnsaved = useCallback(
+    async (choice: 'save' | 'discard' | 'cancel') => {
+      setUnsavedOpen(false)
+      const resolve = unsavedResolver.current
+      unsavedResolver.current = null
+      if (!resolve) return
+      if (choice === 'cancel') {
+        resolve(false)
+        return
+      }
+      if (choice === 'discard') {
+        resolve(true)
+        return
+      }
+      resolve(await save())
+    },
+    [save],
+  )
+
+  const closeProject = useCallback(() => {
+    projectHandle.current = null
+    setAutosaveEnabled(false)
+    setStarted(false)
+    clearProject()
+  }, [clearProject])
+
+  const doCloseProject = useCallback(async () => {
+    if (!(await guardUnsaved())) return
+    closeProject()
+  }, [guardUnsaved, closeProject])
+
+  const doOpenProject = useCallback(async () => {
+    if (!(await guardUnsaved())) return
+    const handle = await pickFile(JSON_ACCEPT, 'Subbit project')
+    if (!handle) return
+    try {
+      loadSubtitlesText(await (await readHandleAsFile(handle)).text(), handle)
+    } catch (err) {
+      alert((err as Error).message)
+    }
+  }, [guardUnsaved, loadSubtitlesText])
+
+  const doNewFromWhisperx = useCallback(async () => {
+    if (!(await guardUnsaved())) return
+    const handle = await pickFile(JSON_ACCEPT, 'whisperx JSON')
+    if (!handle) return
+    try {
+      const text = await (await readHandleAsFile(handle)).text()
+      let data: unknown
+      try {
+        data = JSON.parse(text)
+      } catch {
+        throw new Error('That file is not valid JSON.')
+      }
+      if (!Array.isArray((data as Record<string, unknown>)?.segments)) {
+        throw new Error('Expected a whisperx JSON file (with a "segments" array).')
+      }
+      loadSubtitlesText(text)
+    } catch (err) {
+      alert((err as Error).message)
+    }
+  }, [guardUnsaved, loadSubtitlesText])
 
   // Cmd/Ctrl+S from the shortcut hook.
   useEffect(() => {
@@ -245,6 +323,17 @@ export default function App() {
     const id = setTimeout(() => void save({ auto: true }), 3000)
     return () => clearTimeout(id)
   }, [dirty, save])
+
+  // Tab close / refresh — browsers only allow their native leave prompt here, not UnsavedDialog.
+  useEffect(() => {
+    if (!dirty) return
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [dirty])
 
   useShortcuts()
 
@@ -281,6 +370,15 @@ export default function App() {
         onExportSrt={doExportSrt}
         onHelp={() => setHelpOpen(true)}
         onHistory={() => setHistoryOpen(true)}
+        onOpenProject={() => void doOpenProject()}
+        onNewFromWhisperx={() => void doNewFromWhisperx()}
+        onCloseProject={() => void doCloseProject()}
+      />
+      <UnsavedDialog
+        open={unsavedOpen}
+        onSave={() => void resolveUnsaved('save')}
+        onDiscard={() => void resolveUnsaved('discard')}
+        onCancel={() => void resolveUnsaved('cancel')}
       />
       <HelpOverlay open={helpOpen} onClose={() => setHelpOpen(false)} />
       <HistoryPanel

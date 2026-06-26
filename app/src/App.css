@@ -65,6 +65,63 @@
   cursor: not-allowed;
 }
 
+.file-menu {
+  position: relative;
+}
+.file-menu-trigger {
+  font-size: 13px;
+}
+.file-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 180px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  z-index: 50;
+}
+.file-menu-dropdown button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+.file-menu-dropdown button:hover {
+  background: var(--bg);
+}
+.file-menu-dropdown hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 4px 0;
+}
+
+.confirm-modal {
+  width: min(420px, 92vw);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 24px;
+}
+.confirm-modal h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+.confirm-modal p {
+  margin: 0 0 16px;
+  color: var(--text-dim);
+}
+.confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 /* ---- layout ---- */
 .main {
   flex: 1;
