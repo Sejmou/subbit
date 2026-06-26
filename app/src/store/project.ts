@@ -92,6 +92,8 @@ interface ProjectState {
   setSegmentText: (cueId: string, segIndex: number, text: string) => void
   setCueStart: (cueId: string, time: number) => void
   setCueEnd: (cueId: string, time: number) => void
+  /** Set In and Out together (e.g. dragging a cue on the timeline). */
+  setCueTimes: (cueId: string, start: number, end: number) => void
   nudgeCueStart: (cueId: string, delta: number) => void
   nudgeCueEnd: (cueId: string, delta: number) => void
 
@@ -138,6 +140,41 @@ function clampCueEnd(cue: Cue, time: number, next: Cue | undefined): number {
   const max = next ? next.start : Infinity
   if (min > max) return cue.end
   return Math.min(Math.max(min, time), max)
+}
+
+/** Move a cue as a block — keeps duration unless neighbors leave no room. */
+function clampCueMove(
+  cue: Cue,
+  start: number,
+  end: number,
+  prev: Cue | undefined,
+  next: Cue | undefined,
+): { start: number; end: number } {
+  const duration = end - start
+  if (duration <= EPS) return { start: cue.start, end: cue.end }
+
+  const minStart = prev ? prev.end : 0
+  const maxEnd = next ? next.start : Infinity
+
+  let newStart = start
+  let newEnd = end
+
+  if (newStart < minStart) {
+    newStart = minStart
+    newEnd = newStart + duration
+  }
+  if (newEnd > maxEnd) {
+    newEnd = maxEnd
+    newStart = newEnd - duration
+  }
+  if (newStart < minStart) {
+    newStart = minStart
+    newEnd = Math.min(newStart + duration, maxEnd)
+  }
+
+  newStart = Math.max(0, newStart)
+  if (newEnd - newStart <= EPS) return { start: cue.start, end: cue.end }
+  return { start: newStart, end: newEnd }
 }
 
 /** Cap the in-memory undo stack so long sessions don't grow unbounded. */
@@ -294,6 +331,15 @@ export const useProject = create<ProjectState>((set, getState) => {
         if (end === c.end) return p
         return mapCue(p, cueId, (cue) => ({ ...cue, end }))
       }, `end:${cueId}`),
+    setCueTimes: (cueId, start, end) =>
+      update((p) => {
+        const idx = p.cues.findIndex((c) => c.id === cueId)
+        if (idx === -1) return p
+        const c = p.cues[idx]
+        const next = clampCueMove(c, start, end, p.cues[idx - 1], p.cues[idx + 1])
+        if (next.start === c.start && next.end === c.end) return p
+        return mapCue(p, cueId, (cue) => ({ ...cue, start: next.start, end: next.end }))
+      }, `move:${cueId}`),
     nudgeCueStart: (cueId, delta) => {
       const c = getState().project?.cues.find((x) => x.id === cueId)
       if (c) getState().setCueStart(cueId, c.start + delta)

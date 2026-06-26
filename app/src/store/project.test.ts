@@ -146,6 +146,19 @@ describe('cue boundary clamping', () => {
     store().setCueEnd('c1', 10)
     expect(store().past).toHaveLength(0)
   })
+
+  it('preserves duration when moving a cue as a block', () => {
+    store().setCueTimes('c2', 2.5, 4.5)
+    expect(store().project!.cues[1].start).toBeCloseTo(2.5, 5)
+    expect(store().project!.cues[1].end).toBeCloseTo(4.5, 5)
+  })
+
+  it('preserves duration when a move is clamped against the previous cue', () => {
+    store().setCueTimes('c2', 1.5, 3.5)
+    const cue = store().project!.cues[1]
+    expect(cue.start).toBe(2)
+    expect(cue.end).toBe(4)
+  })
 })
 
 describe('merge / unmerge', () => {

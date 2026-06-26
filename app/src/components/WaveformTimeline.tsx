@@ -62,6 +62,7 @@ export function WaveformTimeline({ project }: Props) {
   const selectedCueId = useProject((s) => s.selectedCueId)
   const setCueStart = useProject((s) => s.setCueStart)
   const setCueEnd = useProject((s) => s.setCueEnd)
+  const setCueTimes = useProject((s) => s.setCueTimes)
   const selectCue = useProject((s) => s.selectCue)
 
   const selectedCueIdRef = useRef(selectedCueId)
@@ -69,22 +70,42 @@ export function WaveformTimeline({ project }: Props) {
 
   const setCueStartRef = useRef(setCueStart)
   const setCueEndRef = useRef(setCueEnd)
+  const setCueTimesRef = useRef(setCueTimes)
   const selectCueRef = useRef(selectCue)
   setCueStartRef.current = setCueStart
   setCueEndRef.current = setCueEnd
+  setCueTimesRef.current = setCueTimes
   selectCueRef.current = selectCue
 
   const [ready, setReady] = useState(false)
   const [initError, setInitError] = useState<string | null>(null)
   const [subtitlesHidden, setSubtitlesHidden] = useState(false)
 
-  const zoomViewByFactor = useCallback((factor: number) => {
+  const zoomViewByFactor = useCallback((factor: number, anchorX?: number) => {
     const zoomview = peaksRef.current?.views.getView('zoomview')
-    if (!zoomview) return
-    const span = zoomview.getEndTime() - zoomview.getStartTime()
+    const container = zoomRef.current
+    if (!zoomview || !container) return
+
+    const startTime = zoomview.getStartTime()
+    const endTime = zoomview.getEndTime()
+    const span = endTime - startTime
     if (span <= 0) return
-    zoomview.setZoom({ seconds: Math.max(0.5, span * factor) })
-  }, [])
+
+    const width = container.clientWidth
+    if (width <= 0) return
+
+    const ratio =
+      anchorX !== undefined ? Math.min(1, Math.max(0, anchorX / width)) : 0.5
+    const anchorTime = startTime + ratio * span
+    const requestedSpan = Math.max(0.5, span * factor)
+
+    zoomview.setZoom({ seconds: requestedSpan })
+
+    const actualSpan = zoomview.getEndTime() - zoomview.getStartTime()
+    const maxStart = Math.max(0, duration - actualSpan)
+    const newStart = Math.min(Math.max(0, anchorTime - ratio * actualSpan), maxStart)
+    zoomview.setStartTime(newStart)
+  }, [duration])
 
   const syncHighlight = useCallback((time: number) => {
     const peaks = peaksRef.current
@@ -260,8 +281,7 @@ export function WaveformTimeline({ project }: Props) {
           if (event.startMarker) setCueStartRef.current(id, event.segment.startTime)
           else setCueEndRef.current(id, event.segment.endTime)
         } else {
-          setCueStartRef.current(id, event.segment.startTime)
-          setCueEndRef.current(id, event.segment.endTime)
+          setCueTimesRef.current(id, event.segment.startTime, event.segment.endTime)
         }
       })
 
@@ -338,8 +358,13 @@ export function WaveformTimeline({ project }: Props) {
         return
       }
 
-      if (e.deltaY < 0) zoomViewByFactor(ZOOM_IN_FACTOR)
-      else if (e.deltaY > 0) zoomViewByFactor(ZOOM_OUT_FACTOR)
+      if (e.deltaY < 0) {
+        const anchorX = e.clientX - el.getBoundingClientRect().left
+        zoomViewByFactor(ZOOM_IN_FACTOR, anchorX)
+      } else if (e.deltaY > 0) {
+        const anchorX = e.clientX - el.getBoundingClientRect().left
+        zoomViewByFactor(ZOOM_OUT_FACTOR, anchorX)
+      }
     }
 
     el.addEventListener('wheel', onWheel, { passive: false })
