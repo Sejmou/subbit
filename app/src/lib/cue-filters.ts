@@ -1,22 +1,25 @@
-import type { Cue } from '../types'
-import { cueMatchesSpeakerFilter } from './speaker-refs'
+import type { Cue } from "../types";
+import { cueMatchesSpeakerFilter } from "./speaker-refs";
 
-export type ReviewStatusFilter = 'reviewed' | 'not-reviewed'
+export type ReviewStatusFilter = "reviewed" | "not-reviewed";
 
-export const REVIEW_STATUS_OPTIONS: { id: ReviewStatusFilter; label: string }[] = [
-  { id: 'reviewed', label: 'Reviewed' },
-  { id: 'not-reviewed', label: 'Not reviewed' },
-]
+export const REVIEW_STATUS_OPTIONS: {
+  id: ReviewStatusFilter;
+  label: string;
+}[] = [
+  { id: "reviewed", label: "Reviewed" },
+  { id: "not-reviewed", label: "Not reviewed" },
+];
 
 export function cueMatchesReviewStatusFilter(
   cue: Cue,
   filter: ReadonlySet<ReviewStatusFilter>,
 ): boolean {
-  if (filter.size === 0) return true
-  const reviewed = !!cue.reviewed
-  if (filter.has('reviewed') && reviewed) return true
-  if (filter.has('not-reviewed') && !reviewed) return true
-  return false
+  if (filter.size === 0) return true;
+  const reviewed = !!cue.reviewed;
+  if (filter.has("reviewed") && reviewed) return true;
+  if (filter.has("not-reviewed") && !reviewed) return true;
+  return false;
 }
 
 export function cueMatchesListFilters(
@@ -24,25 +27,31 @@ export function cueMatchesListFilters(
   speakerFilter: readonly string[],
   statusFilter: readonly ReviewStatusFilter[],
 ): boolean {
-  if (speakerFilter.length > 0 && !cueMatchesSpeakerFilter(cue, new Set(speakerFilter))) {
-    return false
+  if (
+    speakerFilter.length > 0 &&
+    !cueMatchesSpeakerFilter(cue, new Set(speakerFilter))
+  ) {
+    return false;
   }
-  if (statusFilter.length > 0 && !cueMatchesReviewStatusFilter(cue, new Set(statusFilter))) {
-    return false
+  if (
+    statusFilter.length > 0 &&
+    !cueMatchesReviewStatusFilter(cue, new Set(statusFilter))
+  ) {
+    return false;
   }
-  return true
+  return true;
 }
 
 export function activeFilterCount(
   speakerFilter: readonly string[],
   statusFilter: readonly ReviewStatusFilter[],
 ): number {
-  return speakerFilter.length + statusFilter.length
+  return speakerFilter.length + statusFilter.length;
 }
 
 export function hasActiveFilters(
   speakerFilter: readonly string[],
   statusFilter: readonly ReviewStatusFilter[],
 ): boolean {
-  return speakerFilter.length > 0 || statusFilter.length > 0
+  return speakerFilter.length > 0 || statusFilter.length > 0;
 }

@@ -1,11 +1,14 @@
-import { create } from 'zustand'
+import { create } from "zustand";
 
 /** Subtract this from the playhead when marking timing during playback (reaction delay). */
-export const REACTION_DELAY_S = 0.5
+export const REACTION_DELAY_S = 0.5;
 
 /** Playhead time for cue In/Out/insert; shifted back while the video is playing. */
-export function reactionAdjustedPlayhead(time: number, playing: boolean): number {
-  return Math.max(0, playing ? time - REACTION_DELAY_S : time)
+export function reactionAdjustedPlayhead(
+  time: number,
+  playing: boolean,
+): number {
+  return Math.max(0, playing ? time - REACTION_DELAY_S : time);
 }
 
 /**
@@ -13,20 +16,20 @@ export function reactionAdjustedPlayhead(time: number, playing: boolean): number
  * timeupdate events don't re-render editing components unnecessarily.
  */
 interface PlaybackState {
-  currentTime: number
-  duration: number
-  playing: boolean
+  currentTime: number;
+  duration: number;
+  playing: boolean;
   /** Imperative handle to the <video>, set by the player. */
-  videoEl: HTMLVideoElement | null
-  setVideoEl: (el: HTMLVideoElement | null) => void
-  setTime: (t: number) => void
-  setDuration: (d: number) => void
-  setPlaying: (p: boolean) => void
+  videoEl: HTMLVideoElement | null;
+  setVideoEl: (el: HTMLVideoElement | null) => void;
+  setTime: (t: number) => void;
+  setDuration: (d: number) => void;
+  setPlaying: (p: boolean) => void;
   /** Seek the underlying media element (also updates currentTime). */
-  seek: (t: number) => void
+  seek: (t: number) => void;
   /** Seek to `t` and start playback. */
-  playFrom: (t: number) => void
-  togglePlay: () => void
+  playFrom: (t: number) => void;
+  togglePlay: () => void;
 }
 
 export const usePlayback = create<PlaybackState>((set, getState) => ({
@@ -39,24 +42,24 @@ export const usePlayback = create<PlaybackState>((set, getState) => ({
   setDuration: (d) => set({ duration: d }),
   setPlaying: (p) => set({ playing: p }),
   seek: (t) => {
-    const { videoEl } = getState()
-    const clamped = Math.max(0, t)
-    if (videoEl) videoEl.currentTime = clamped
-    set({ currentTime: clamped })
+    const { videoEl } = getState();
+    const clamped = Math.max(0, t);
+    if (videoEl) videoEl.currentTime = clamped;
+    set({ currentTime: clamped });
   },
   playFrom: (t) => {
-    const { videoEl } = getState()
-    const clamped = Math.max(0, t)
+    const { videoEl } = getState();
+    const clamped = Math.max(0, t);
     if (videoEl) {
-      videoEl.currentTime = clamped
-      void videoEl.play()
+      videoEl.currentTime = clamped;
+      void videoEl.play();
     }
-    set({ currentTime: clamped, playing: true })
+    set({ currentTime: clamped, playing: true });
   },
   togglePlay: () => {
-    const { videoEl, playing } = getState()
-    if (!videoEl) return
-    if (playing) videoEl.pause()
-    else void videoEl.play()
+    const { videoEl, playing } = getState();
+    if (!videoEl) return;
+    if (playing) videoEl.pause();
+    else void videoEl.play();
   },
-}))
+}));

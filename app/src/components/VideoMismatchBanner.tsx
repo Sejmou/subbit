@@ -1,6 +1,6 @@
 interface Props {
-  message: string
-  onDismiss?: () => void
+  message: string;
+  onDismiss?: () => void;
 }
 
 export function VideoMismatchBanner({ message, onDismiss }: Props) {
@@ -8,10 +8,14 @@ export function VideoMismatchBanner({ message, onDismiss }: Props) {
     <div className="video-mismatch-banner" role="alert">
       <span>{message}</span>
       {onDismiss && (
-        <button type="button" className="video-mismatch-dismiss" onClick={onDismiss}>
+        <button
+          type="button"
+          className="video-mismatch-dismiss"
+          onClick={onDismiss}
+        >
           Dismiss
         </button>
       )}
     </div>
-  )
+  );
 }

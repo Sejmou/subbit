@@ -1,20 +1,20 @@
-import { memo, useEffect, useRef, Fragment } from 'react'
-import type { Cue, Project } from '../types'
-import { useProject } from '../store/project'
-import { usePlayback } from '../store/playback'
-import { openRolePicker, NO_ROLE_LABEL } from '../lib/role-picker'
-import { secondsToTimecode } from '../lib/timecode'
+import { memo, useEffect, useRef, Fragment } from "react";
+import type { Cue, Project } from "../types";
+import { useProject } from "../store/project";
+import { usePlayback } from "../store/playback";
+import { openRolePicker, NO_ROLE_LABEL } from "../lib/role-picker";
+import { secondsToTimecode } from "../lib/timecode";
 
 interface Props {
-  cue: Cue
-  index: number
-  project: Project
-  selected: boolean
-  active: boolean
+  cue: Cue;
+  index: number;
+  project: Project;
+  selected: boolean;
+  active: boolean;
 }
 
 function CueRowImpl({ cue, index, project, selected, active }: Props) {
-  const firstTextarea = useRef<HTMLTextAreaElement>(null)
+  const firstTextarea = useRef<HTMLTextAreaElement>(null);
   const {
     selectCue,
     selectSegment,
@@ -22,28 +22,34 @@ function CueRowImpl({ cue, index, project, selected, active }: Props) {
     setSegmentShot,
     toggleReviewed,
     splitAtMergedSegment,
-  } = useProject()
-  const seek = usePlayback((s) => s.seek)
+  } = useProject();
+  const seek = usePlayback((s) => s.seek);
 
   // Focus this row's text when navigation mode requests editing.
   useEffect(() => {
     function onEdit(e: Event) {
-      if ((e as CustomEvent<string>).detail === cue.id) firstTextarea.current?.focus()
+      if ((e as CustomEvent<string>).detail === cue.id)
+        firstTextarea.current?.focus();
     }
-    window.addEventListener('subbit:edit', onEdit)
-    return () => window.removeEventListener('subbit:edit', onEdit)
-  }, [cue.id])
+    window.addEventListener("subbit:edit", onEdit);
+    return () => window.removeEventListener("subbit:edit", onEdit);
+  }, [cue.id]);
 
-  const speaker = project.speakers.find((s) => s.id === cue.speakerId)
-  const cls = ['cue-row', selected && 'selected', active && 'active', cue.reviewed && 'reviewed']
+  const speaker = project.speakers.find((s) => s.id === cue.speakerId);
+  const cls = [
+    "cue-row",
+    selected && "selected",
+    active && "active",
+    cue.reviewed && "reviewed",
+  ]
     .filter(Boolean)
-    .join(' ')
+    .join(" ");
 
   return (
     <div
       className={cls}
       onMouseDown={() => selectCue(cue.id)}
-      style={{ borderLeftColor: speaker?.color ?? 'transparent' }}
+      style={{ borderLeftColor: speaker?.color ?? "transparent" }}
     >
       <div className="cue-gutter">
         <span className="cue-no">{index + 1}</span>
@@ -56,10 +62,18 @@ function CueRowImpl({ cue, index, project, selected, active }: Props) {
       </div>
 
       <div className="cue-times">
-        <button className="tc" title="Seek to In" onClick={() => seek(cue.start)}>
+        <button
+          className="tc"
+          title="Seek to In"
+          onClick={() => seek(cue.start)}
+        >
           {secondsToTimecode(cue.start, project.fps, project.timecodeOffset)}
         </button>
-        <button className="tc" title="Seek to Out" onClick={() => seek(cue.end)}>
+        <button
+          className="tc"
+          title="Seek to Out"
+          onClick={() => seek(cue.end)}
+        >
           {secondsToTimecode(cue.end, project.fps, project.timecodeOffset)}
         </button>
       </div>
@@ -70,12 +84,14 @@ function CueRowImpl({ cue, index, project, selected, active }: Props) {
         title="Assign role (A)"
         style={{ color: speaker?.color }}
         onClick={(e) => {
-          e.stopPropagation()
-          selectCue(cue.id)
-          openRolePicker(cue.id)
+          e.stopPropagation();
+          selectCue(cue.id);
+          openRolePicker(cue.id);
         }}
       >
-        <span className="role-trigger-label">{speaker?.name?.trim() || NO_ROLE_LABEL}</span>
+        <span className="role-trigger-label">
+          {speaker?.name?.trim() || NO_ROLE_LABEL}
+        </span>
         <span className="role-trigger-chevron" aria-hidden>
           ▾
         </span>
@@ -91,8 +107,8 @@ function CueRowImpl({ cue, index, project, selected, active }: Props) {
                   className="segment-seam-btn"
                   title="Split back into separate cues (Shift+M)"
                   onClick={(e) => {
-                    e.stopPropagation()
-                    splitAtMergedSegment(cue.id, i)
+                    e.stopPropagation();
+                    splitAtMergedSegment(cue.id, i);
                   }}
                 >
                   Unmerge
@@ -120,8 +136,8 @@ function CueRowImpl({ cue, index, project, selected, active }: Props) {
                 rows={1}
                 value={seg.text}
                 onFocus={() => {
-                  selectCue(cue.id)
-                  selectSegment(i)
+                  selectCue(cue.id);
+                  selectSegment(i);
                 }}
                 onChange={(e) => setSegmentText(cue.id, i, e.target.value)}
               />
@@ -130,7 +146,7 @@ function CueRowImpl({ cue, index, project, selected, active }: Props) {
         ))}
       </div>
     </div>
-  )
+  );
 }
 
-export const CueRow = memo(CueRowImpl)
+export const CueRow = memo(CueRowImpl);

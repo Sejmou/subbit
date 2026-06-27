@@ -9,7 +9,12 @@
   --accent-2: #2a6fdb;
   --ok: #3ecf8e;
   --warn: #f0a93c;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
   color-scheme: dark;
 }
 

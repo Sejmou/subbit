@@ -4,7 +4,7 @@ import {
   DEFAULT_TIMECODE_OFFSET,
   PROJECT_VERSION,
   type Project,
-} from '../types'
+} from "../types";
 
 /** Blank project for manual subtitle authoring (movie loaded, no whisperx import). */
 export function createEmptyProject(videoName: string): Project {
@@ -18,5 +18,5 @@ export function createEmptyProject(videoName: string): Project {
     shots: DEFAULT_SHOTS,
     speakers: [],
     cues: [],
-  }
+  };
 }

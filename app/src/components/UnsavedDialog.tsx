@@ -1,27 +1,27 @@
-import { useEffect } from 'react'
+import { useEffect } from "react";
 
 interface Props {
-  open: boolean
-  onSave: () => void
-  onDiscard: () => void
-  onCancel: () => void
+  open: boolean;
+  onSave: () => void;
+  onDiscard: () => void;
+  onCancel: () => void;
 }
 
 /** Three-way prompt when leaving a project with unsaved edits. */
 export function UnsavedDialog({ open, onSave, onDiscard, onCancel }: Props) {
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        onCancel()
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onCancel();
       }
     }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [open, onCancel])
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [open, onCancel]);
 
-  if (!open) return null
+  if (!open) return null;
 
   return (
     <div className="help-backdrop" onMouseDown={onCancel}>
@@ -37,5 +37,5 @@ export function UnsavedDialog({ open, onSave, onDiscard, onCancel }: Props) {
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,21 +1,22 @@
-import { useState } from 'react'
-import type { Project } from '../types'
-import { isSpeakerReferenced } from '../lib/speaker-refs'
-import { useProject } from '../store/project'
+import { useState } from "react";
+import type { Project } from "../types";
+import { isSpeakerReferenced } from "../lib/speaker-refs";
+import { useProject } from "../store/project";
 
 /** Maps diarization labels to real character names (Rolle). */
 export function SpeakerPanel({ project }: { project: Project }) {
-  const { renameSpeaker, setSpeakerColor, addSpeaker, removeSpeaker } = useProject()
-  const [adding, setAdding] = useState(false)
-  const [newName, setNewName] = useState('')
+  const { renameSpeaker, setSpeakerColor, addSpeaker, removeSpeaker } =
+    useProject();
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
 
   const commitNewSpeaker = () => {
-    const name = newName.trim()
-    if (!name) return
-    addSpeaker(name)
-    setNewName('')
-    setAdding(false)
-  }
+    const name = newName.trim();
+    if (!name) return;
+    addSpeaker(name);
+    setNewName("");
+    setAdding(false);
+  };
 
   return (
     <div className="speaker-panel">
@@ -25,8 +26,8 @@ export function SpeakerPanel({ project }: { project: Project }) {
       </div>
       <ul className="speaker-panel-list">
         {project.speakers.map((s, i) => {
-          const referenced = isSpeakerReferenced(project, s.id)
-          const displayName = s.name.trim() || 'Unnamed role'
+          const referenced = isSpeakerReferenced(project, s.id);
+          const displayName = s.name.trim() || "Unnamed role";
           return (
             <li key={s.id}>
               <span className="qk">{i + 1}</span>
@@ -58,7 +59,7 @@ export function SpeakerPanel({ project }: { project: Project }) {
                 ×
               </button>
             </li>
-          )
+          );
         })}
       </ul>
       <div className="speaker-panel-footer">
@@ -70,23 +71,27 @@ export function SpeakerPanel({ project }: { project: Project }) {
             autoFocus
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') commitNewSpeaker()
-              if (e.key === 'Escape') {
-                setNewName('')
-                setAdding(false)
+              if (e.key === "Enter") commitNewSpeaker();
+              if (e.key === "Escape") {
+                setNewName("");
+                setAdding(false);
               }
             }}
             onBlur={() => {
-              if (newName.trim()) commitNewSpeaker()
-              else setAdding(false)
+              if (newName.trim()) commitNewSpeaker();
+              else setAdding(false);
             }}
           />
         ) : (
-          <button type="button" className="add-speaker-btn" onClick={() => setAdding(true)}>
+          <button
+            type="button"
+            className="add-speaker-btn"
+            onClick={() => setAdding(true)}
+          >
             + Add role
           </button>
         )}
       </div>
     </div>
-  )
+  );
 }

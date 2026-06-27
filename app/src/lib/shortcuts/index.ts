@@ -1,5 +1,16 @@
-export { MOD_LABEL, modLabel } from './mod-label'
-export { buildShortcutContext, activeCaret, isEditing, type ShortcutContext, type Caret } from './context'
-export { SHORTCUTS, shortcutLabel, TOOLBAR_SHORTCUT_IDS, type ShortcutDef } from './registry'
-export { shortcutGroups, type ShortcutGroup } from './groups'
-export { resolveShortcut, handleShortcut } from './resolve'
+export { MOD_LABEL, modLabel } from "./mod-label";
+export {
+  buildShortcutContext,
+  activeCaret,
+  isEditing,
+  type ShortcutContext,
+  type Caret,
+} from "./context";
+export {
+  SHORTCUTS,
+  shortcutLabel,
+  TOOLBAR_SHORTCUT_IDS,
+  type ShortcutDef,
+} from "./registry";
+export { shortcutGroups, type ShortcutGroup } from "./groups";
+export { resolveShortcut, handleShortcut } from "./resolve";

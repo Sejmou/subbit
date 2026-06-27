@@ -1,5 +1,5 @@
-import { z } from 'zod'
-import type { Project } from '../types'
+import { z } from "zod";
+import type { Project } from "../types";
 
 const wordSchema = z.object({
   word: z.string(),
@@ -7,19 +7,19 @@ const wordSchema = z.object({
   end: z.number(),
   speaker: z.string().nullable().optional(),
   score: z.number().optional(),
-})
+});
 
 const segmentSchema = z.object({
   text: z.string(),
   shot: z.string(),
   mergedWithPrevious: z.boolean().optional(),
   mergedSpeakerId: z.string().nullable().optional(),
-})
+});
 
 const inferredSpeakerSchema = z.object({
   speakerId: z.string(),
   confidence: z.number().min(0).max(1),
-})
+});
 
 const cueSchema = z.object({
   id: z.string(),
@@ -30,18 +30,18 @@ const cueSchema = z.object({
   reviewed: z.boolean().optional(),
   inferredSpeaker: inferredSpeakerSchema.nullable().optional(),
   words: z.array(wordSchema).optional(),
-})
+});
 
 const speakerSchema = z.object({
   id: z.string(),
   name: z.string(),
   color: z.string(),
-})
+});
 
 const shotTypeSchema = z.object({
   id: z.string(),
   label: z.string(),
-})
+});
 
 const videoIdentitySchema = z
   .object({
@@ -54,25 +54,27 @@ const videoIdentitySchema = z
     fingerprintVersion: z.number().int().positive().optional(),
   })
   .superRefine((val, ctx) => {
-    const hasNum = val.frameRateNumerator !== undefined
-    const hasDen = val.frameRateDenominator !== undefined
+    const hasNum = val.frameRateNumerator !== undefined;
+    const hasDen = val.frameRateDenominator !== undefined;
     if (hasNum !== hasDen) {
       ctx.addIssue({
-        code: 'custom',
-        message: 'frameRateNumerator and frameRateDenominator must appear together',
-      })
+        code: "custom",
+        message:
+          "frameRateNumerator and frameRateDenominator must appear together",
+      });
     }
   })
   .transform((val) => ({
     fileName: val.fileName,
     duration: val.duration,
-    ...(val.frameRateNumerator !== undefined && val.frameRateDenominator !== undefined
+    ...(val.frameRateNumerator !== undefined &&
+    val.frameRateDenominator !== undefined
       ? {
           frameRateNumerator: val.frameRateNumerator,
           frameRateDenominator: val.frameRateDenominator,
         }
       : {}),
-  }))
+  }));
 
 export const projectSchema = z.object({
   version: z.number(),
@@ -85,22 +87,22 @@ export const projectSchema = z.object({
   shots: z.array(shotTypeSchema),
   speakers: z.array(speakerSchema),
   cues: z.array(cueSchema),
-})
+});
 
 function formatValidationError(error: z.ZodError): string {
-  const issue = error.issues[0]
-  const path = issue.path.length ? `${issue.path.join('.')}: ` : ''
-  return `Not a valid Subbit project file. ${path}${issue.message}`
+  const issue = error.issues[0];
+  const path = issue.path.length ? `${issue.path.join(".")}: ` : "";
+  return `Not a valid Subbit project file. ${path}${issue.message}`;
 }
 
 /** Validate parsed JSON as a Subbit project. */
 export function parseProjectData(data: unknown): Project {
-  const result = projectSchema.safeParse(data)
-  if (!result.success) throw new Error(formatValidationError(result.error))
-  return result.data
+  const result = projectSchema.safeParse(data);
+  if (!result.success) throw new Error(formatValidationError(result.error));
+  return result.data;
 }
 
 /** True when the value looks like a saved Subbit project (not whisperx). */
 export function isSubbitProject(data: unknown): boolean {
-  return projectSchema.safeParse(data).success
+  return projectSchema.safeParse(data).success;
 }

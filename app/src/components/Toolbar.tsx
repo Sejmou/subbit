@@ -1,36 +1,36 @@
-import { useEffect, useState } from 'react'
-import type { Project } from '../types'
-import { useProject } from '../store/project'
-import { shortcutLabel } from '../lib/shortcuts'
-import { formatRelativeTime } from '../lib/relative-time'
-import { FileMenu } from './FileMenu'
-import { FiltersMenu } from './FiltersMenu'
-import type { ReviewStatusFilter } from '../lib/cue-filters'
+import { useEffect, useState } from "react";
+import type { Project } from "../types";
+import { useProject } from "../store/project";
+import { shortcutLabel } from "../lib/shortcuts";
+import { formatRelativeTime } from "../lib/relative-time";
+import { FileMenu } from "./FileMenu";
+import { FiltersMenu } from "./FiltersMenu";
+import type { ReviewStatusFilter } from "../lib/cue-filters";
 
-type SaveStateVariant = 'saving' | 'edited' | 'unsaved' | 'saved'
+type SaveStateVariant = "saving" | "edited" | "unsaved" | "saved";
 
 interface Props {
-  project: Project
-  dirty: boolean
-  lastSavedAt: number | null
-  autosaveEnabled: boolean
-  saving: boolean
-  onSave: () => void
-  onExport: () => void
-  onHelp: () => void
-  onHistory: () => void
-  onOpenProject: () => void
-  onNewBlankProject: () => void
-  onImportWhisperx: () => void
-  onImportWaveform: () => void
-  onCloseProject: () => void
-  previewEnabled: boolean
-  onTogglePreview: () => void
-  speakerFilter: string[]
-  statusFilter: ReviewStatusFilter[]
-  onToggleSpeakerFilter: (speakerId: string) => void
-  onToggleStatusFilter: (status: ReviewStatusFilter) => void
-  onClearFilters: () => void
+  project: Project;
+  dirty: boolean;
+  lastSavedAt: number | null;
+  autosaveEnabled: boolean;
+  saving: boolean;
+  onSave: () => void;
+  onExport: () => void;
+  onHelp: () => void;
+  onHistory: () => void;
+  onOpenProject: () => void;
+  onNewBlankProject: () => void;
+  onImportWhisperx: () => void;
+  onImportWaveform: () => void;
+  onCloseProject: () => void;
+  previewEnabled: boolean;
+  onTogglePreview: () => void;
+  speakerFilter: string[];
+  statusFilter: ReviewStatusFilter[];
+  onToggleSpeakerFilter: (speakerId: string) => void;
+  onToggleStatusFilter: (status: ReviewStatusFilter) => void;
+  onClearFilters: () => void;
 }
 
 function saveStateLabel(
@@ -39,26 +39,39 @@ function saveStateLabel(
   lastSavedAt: number | null,
   autosaveEnabled: boolean,
 ): { label: string; title?: string; variant: SaveStateVariant | null } {
-  if (saving) return { label: 'Saving…', variant: 'saving' }
+  if (saving) return { label: "Saving…", variant: "saving" };
   if (dirty) {
     if (autosaveEnabled) {
-      return { label: 'Edited', title: 'Autosaves in a few seconds', variant: 'edited' }
+      return {
+        label: "Edited",
+        title: "Autosaves in a few seconds",
+        variant: "edited",
+      };
     }
-    return { label: 'Unsaved changes', variant: 'unsaved' }
+    return { label: "Unsaved changes", variant: "unsaved" };
   }
   if (lastSavedAt) {
-    return { label: `Last save ${formatRelativeTime(lastSavedAt)}`, variant: 'saved' }
+    return {
+      label: `Last save ${formatRelativeTime(lastSavedAt)}`,
+      variant: "saved",
+    };
   }
-  return { label: '', variant: null }
+  return { label: "", variant: null };
 }
 
-function ReviewProgress({ reviewed, total }: { reviewed: number; total: number }) {
-  const radius = 8
-  const circumference = 2 * Math.PI * radius
-  const ratio = total > 0 ? reviewed / total : 0
-  const dashOffset = circumference * (1 - ratio)
-  const percent = (ratio * 100).toFixed(1)
-  const summary = `${reviewed} of ${total} cues reviewed (${percent}%)`
+function ReviewProgress({
+  reviewed,
+  total,
+}: {
+  reviewed: number;
+  total: number;
+}) {
+  const radius = 8;
+  const circumference = 2 * Math.PI * radius;
+  const ratio = total > 0 ? reviewed / total : 0;
+  const dashOffset = circumference * (1 - ratio);
+  const percent = (ratio * 100).toFixed(1);
+  const summary = `${reviewed} of ${total} cues reviewed (${percent}%)`;
 
   return (
     <span className="review-progress" title={summary} aria-label={summary}>
@@ -77,7 +90,7 @@ function ReviewProgress({ reviewed, total }: { reviewed: number; total: number }
         {reviewed}/{total} reviewed
       </span>
     </span>
-  )
+  );
 }
 
 export function Toolbar({
@@ -103,22 +116,22 @@ export function Toolbar({
   onToggleStatusFilter,
   onClearFilters,
 }: Props) {
-  const undo = useProject((s) => s.undo)
-  const redo = useProject((s) => s.redo)
-  const canUndo = useProject((s) => s.past.length > 0)
-  const canRedo = useProject((s) => s.future.length > 0)
-  const reviewed = project.cues.filter((c) => c.reviewed).length
-  const total = project.cues.length
+  const undo = useProject((s) => s.undo);
+  const redo = useProject((s) => s.redo);
+  const canUndo = useProject((s) => s.past.length > 0);
+  const canRedo = useProject((s) => s.future.length > 0);
+  const reviewed = project.cues.filter((c) => c.reviewed).length;
+  const total = project.cues.length;
 
   // Re-render periodically so "Last save … ago" stays fresh.
-  const [, tick] = useState(0)
+  const [, tick] = useState(0);
   useEffect(() => {
-    if (!lastSavedAt) return
-    const id = setInterval(() => tick((n) => n + 1), 30_000)
-    return () => clearInterval(id)
-  }, [lastSavedAt])
+    if (!lastSavedAt) return;
+    const id = setInterval(() => tick((n) => n + 1), 30_000);
+    return () => clearInterval(id);
+  }, [lastSavedAt]);
 
-  const saveState = saveStateLabel(saving, dirty, lastSavedAt, autosaveEnabled)
+  const saveState = saveStateLabel(saving, dirty, lastSavedAt, autosaveEnabled);
 
   return (
     <div className="toolbar">
@@ -141,10 +154,18 @@ export function Toolbar({
       <ReviewProgress reviewed={reviewed} total={total} />
 
       <span className="btn-group">
-        <button onClick={undo} disabled={!canUndo} title={`Undo (${shortcutLabel('undo')})`}>
+        <button
+          onClick={undo}
+          disabled={!canUndo}
+          title={`Undo (${shortcutLabel("undo")})`}
+        >
           Undo
         </button>
-        <button onClick={redo} disabled={!canRedo} title={`Redo (${shortcutLabel('redo')})`}>
+        <button
+          onClick={redo}
+          disabled={!canRedo}
+          title={`Redo (${shortcutLabel("redo")})`}
+        >
           Redo
         </button>
       </span>
@@ -153,15 +174,21 @@ export function Toolbar({
 
       <span className="toolbar-actions">
         <span
-          className={saveState.variant ? `save-state save-state--${saveState.variant}` : 'save-state'}
+          className={
+            saveState.variant
+              ? `save-state save-state--${saveState.variant}`
+              : "save-state"
+          }
           title={saveState.title}
         >
           {saveState.label}
         </span>
         <button
-          className={previewEnabled ? 'preview-btn preview-btn--on' : 'preview-btn'}
+          className={
+            previewEnabled ? "preview-btn preview-btn--on" : "preview-btn"
+          }
           onClick={onTogglePreview}
-          title={`${previewEnabled ? 'Hide' : 'Show'} subtitle preview on video (${shortcutLabel('preview-toggle')})`}
+          title={`${previewEnabled ? "Hide" : "Show"} subtitle preview on video (${shortcutLabel("preview-toggle")})`}
         >
           Preview
         </button>
@@ -169,18 +196,23 @@ export function Toolbar({
           History
         </button>
         <button
-          className={dirty ? 'primary save-btn' : 'save-btn'}
+          className={dirty ? "primary save-btn" : "save-btn"}
           onClick={onSave}
           disabled={saving}
-          title={`Save project (${shortcutLabel('save')})`}
+          title={`Save project (${shortcutLabel("save")})`}
         >
           Save
         </button>
         <button onClick={onExport}>Export…</button>
-        <button className="help-btn" onClick={onHelp} title="Keyboard shortcuts" aria-label="Keyboard shortcuts">
+        <button
+          className="help-btn"
+          onClick={onHelp}
+          title="Keyboard shortcuts"
+          aria-label="Keyboard shortcuts"
+        >
           ?
         </button>
       </span>
     </div>
-  )
+  );
 }

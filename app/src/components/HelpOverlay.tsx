@@ -1,21 +1,27 @@
-import { useEffect } from 'react'
-import { MOD_LABEL, shortcutGroups } from '../lib/shortcuts'
+import { useEffect } from "react";
+import { MOD_LABEL, shortcutGroups } from "../lib/shortcuts";
 
 /** Modal cheat sheet of keyboard shortcuts. Close with Esc, ?, or backdrop. */
-export function HelpOverlay({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function HelpOverlay({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
   useEffect(() => {
-    if (!open) return
+    if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape' || e.key === '?') {
-        e.preventDefault()
-        onClose()
+      if (e.key === "Escape" || e.key === "?") {
+        e.preventDefault();
+        onClose();
       }
     }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [open, onClose])
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [open, onClose]);
 
-  if (!open) return null
+  if (!open) return null;
 
   return (
     <div className="help-backdrop" onMouseDown={onClose}>
@@ -47,5 +53,5 @@ export function HelpOverlay({ open, onClose }: { open: boolean; onClose: () => v
         </div>
       </div>
     </div>
-  )
+  );
 }

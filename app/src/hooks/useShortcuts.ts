@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { handleShortcut } from '../lib/shortcuts'
+import { useEffect } from "react";
+import { handleShortcut } from "../lib/shortcuts";
 
 /**
  * Global keyboard handling with two modes:
@@ -14,10 +14,10 @@ import { handleShortcut } from '../lib/shortcuts'
 export function useShortcuts() {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      handleShortcut(e)
+      handleShortcut(e);
     }
 
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [])
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
 }

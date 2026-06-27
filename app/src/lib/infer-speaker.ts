@@ -1,11 +1,11 @@
-import type { InferredSpeaker, Word } from '../types'
+import type { InferredSpeaker, Word } from "../types";
 
 /** Auto-assign cue.speakerId when inferredSpeaker.confidence meets this threshold. */
-export const SPEAKER_AUTO_ASSIGN_THRESHOLD = 0.75
+export const SPEAKER_AUTO_ASSIGN_THRESHOLD = 0.75;
 
 function wordDuration(w: Word): number {
-  const duration = w.end - w.start
-  return duration > 0 ? duration : 0
+  const duration = w.end - w.start;
+  return duration > 0 ? duration : 0;
 }
 
 /**
@@ -16,42 +16,44 @@ export function inferSpeakerFromWords(
   words: Word[] | undefined,
   segmentSpeaker: string | null | undefined,
 ): InferredSpeaker | null {
-  const totals = new Map<string, number>()
-  let totalDuration = 0
+  const totals = new Map<string, number>();
+  let totalDuration = 0;
 
   for (const w of words ?? []) {
-    if (!w.speaker) continue
-    const duration = wordDuration(w)
-    if (duration <= 0) continue
-    totals.set(w.speaker, (totals.get(w.speaker) ?? 0) + duration)
-    totalDuration += duration
+    if (!w.speaker) continue;
+    const duration = wordDuration(w);
+    if (duration <= 0) continue;
+    totals.set(w.speaker, (totals.get(w.speaker) ?? 0) + duration);
+    totalDuration += duration;
   }
 
   if (totalDuration > 0) {
-    let speakerId = ''
-    let winnerDuration = 0
+    let speakerId = "";
+    let winnerDuration = 0;
     for (const [id, duration] of totals) {
       if (duration > winnerDuration) {
-        speakerId = id
-        winnerDuration = duration
+        speakerId = id;
+        winnerDuration = duration;
       }
     }
-    return { speakerId, confidence: winnerDuration / totalDuration }
+    return { speakerId, confidence: winnerDuration / totalDuration };
   }
 
   if (segmentSpeaker) {
-    return { speakerId: segmentSpeaker, confidence: 1 }
+    return { speakerId: segmentSpeaker, confidence: 1 };
   }
 
-  return null
+  return null;
 }
 
 export function resolveSpeakerFromInference(inferred: InferredSpeaker | null): {
-  speakerId: string | null
-  inferredSpeaker: InferredSpeaker | null
+  speakerId: string | null;
+  inferredSpeaker: InferredSpeaker | null;
 } {
-  if (!inferred) return { speakerId: null, inferredSpeaker: null }
+  if (!inferred) return { speakerId: null, inferredSpeaker: null };
   const speakerId =
-    inferred.confidence >= SPEAKER_AUTO_ASSIGN_THRESHOLD ? inferred.speakerId : null
-  return { speakerId, inferredSpeaker: inferred }
+    inferred.confidence >= SPEAKER_AUTO_ASSIGN_THRESHOLD
+      ? inferred.speakerId
+      : null;
+  return { speakerId, inferredSpeaker: inferred };
 }
