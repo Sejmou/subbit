@@ -1,6 +1,5 @@
 import { MOD_LABEL } from "./mod-label";
 import type { ShortcutContext } from "./context";
-import { reactionAdjustedPlayhead } from "../../store/playback";
 import { focusCueForEdit } from "../focus-cue";
 import { openRolePicker } from "../role-picker";
 import { createKeyLabeler, type KeyLabeler } from "../keyboard-layout";
@@ -313,27 +312,19 @@ export const SHORTCUTS: ShortcutDef[] = [
     id: "set-in",
     group: "Timing",
     label: (_, k) => k.code("KeyI"),
-    description: "Set cue In to the playhead (500 ms earlier while playing)",
+    description: "Set cue In to the playhead",
     match: (e, ctx) =>
       plainKey(e) && !ctx.editing && !!ctx.cue && e.key === "i",
-    run: (ctx) =>
-      ctx.ps.setCueStart(
-        ctx.cue!.id,
-        reactionAdjustedPlayhead(ctx.pb.currentTime, ctx.pb.playing),
-      ),
+    run: (ctx) => ctx.ps.setCueStart(ctx.cue!.id, ctx.pb.currentTime),
   },
   {
     id: "set-out",
     group: "Timing",
     label: (_, k) => k.code("KeyO"),
-    description: "Set cue Out to the playhead (500 ms earlier while playing)",
+    description: "Set cue Out to the playhead",
     match: (e, ctx) =>
       plainKey(e) && !ctx.editing && !!ctx.cue && e.key === "o",
-    run: (ctx) =>
-      ctx.ps.setCueEnd(
-        ctx.cue!.id,
-        reactionAdjustedPlayhead(ctx.pb.currentTime, ctx.pb.playing),
-      ),
+    run: (ctx) => ctx.ps.setCueEnd(ctx.cue!.id, ctx.pb.currentTime),
   },
   {
     id: "nudge-in-earlier",
@@ -432,16 +423,14 @@ export const SHORTCUTS: ShortcutDef[] = [
     id: "insert-cue",
     group: "Text & structure",
     label: (_, k) => k.code("KeyN"),
-    description: "Add a cue at the playhead (500 ms earlier while playing)",
+    description: "Add a cue at the playhead",
     match: (e, ctx) =>
       plainKey(e) &&
       !ctx.editing &&
       !!ctx.project &&
       (e.key === "n" || e.key === "N"),
     run: (ctx) => {
-      const id = ctx.ps.insertCueAtPlayhead(
-        reactionAdjustedPlayhead(ctx.pb.currentTime, ctx.pb.playing),
-      );
+      const id = ctx.ps.insertCueAtPlayhead(ctx.pb.currentTime);
       if (id) focusCueForEdit(id);
     },
     preventDefault: true,

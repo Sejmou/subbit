@@ -172,7 +172,7 @@ describe("resolveShortcut", () => {
     ).toBeNull();
   });
 
-  it("applies reaction delay to timing keys while playing", () => {
+  it("marks cue In/Out at the playhead for I and O", () => {
     const playing = ctx({
       pb: { ...ctx().pb, currentTime: 10, playing: true },
     });
@@ -180,7 +180,7 @@ describe("resolveShortcut", () => {
       playing,
       makeKeyEvent("i"),
     );
-    expect(playing.ps.setCueStart).toHaveBeenCalledWith("cue-1", 9.5);
+    expect(playing.ps.setCueStart).toHaveBeenCalledWith("cue-1", 10);
 
     const paused = ctx();
     resolveShortcut(makeKeyEvent("o"), paused)?.run(paused, makeKeyEvent("o"));

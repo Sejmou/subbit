@@ -1,6 +1,6 @@
 import type { Project } from "../types";
 import { useProject } from "../store/project";
-import { usePlayback, reactionAdjustedPlayhead } from "../store/playback";
+import { usePlayback } from "../store/playback";
 import { useShortcutLabel } from "../hooks/useShortcutLabel";
 import { cueDisplayTimecode } from "../lib/display-time";
 import { useTimeReference } from "../store/time-reference";
@@ -48,7 +48,7 @@ export function CueTransport({ project }: { project: Project }) {
   const setCueStart = useProject((s) => s.setCueStart);
   const setCueEnd = useProject((s) => s.setCueEnd);
   const timeReference = useTimeReference((s) => s.reference);
-  const { currentTime, playing, seek } = usePlayback();
+  const { currentTime, seek } = usePlayback();
   const seekToCueLabel = useShortcutLabel("seek-to-cue");
   const previousCueLabel = useShortcutLabel("previous-cue");
   const nextCueLabel = useShortcutLabel("next-cue");
@@ -68,8 +68,6 @@ export function CueTransport({ project }: { project: Project }) {
   const outDrift = cue ? currentTime - cue.end : 0;
   const offIn = hasCue && Math.abs(inDrift) > OFF_CUE_THRESHOLD_S;
   const offOut = hasCue && Math.abs(outDrift) > OFF_CUE_THRESHOLD_S;
-
-  const playheadForMark = reactionAdjustedPlayhead(currentTime, playing);
 
   const jumpInTitle = hasCue
     ? offIn
@@ -149,7 +147,7 @@ export function CueTransport({ project }: { project: Project }) {
           type="button"
           className="cue-transport-set-btn"
           disabled={!hasCue}
-          onClick={() => cue && setCueStart(cue.id, playheadForMark)}
+          onClick={() => cue && setCueStart(cue.id, currentTime)}
           title={`Set In to playhead (${setInLabel})`}
         >
           Set
@@ -175,7 +173,7 @@ export function CueTransport({ project }: { project: Project }) {
           type="button"
           className="cue-transport-set-btn"
           disabled={!hasCue}
-          onClick={() => cue && setCueEnd(cue.id, playheadForMark)}
+          onClick={() => cue && setCueEnd(cue.id, currentTime)}
           title={`Set Out to playhead (${setOutLabel})`}
         >
           Set

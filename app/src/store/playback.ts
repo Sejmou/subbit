@@ -1,16 +1,5 @@
 import { create } from "zustand";
 
-/** Subtract this from the playhead when marking timing during playback (reaction delay). */
-export const REACTION_DELAY_S = 0.5;
-
-/** Playhead time for cue In/Out/insert; shifted back while the video is playing. */
-export function reactionAdjustedPlayhead(
-  time: number,
-  playing: boolean,
-): number {
-  return Math.max(0, playing ? time - REACTION_DELAY_S : time);
-}
-
 /**
  * Transient playback state, kept separate from the project so frequent
  * timeupdate events don't re-render editing components unnecessarily.
