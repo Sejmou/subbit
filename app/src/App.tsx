@@ -8,11 +8,11 @@ import {
   projectFromWhisperxData,
 } from "./lib/load-subtitles";
 import {
-  cacheMovieHandle,
+  cacheVideoHandle,
   cacheProjectHandle,
   downloadText,
   ensurePermission,
-  getCachedMovieHandle,
+  getCachedVideoHandle,
   getCachedProjectHandle,
   hasPermission,
   isFsAccessSupported,
@@ -26,6 +26,11 @@ import {
 } from "./lib/project-io";
 import { addVersion } from "./lib/history";
 import { createEmptyProject } from "./lib/create-empty-project";
+import {
+  suggestedExportFilename,
+  suggestedProjectFilename,
+  resolveProjectName,
+} from "./lib/project-meta";
 import { useShortcuts } from "./hooks/useShortcuts";
 import { LoadScreen } from "./components/LoadScreen";
 import { VideoPlayer } from "./components/VideoPlayer";
@@ -70,9 +75,9 @@ export default function App() {
   const markSaved = useProject((s) => s.markSaved);
   const restoreProject = useProject((s) => s.restoreProject);
 
-  const [movieUrl, setMovieUrl] = useState<string | null>(null);
-  const [movieName, setMovieName] = useState<string | null>(null);
-  const [movieFile, setMovieFile] = useState<File | null>(null);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoFileName, setVideoFileName] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoMismatchDismissed, setVideoMismatchDismissed] = useState(false);
   const [started, setStarted] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -88,29 +93,29 @@ export default function App() {
   const [statusFilter, setStatusFilter] = useState<ReviewStatusFilter[]>([]);
   const [rolePickerCueId, setRolePickerCueId] = useState<string | null>(null);
 
-  const movieHandle = useRef<FsFileHandle | null>(null);
+  const videoHandle = useRef<FsFileHandle | null>(null);
   const projectHandle = useRef<FsFileHandle | null>(null);
   const unsavedResolver = useRef<((proceed: boolean) => void) | null>(null);
   const fsSupported = isFsAccessSupported();
 
-  const setMovieFromFile = useCallback((file: File) => {
-    setMovieFile(file);
+  const setVideoFromFile = useCallback((file: File) => {
+    setVideoFile(file);
     setVideoMismatchDismissed(false);
-    setMovieUrl((prev) => {
+    setVideoUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
       return URL.createObjectURL(file);
     });
-    setMovieName(file.name);
+    setVideoFileName(file.name);
   }, []);
 
   // --- file pickers (FS Access) ---
-  const pickMovie = useCallback(async () => {
-    const handle = await pickFile(VIDEO_ACCEPT, "Movie");
+  const pickVideo = useCallback(async () => {
+    const handle = await pickFile(VIDEO_ACCEPT, "Video");
     if (!handle) return;
-    movieHandle.current = handle;
-    await cacheMovieHandle(handle);
-    setMovieFromFile(await readHandleAsFile(handle));
-  }, [setMovieFromFile]);
+    videoHandle.current = handle;
+    await cacheVideoHandle(handle);
+    setVideoFromFile(await readHandleAsFile(handle));
+  }, [setVideoFromFile]);
 
   /**
    * Load subtitles from a JSON string, auto-detecting whether it's a saved
@@ -120,7 +125,7 @@ export default function App() {
   const loadSubtitlesText = useCallback(
     (text: string, projectFileHandle?: FsFileHandle) => {
       const data = parseSubtitleJsonText(text);
-      const parsed = projectFromSubtitleData(data, movieName ?? "movie");
+      const parsed = projectFromSubtitleData(data, videoFileName ?? "video");
       const isSubbitProject =
         typeof data === "object" &&
         data !== null &&
@@ -138,7 +143,7 @@ export default function App() {
         setAutosaveEnabled(false);
       }
     },
-    [loadProject, movieName],
+    [loadProject, videoFileName],
   );
 
   const loadSubtitlesFromHandle = useCallback(
@@ -164,9 +169,9 @@ export default function App() {
   }, [loadSubtitlesFromHandle]);
 
   // --- fallback file inputs ---
-  const onMovieFile = useCallback(
-    (file: File) => setMovieFromFile(file),
-    [setMovieFromFile],
+  const onVideoFile = useCallback(
+    (file: File) => setVideoFromFile(file),
+    [setVideoFromFile],
   );
   const onSubtitlesFile = useCallback(
     async (file: File) => {
@@ -188,7 +193,7 @@ export default function App() {
   const doRestore = useCallback(
     async (silent: boolean): Promise<boolean> => {
       const [m, p] = await Promise.all([
-        getCachedMovieHandle(),
+        getCachedVideoHandle(),
         getCachedProjectHandle(),
       ]);
       if (!m || !p) return false;
@@ -202,8 +207,8 @@ export default function App() {
 
       setBusy("Reopening...");
       try {
-        movieHandle.current = m;
-        setMovieFromFile(await readHandleAsFile(m));
+        videoHandle.current = m;
+        setVideoFromFile(await readHandleAsFile(m));
         projectHandle.current = p;
         setAutosaveEnabled(true);
         loadProject(parseProject(await (await readHandleAsFile(p)).text()));
@@ -214,7 +219,7 @@ export default function App() {
         setBusy(null);
       }
     },
-    [loadProject, setMovieFromFile],
+    [loadProject, setVideoFromFile],
   );
 
   // On load: auto-reopen if permission persisted, else offer a one-click button.
@@ -223,7 +228,7 @@ export default function App() {
     void (async () => {
       if (await doRestore(true)) return;
       const [m, p] = await Promise.all([
-        getCachedMovieHandle(),
+        getCachedVideoHandle(),
         getCachedProjectHandle(),
       ]);
       if (m && p) setCanRestore(true);
@@ -242,7 +247,7 @@ export default function App() {
           await writeTextToHandle(projectHandle.current, text);
         } else if (fsSupported) {
           const handle = await pickProjectSaveFile(
-            `${current.videoName}.subbit.json`,
+            suggestedProjectFilename(current),
           );
           if (!handle) return false;
           projectHandle.current = handle;
@@ -251,7 +256,7 @@ export default function App() {
           await writeTextToHandle(handle, text);
         } else {
           downloadText(
-            `${current.videoName}.subbit.json`,
+            suggestedProjectFilename(current),
             text,
             "application/json",
           );
@@ -277,7 +282,7 @@ export default function App() {
     const current = useProject.getState().project;
     if (!current) return;
     const { content, ext, mime } = buildExport(current, request);
-    downloadText(`${current.videoName}.${ext}`, content, mime);
+    downloadText(suggestedExportFilename(current, ext), content, mime);
   }, []);
 
   /** Returns true when it's safe to leave or replace the current project. */
@@ -339,21 +344,21 @@ export default function App() {
     try {
       const text = await (await readHandleAsFile(handle)).text();
       const data = parseSubtitleJsonText(text);
-      loadProject(projectFromWhisperxData(data, movieName ?? "movie"));
+      loadProject(projectFromWhisperxData(data, videoFileName ?? "video"));
       projectHandle.current = null;
       setAutosaveEnabled(false);
     } catch (err) {
       alert((err as Error).message);
     }
-  }, [guardUnsaved, loadProject, movieName]);
+  }, [guardUnsaved, loadProject, videoFileName]);
 
   const doImportWaveform = useCallback(async () => {
     const current = useProject.getState().project;
     if (!current) return;
     const videoDuration = usePlayback.getState().duration;
-    if (!movieFile || !Number.isFinite(videoDuration) || videoDuration <= 0) {
+    if (!videoFile || !Number.isFinite(videoDuration) || videoDuration <= 0) {
       alert(
-        "Load a movie first so waveform peaks can be matched to the video.",
+        "Load a video first so waveform peaks can be matched to it.",
       );
       return;
     }
@@ -371,28 +376,28 @@ export default function App() {
       if (mismatch && !window.confirm(`${mismatch}\n\nImport anyway?`)) return;
 
       const identity =
-        current.video ?? (await buildVideoIdentity(movieFile, videoDuration));
+        current.video ?? (await buildVideoIdentity(videoFile, videoDuration));
       const key = waveformCacheKey(identity);
       useWaveform.getState().setPeaks(parsed, file.name, key);
       await cacheWaveformPeaks(key, parsed);
     } catch (err) {
       alert((err as Error).message);
     }
-  }, [movieFile]);
+  }, [videoFile]);
 
   const doNewBlankProject = useCallback(async () => {
     if (!(await guardUnsaved())) return;
 
     if (fsSupported) {
-      const handle = await pickFile(VIDEO_ACCEPT, "Movie");
+      const handle = await pickFile(VIDEO_ACCEPT, "Video");
       if (!handle) return;
-      movieHandle.current = handle;
-      await cacheMovieHandle(handle);
+      videoHandle.current = handle;
+      await cacheVideoHandle(handle);
       const file = await readHandleAsFile(handle);
-      setMovieFromFile(file);
+      setVideoFromFile(file);
       loadProject(createEmptyProject(file.name));
-    } else if (movieName) {
-      loadProject(createEmptyProject(movieName));
+    } else if (videoFileName) {
+      loadProject(createEmptyProject(videoFileName));
     } else {
       closeProject();
       return;
@@ -404,20 +409,30 @@ export default function App() {
   }, [
     guardUnsaved,
     fsSupported,
-    movieName,
-    setMovieFromFile,
+    videoFileName,
+    setVideoFromFile,
     loadProject,
     closeProject,
   ]);
 
-  const startEditing = useCallback(() => {
-    if (!useProject.getState().project) {
-      loadProject(createEmptyProject(movieName ?? "movie"));
-      projectHandle.current = null;
-      setAutosaveEnabled(false);
-    }
-    setStarted(true);
-  }, [loadProject, movieName]);
+  const startEditing = useCallback(
+    (projectName: string) => {
+      const state = useProject.getState();
+      const resolvedName = resolveProjectName(
+        projectName,
+        videoFileName ?? "video",
+      );
+      if (!state.project) {
+        loadProject(createEmptyProject(videoFileName ?? "video", resolvedName));
+        projectHandle.current = null;
+        setAutosaveEnabled(false);
+      } else if (projectName.trim()) {
+        state.setProjectName(resolvedName);
+      }
+      setStarted(true);
+    },
+    [loadProject, videoFileName],
+  );
 
   const togglePreview = useCallback(() => {
     setPreviewEnabled((prev) => {
@@ -448,16 +463,16 @@ export default function App() {
     setStatusFilter([]);
   }, []);
 
+  const speakers = project?.speakers;
+
   // Drop stale filter ids when speakers are removed.
   useEffect(() => {
-    if (!project) return;
+    if (!speakers) return;
     setSpeakerFilter((prev) => {
-      const valid = prev.filter((id) =>
-        project.speakers.some((s) => s.id === id),
-      );
+      const valid = prev.filter((id) => speakers.some((s) => s.id === id));
       return valid.length === prev.length ? prev : valid;
     });
-  }, [project?.speakers]);
+  }, [speakers]);
 
   useEffect(() => {
     function onRolePickerOpen(e: Event) {
@@ -515,7 +530,7 @@ export default function App() {
   const restoreWaveform = useWaveform((s) => s.restoreFromCache);
 
   const { status: videoIdentityStatus, message: videoMismatchMessage } =
-    useVideoIdentity(movieFile);
+    useVideoIdentity(videoFile);
 
   // Restore cached waveform peaks when video identity is known.
   useEffect(() => {
@@ -538,13 +553,14 @@ export default function App() {
         )}
         <LoadScreen
           fsSupported={fsSupported}
-          movieName={movieName}
+          videoFileName={videoFileName}
+          loadedProjectName={project?.name ?? null}
           hasSubtitles={!!project}
           canRestore={canRestore}
           busy={busy}
-          onPickMovie={pickMovie}
+          onPickVideo={pickVideo}
           onPickSubtitles={pickSubtitles}
-          onMovieFile={onMovieFile}
+          onVideoFile={onVideoFile}
           onSubtitlesFile={onSubtitlesFile}
           onRestore={() => void doRestore(false)}
           onStart={startEditing}
@@ -610,14 +626,14 @@ export default function App() {
       />
       <div className="main">
         <div className="left">
-          {movieUrl ? (
+          {videoUrl ? (
             <VideoPlayer
-              src={movieUrl}
+              src={videoUrl}
               project={project}
               previewEnabled={previewEnabled}
             />
           ) : (
-            <div className="video-wrap empty">No movie loaded</div>
+            <div className="video-wrap empty">No video loaded</div>
           )}
           <SpeakerPanel project={project} />
         </div>

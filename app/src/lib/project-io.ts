@@ -4,7 +4,7 @@ import { parseProjectData } from "./project-schema";
 
 /**
  * File access layer. Prefers the File System Access API (Chrome/Edge) so the
- * project can be saved in place and the large movie handle re-opened next
+ * project can be saved in place and the large video handle re-opened next
  * session without re-picking. Falls back to download/upload elsewhere.
  */
 
@@ -40,7 +40,7 @@ export function isFsAccessSupported(): boolean {
 export type { FsFileHandle };
 
 const HANDLE_KEYS = {
-  movie: "subbit:movieHandle",
+  video: "subbit:videoHandle",
   project: "subbit:projectHandle",
 } as const;
 
@@ -98,15 +98,19 @@ export async function writeTextToHandle(
   await writable.close();
 }
 
-// --- handle caching (so the 1.2 GB movie reopens without re-picking) ---
+// --- handle caching (so the 1.2 GB video reopens without re-picking) ---
 
-export async function cacheMovieHandle(handle: FsFileHandle) {
-  await set(HANDLE_KEYS.movie, handle);
+export async function cacheVideoHandle(handle: FsFileHandle) {
+  await set(HANDLE_KEYS.video, handle);
 }
-export async function getCachedMovieHandle(): Promise<
+const LEGACY_VIDEO_HANDLE_KEY = "subbit:movieHandle";
+
+export async function getCachedVideoHandle(): Promise<
   FsFileHandle | undefined
 > {
-  return get(HANDLE_KEYS.movie);
+  const handle = await get(HANDLE_KEYS.video);
+  if (handle) return handle;
+  return get(LEGACY_VIDEO_HANDLE_KEY);
 }
 export async function cacheProjectHandle(handle: FsFileHandle) {
   await set(HANDLE_KEYS.project, handle);
@@ -117,7 +121,7 @@ export async function getCachedProjectHandle(): Promise<
   return get(HANDLE_KEYS.project);
 }
 export async function clearCachedHandles() {
-  await Promise.all([del(HANDLE_KEYS.movie), del(HANDLE_KEYS.project)]);
+  await Promise.all([del(HANDLE_KEYS.video), del(HANDLE_KEYS.project)]);
 }
 
 // --- download/upload fallback ---

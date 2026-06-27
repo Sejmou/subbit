@@ -9,7 +9,7 @@ import {
   parseProgramStartTimecode,
   programStartTimecode,
 } from "../lib/program-start";
-import { secondsToClock } from "../lib/timecode";
+import { secondsToClock, secondsToTimecode } from "../lib/timecode";
 
 interface Props {
   project: Project;
@@ -30,9 +30,13 @@ export function ProgramStartPanel({ project, ready }: Props) {
   const [inputError, setInputError] = useState<string | null>(null);
 
   useEffect(() => {
-    setDraft(programStartTimecode(project));
+    setDraft(
+      contentStart <= 0
+        ? "00:00:00:00"
+        : secondsToTimecode(contentStart, project.fps, "00:00:00:00"),
+    );
     setInputError(null);
-  }, [project.contentStartSeconds, project.fps]);
+  }, [contentStart, project.fps]);
 
   const applyDraft = useCallback(() => {
     try {

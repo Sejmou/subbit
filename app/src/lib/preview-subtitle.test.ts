@@ -11,6 +11,8 @@ import {
 
 const baseProject = (cues: Cue[]): Project => ({
   version: PROJECT_VERSION,
+  id: "00000000-0000-4000-8000-000000000001",
+  name: "test",
   videoName: "test",
   fps: DEFAULT_FPS,
   timecodeOffset: DEFAULT_TIMECODE_OFFSET,

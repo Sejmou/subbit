@@ -4,7 +4,7 @@ import { SubtitlePreview } from "./SubtitlePreview";
 import { usePlayback } from "../store/playback";
 
 /**
- * Plays the local movie via an object URL. The browser streams the file from
+ * Plays the local video via an object URL. The browser streams the file from
  * disk, so multi-GB files work without loading into memory.
  */
 export function VideoPlayer({

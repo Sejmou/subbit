@@ -46,7 +46,7 @@ describe("importWhisperx", () => {
           },
         ],
       },
-      "movie.mp4",
+      "clip.mp4",
     );
     expect(project.cues[0].inferredSpeaker).toEqual({
       speakerId: "A",
@@ -70,7 +70,7 @@ describe("importWhisperx", () => {
           },
         ],
       },
-      "movie.mp4",
+      "clip.mp4",
     );
     expect(project.cues[0].inferredSpeaker).toEqual({
       speakerId: "A",
@@ -88,7 +88,7 @@ describe("real whisperx file", () => {
     );
     expect(whisperxSchema.safeParse(data).success).toBe(true);
     expect(
-      importWhisperx(parseWhisperxData(data), "movie.mp4").cues.length,
+      importWhisperx(parseWhisperxData(data), "clip.mp4").cues.length,
     ).toBeGreaterThan(0);
   });
 });

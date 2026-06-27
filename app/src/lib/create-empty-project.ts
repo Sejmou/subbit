@@ -5,11 +5,17 @@ import {
   PROJECT_VERSION,
   type Project,
 } from "../types";
+import { newProjectId, resolveProjectName } from "./project-meta";
 
-/** Blank project for manual subtitle authoring (movie loaded, no whisperx import). */
-export function createEmptyProject(videoName: string): Project {
+/** Blank project for manual subtitle authoring (video loaded, no whisperx import). */
+export function createEmptyProject(
+  videoName: string,
+  name?: string,
+): Project {
   return {
     version: PROJECT_VERSION,
+    id: newProjectId(),
+    name: resolveProjectName(name ?? "", videoName),
     videoName,
     fps: DEFAULT_FPS,
     timecodeOffset: DEFAULT_TIMECODE_OFFSET,

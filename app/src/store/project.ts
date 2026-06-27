@@ -10,6 +10,7 @@ import type {
 } from "../types";
 import { computeInsertCueRange, findInsertCueIndex } from "../lib/cue-insert";
 import { isSpeakerReferenced } from "../lib/speaker-refs";
+import { resolveProjectName } from "../lib/project-meta";
 import { splitTimeAtSegment } from "../lib/segment-timing";
 
 const EPS = 0.001;
@@ -134,10 +135,11 @@ interface ProjectState {
   removeSpeaker: (id: string) => boolean;
 
   // settings
+  setProjectName: (name: string) => void;
   setTimecodeOffset: (offset: string) => void;
   setContentStartSeconds: (seconds: number) => void;
   setFps: (fps: number) => void;
-  /** Bind timeline identity (duration + frame rate) from the loaded movie. */
+  /** Bind timeline identity (duration + frame rate) from the loaded video. */
   setVideoIdentity: (video: VideoIdentity) => void;
 }
 
@@ -719,6 +721,12 @@ export const useProject = create<ProjectState>((set, getState) => {
       }));
       return true;
     },
+
+    setProjectName: (name) =>
+      update(
+        (p) => ({ ...p, name: resolveProjectName(name, p.videoName) }),
+        "project-name",
+      ),
 
     setTimecodeOffset: (offset) =>
       update((p) => ({ ...p, timecodeOffset: offset }), "offset"),

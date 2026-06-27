@@ -92,7 +92,7 @@ describe("peaksMaxZoomVisibleSeconds", () => {
 });
 
 describe("peaksInitialZoomSeconds", () => {
-  it("uses max zoom span capped by movie duration", () => {
+  it("uses max zoom span capped by video duration", () => {
     expect(
       peaksInitialZoomSeconds(
         { samplesPerPixel: 2205, sampleRate: 44100 },

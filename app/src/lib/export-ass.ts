@@ -91,7 +91,7 @@ export function exportAss(
 
   return [
     "[Script Info]",
-    `Title: ${project.videoName}`,
+    `Title: ${project.name}`,
     "ScriptType: v4.00+",
     "WrapStyle: 0",
     "ScaledBorderAndShadow: yes",

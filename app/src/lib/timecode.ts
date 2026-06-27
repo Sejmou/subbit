@@ -2,7 +2,7 @@
  * SMPTE timecode helpers (non-drop-frame).
  *
  * Timecodes are "HH:MM:SS:FF" where FF is a frame index in [0, fps).
- * The movie is 25 fps and the delivery uses a 10:00:00:00 start offset, so a
+ * The source video is 25 fps and the delivery uses a 10:00:00:00 start offset, so a
  * media time of 101.0s exports as 10:01:41:00.
  */
 

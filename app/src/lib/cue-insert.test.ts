@@ -65,7 +65,7 @@ describe("computeInsertCueRange", () => {
     ).toBeNull();
   });
 
-  it("caps at the movie duration", () => {
+  it("caps at the video duration", () => {
     const range = computeInsertCueRange(cues, 9, TIMELINE_NEW_CUE_DURATION, 10);
     expect(range).toEqual({ start: 9, end: 10 });
   });

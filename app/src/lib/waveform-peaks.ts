@@ -242,7 +242,7 @@ export async function parseWaveformPeaksFile(
   );
 }
 
-/** Warn when peaks duration differs from the loaded movie. */
+/** Warn when peaks duration differs from the loaded video. */
 export function formatWaveformDurationMismatch(
   peaksDurationS: number,
   videoDurationS: number,

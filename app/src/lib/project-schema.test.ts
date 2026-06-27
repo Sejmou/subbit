@@ -7,7 +7,9 @@ import { parseProject } from "./project-io";
 
 const fixture = {
   version: 1,
-  videoName: "movie.mp4",
+  id: "00000000-0000-4000-8000-000000000001",
+  name: "clip.mp4",
+  videoName: "clip.mp4",
   fps: 25,
   timecodeOffset: "10:00:00:00",
   defaultShot: "ON",
@@ -31,6 +33,12 @@ describe("parseProjectData", () => {
 
   it("rejects missing required fields", () => {
     expect(() => parseProjectData({ ...fixture, version: undefined })).toThrow(
+      /Not a valid Subbit project file/,
+    );
+    expect(() => parseProjectData({ ...fixture, id: undefined })).toThrow(
+      /Not a valid Subbit project file/,
+    );
+    expect(() => parseProjectData({ ...fixture, name: undefined })).toThrow(
       /Not a valid Subbit project file/,
     );
   });
@@ -63,7 +71,7 @@ describe("parseProjectData", () => {
 });
 
 describe("real project file", () => {
-  it("validates movie.mp4.subbit.json", () => {
+  it("validates the sample subbit project fixture file", () => {
     const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
     const text = readFileSync(join(root, "data/movie.mp4.subbit.json"), "utf8");
     const data = JSON.parse(text);

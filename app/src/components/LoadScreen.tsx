@@ -1,23 +1,33 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { fallbackProjectName, resolveProjectName } from "../lib/project-meta";
 
 interface Props {
   fsSupported: boolean;
-  movieName: string | null;
+  videoFileName: string | null;
+  loadedProjectName: string | null;
   hasSubtitles: boolean;
   canRestore: boolean;
   busy: string | null;
-  onPickMovie: () => void;
+  onPickVideo: () => void;
   onPickSubtitles: () => void;
-  onMovieFile: (file: File) => void;
+  onVideoFile: (file: File) => void;
   onSubtitlesFile: (file: File) => void;
   onRestore: () => void;
-  onStart: () => void;
+  onStart: (projectName: string) => void;
 }
 
 export function LoadScreen(props: Props) {
-  const movieInput = useRef<HTMLInputElement>(null);
+  const videoInput = useRef<HTMLInputElement>(null);
   const subtitlesInput = useRef<HTMLInputElement>(null);
   const fs = props.fsSupported;
+  const [projectName, setProjectName] = useState("");
+  const suggestedName = props.videoFileName
+    ? fallbackProjectName(props.videoFileName)
+    : "Untitled";
+
+  useEffect(() => {
+    setProjectName(props.loadedProjectName ?? "");
+  }, [props.loadedProjectName, props.videoFileName]);
 
   return (
     <div className="load-screen">
@@ -37,22 +47,22 @@ export function LoadScreen(props: Props) {
 
         <ol className="steps">
           <li>
-            <span>1. Movie</span>
+            <span>1. Video</span>
             <button
               onClick={
-                fs ? props.onPickMovie : () => movieInput.current?.click()
+                fs ? props.onPickVideo : () => videoInput.current?.click()
               }
               disabled={!!props.busy}
             >
-              {props.movieName ?? "Choose movie.mp4"}
+              {props.videoFileName ?? "Choose video…"}
             </button>
             <input
-              ref={movieInput}
+              ref={videoInput}
               type="file"
               accept="video/mp4,video/*"
               hidden
               onChange={(e) =>
-                e.target.files?.[0] && props.onMovieFile(e.target.files[0])
+                e.target.files?.[0] && props.onVideoFile(e.target.files[0])
               }
             />
           </li>
@@ -88,10 +98,31 @@ export function LoadScreen(props: Props) {
           </li>
         </ol>
 
+        <div className="load-project-name">
+          <label htmlFor="load-project-name">Project name</label>
+          <input
+            id="load-project-name"
+            className="project-name-field"
+            placeholder={suggestedName}
+            value={projectName}
+            onChange={(e) => setProjectName(e.target.value)}
+            disabled={!!props.busy || !props.videoFileName}
+          />
+          <p className="step-note">
+            {props.videoFileName
+              ? `Leave blank to use “${suggestedName}”.`
+              : "Choose a video first."}
+          </p>
+        </div>
+
         <button
           className="primary wide"
-          disabled={!props.movieName || !!props.busy}
-          onClick={props.onStart}
+          disabled={!props.videoFileName || !!props.busy}
+          onClick={() =>
+            props.onStart(
+              resolveProjectName(projectName, props.videoFileName ?? "video"),
+            )
+          }
         >
           {props.busy ?? "Start editing"}
         </button>

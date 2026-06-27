@@ -56,7 +56,7 @@ export function isLegacyVideoIdentity(video: VideoIdentity): boolean {
 }
 
 /**
- * Build timeline identity from the loaded movie. Whisperx JSON is not involved —
+ * Build timeline identity from the loaded video. Whisperx JSON is not involved —
  * this runs when the user picks the video file in the browser.
  */
 export async function buildVideoIdentity(

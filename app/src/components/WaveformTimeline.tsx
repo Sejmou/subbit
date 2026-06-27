@@ -606,7 +606,7 @@ export function WaveformTimeline({ project }: Props) {
             type="button"
             onClick={fitWidth}
             disabled={!ready}
-            title="Fit entire movie"
+            title="Fit entire video"
           >
             Fit
           </button>

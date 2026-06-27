@@ -13,6 +13,7 @@ import {
   type Speaker,
   type Word,
 } from "../types";
+import { newProjectId, resolveProjectName } from "./project-meta";
 
 const whisperxWordSchema = z.object({
   word: z.string(),
@@ -115,6 +116,8 @@ export function importWhisperx(json: WhisperxJson, videoName: string): Project {
 
   return {
     version: PROJECT_VERSION,
+    id: newProjectId(),
+    name: resolveProjectName("", videoName),
     videoName,
     fps: DEFAULT_FPS,
     timecodeOffset: DEFAULT_TIMECODE_OFFSET,

@@ -78,6 +78,8 @@ const videoIdentitySchema = z
 
 export const projectSchema = z.object({
   version: z.number(),
+  id: z.string().uuid(),
+  name: z.string().min(1),
   videoName: z.string(),
   video: videoIdentitySchema.optional(),
   fps: z.number().positive(),

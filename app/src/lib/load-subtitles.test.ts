@@ -6,7 +6,9 @@ import {
 
 const subbitFixture = {
   version: 1,
-  videoName: "movie.mp4",
+  id: "00000000-0000-4000-8000-000000000001",
+  name: "clip.mp4",
+  videoName: "clip.mp4",
   fps: 25,
   timecodeOffset: "10:00:00:00",
   defaultShot: "ON",
@@ -46,35 +48,37 @@ describe("parseSubtitleJsonText", () => {
 
 describe("projectFromSubtitleData", () => {
   it("loads a valid Subbit project", () => {
-    expect(projectFromSubtitleData(subbitFixture, "movie.mp4")).toEqual(
+    expect(projectFromSubtitleData(subbitFixture, "clip.mp4")).toEqual(
       subbitFixture,
     );
   });
 
   it("loads valid whisperx JSON", () => {
-    const project = projectFromSubtitleData(whisperxFixture, "movie.mp4");
+    const project = projectFromSubtitleData(whisperxFixture, "clip.mp4");
     expect(project.cues).toHaveLength(1);
     expect(project.cues[0].segments[0].text).toBe("hello");
+    expect(project.id).toBeTruthy();
+    expect(project.name).toBe("clip.mp4");
   });
 
   it("reports missing Subbit fields", () => {
     expect(() =>
       projectFromSubtitleData(
         { ...subbitFixture, speakers: undefined },
-        "movie.mp4",
+        "clip.mp4",
       ),
     ).toThrow(/missing the "speakers" array/);
   });
 
   it("reports unrecognized JSON with top-level keys", () => {
-    expect(() => projectFromSubtitleData({ hi: "hello" }, "movie.mp4")).toThrow(
+    expect(() => projectFromSubtitleData({ hi: "hello" }, "clip.mp4")).toThrow(
       /Found top-level keys: "hi"/,
     );
   });
 
   it("reports invalid whisperx segment shape", () => {
     expect(() =>
-      projectFromSubtitleData({ segments: [{ text: "hello" }] }, "movie.mp4"),
+      projectFromSubtitleData({ segments: [{ text: "hello" }] }, "clip.mp4"),
     ).toThrow(/Not a valid whisperx file/);
   });
 });

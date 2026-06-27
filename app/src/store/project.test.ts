@@ -5,7 +5,9 @@ import type { Project } from "../types";
 function makeProject(): Project {
   return {
     version: 1,
-    videoName: "movie.mp4",
+    id: "00000000-0000-4000-8000-000000000001",
+  name: "clip",
+  videoName: "clip.mp4",
     fps: 25,
     timecodeOffset: "10:00:00:00",
     defaultShot: "ON",

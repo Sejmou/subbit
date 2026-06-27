@@ -37,6 +37,8 @@ const cue: Cue = {
 
 const project: Project = {
   version: 1,
+  id: "00000000-0000-4000-8000-000000000001",
+  name: "test",
   videoName: "test",
   fps: 25,
   timecodeOffset: "10:00:00:00",

@@ -33,9 +33,9 @@ function newId(): string {
     : Math.random().toString(36).slice(2);
 }
 
-/** A stable-ish identity for a project so its history is found again next session. */
+/** Stable project identity so version history survives reloads. */
 export function projectKey(project: Project): string {
-  return `subbit:history:${project.videoName || "project"}`;
+  return `subbit:history:${project.id}`;
 }
 
 function blobKey(pk: string, id: string): string {

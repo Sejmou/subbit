@@ -1,7 +1,7 @@
 # Subbit
 
 A zero-install, browser-based subtitle editor for editing subtitles of a local
-movie while capturing two extra pieces of metadata per line:
+video while capturing two extra pieces of metadata per line:
 
 1. **Rolle** - who speaks (mapped from whisperx diarization labels to real names)
 2. **Info** - the shot type (`ON` / `OFF` / `CONTRE`), including shot changes
@@ -14,18 +14,18 @@ you fix text/timing fast with the keyboard, and exports a broadcast-style CSV.
 
 - **Nothing to install** for non-technical users: open the hosted URL in
   Chrome or Edge (Windows included).
-- **Large movies are fine**: the `<video>` element streams the local file from
+- **Large videos are fine**: the `<video>` element streams the local file from
   disk via an object URL, so multi-GB files play without loading into memory.
   Nothing is ever uploaded.
 - The same codebase can later be wrapped in Tauri for a native build.
 
-## Requirements for the movie
+## Requirements for the video
 
 The browser plays the file directly, so it must be **H.264 video + AAC audio**
 in an mp4 (the common case). If a file won't play, remux/transcode once:
 
 ```bash
-ffmpeg -i input.mkv -c:v libx264 -c:a aac -movflags +faststart movie.mp4
+ffmpeg -i input.mkv -c:v libx264 -c:a aac -movflags +faststart output.mp4
 ```
 
 ## Develop
@@ -39,7 +39,7 @@ pnpm build      # production build into dist/
 
 ## Using it
 
-1. **Movie**: choose the `.mp4`.
+1. **Video**: choose the `.mp4`.
 2. **Subtitles**: "New from whisperx JSON" (the `audio.json` from whisperx) for a
    fresh project, or "Open project" to resume a saved `.subbit.json`.
 3. Edit. **Save project** writes a `.subbit.json` (your editable source of
@@ -47,7 +47,7 @@ pnpm build      # production build into dist/
    SRT for other tools.
 
 On Chrome/Edge the app remembers the file handles, so "Reopen last session"
-restores the movie + project without re-picking the 1+ GB file, and the project
+restores the video + project without re-picking the 1+ GB file, and the project
 autosaves in place.
 
 ### Data model

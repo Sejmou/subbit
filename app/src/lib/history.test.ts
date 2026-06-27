@@ -18,10 +18,15 @@ import {
   listVersions,
 } from "./history";
 
-function makeProject(text = "hello"): Project {
+function makeProject(
+  text = "hello",
+  id = "00000000-0000-4000-8000-000000000001",
+): Project {
   return {
     version: 1,
-    videoName: "movie.mp4",
+    id,
+    name: "clip",
+    videoName: "clip.mp4",
     fps: 25,
     timecodeOffset: "10:00:00:00",
     defaultShot: "ON",
@@ -80,7 +85,7 @@ describe("version history", () => {
 
   it("records distinct snapshots newest-first", async () => {
     const a = makeProject("one");
-    const b = makeProject("two");
+    const b = makeProject("two", a.id);
     await addVersion(a, serialize(a));
     await addVersion(b, serialize(b));
 
@@ -92,7 +97,7 @@ describe("version history", () => {
 
   it("deletes a single version and its blob", async () => {
     const a = makeProject("one");
-    const b = makeProject("two");
+    const b = makeProject("two", a.id);
     await addVersion(a, serialize(a));
     const afterB = await addVersion(b, serialize(b));
     const removeId = afterB[1].id;
@@ -104,7 +109,7 @@ describe("version history", () => {
 
   it("clears all versions for a project", async () => {
     const a = makeProject("one");
-    const b = makeProject("two");
+    const b = makeProject("two", a.id);
     await addVersion(a, serialize(a));
     await addVersion(b, serialize(b));
 

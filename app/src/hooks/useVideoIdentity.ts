@@ -16,10 +16,10 @@ function durationsMatch(a: number, b: number): boolean {
 }
 
 /**
- * When a movie file and project are both loaded, read duration + container frame
+ * When a video file and project are both loaded, read duration + container frame
  * rate and compare to the stored identity. Whisperx JSON is not involved.
  */
-export function useVideoIdentity(movieFile: File | null) {
+export function useVideoIdentity(videoFile: File | null) {
   const hasProject = useProject((s) => s.project !== null);
   const storedVideo = useProject((s) => s.project?.video);
   const duration = usePlayback((s) => s.duration);
@@ -45,11 +45,11 @@ export function useVideoIdentity(movieFile: File | null) {
       return;
     }
 
-    if (!movieFile) {
+    if (!videoFile) {
       setStatus(storedVideo ? "missing" : "idle");
       setMessage(
         storedVideo
-          ? "No movie loaded. Subtitle timings cannot be verified against the saved video identity."
+          ? "No video loaded. Subtitle timings cannot be verified against the saved video identity."
           : null,
       );
       return;
@@ -75,11 +75,11 @@ export function useVideoIdentity(movieFile: File | null) {
 
     void (async () => {
       try {
-        const current = await buildVideoIdentity(movieFile, duration);
+        const current = await buildVideoIdentity(videoFile, duration);
         if (cancelled) return;
 
         if (!storedVideo) {
-          setVideoIdentity({ ...current, fileName: movieFile.name });
+          setVideoIdentity({ ...current, fileName: videoFile.name });
           lastCheckedKey.current = checkKey;
           setStatus("ok");
           setMessage(null);
@@ -92,7 +92,7 @@ export function useVideoIdentity(movieFile: File | null) {
           isLegacyVideoIdentity(storedVideo) &&
           durationsMatch(storedVideo.duration, current.duration)
         ) {
-          setVideoIdentity({ ...current, fileName: movieFile.name });
+          setVideoIdentity({ ...current, fileName: videoFile.name });
           lastCheckedKey.current = checkKey;
           setStatus("ok");
           setMessage(null);
@@ -119,7 +119,7 @@ export function useVideoIdentity(movieFile: File | null) {
     return () => {
       cancelled = true;
     };
-  }, [movieFile, hasProject, storedVideo, duration, setVideoIdentity]);
+  }, [videoFile, hasProject, storedVideo, duration, setVideoIdentity]);
 
   return { status, message };
 }

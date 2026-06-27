@@ -9,7 +9,7 @@ import type { VideoIdentity } from "../types";
 describe("compareVideoIdentity", () => {
   it("passes when only the filename differs", () => {
     const stored: VideoIdentity = {
-      fileName: "movie.mp4",
+      fileName: "clip.mp4",
       duration: 120.5,
       frameRateNumerator: 25,
       frameRateDenominator: 1,

@@ -4,6 +4,7 @@ import { useProject } from "../store/project";
 import { shortcutLabel } from "../lib/shortcuts";
 import { formatRelativeTime } from "../lib/relative-time";
 import { FileMenu } from "./FileMenu";
+import { ProjectNameField } from "./ProjectNameField";
 import { FiltersMenu } from "./FiltersMenu";
 import type { ReviewStatusFilter } from "../lib/cue-filters";
 
@@ -118,6 +119,7 @@ export function Toolbar({
 }: Props) {
   const undo = useProject((s) => s.undo);
   const redo = useProject((s) => s.redo);
+  const setProjectName = useProject((s) => s.setProjectName);
   const canUndo = useProject((s) => s.past.length > 0);
   const canRedo = useProject((s) => s.future.length > 0);
   const reviewed = project.cues.filter((c) => c.reviewed).length;
@@ -142,6 +144,11 @@ export function Toolbar({
         onImportWhisperx={onImportWhisperx}
         onImportWaveform={onImportWaveform}
         onCloseProject={onCloseProject}
+      />
+      <ProjectNameField
+        name={project.name}
+        videoName={project.videoName}
+        onCommit={setProjectName}
       />
       <FiltersMenu
         project={project}
