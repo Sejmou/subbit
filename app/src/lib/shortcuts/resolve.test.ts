@@ -63,6 +63,7 @@ function ctx(overrides: Partial<ShortcutContext> = {}): ShortcutContext {
     toggleReviewed: vi.fn(),
     setCueSpeaker: vi.fn(),
     setSegmentShot: vi.fn(),
+    cycleSegmentShot: vi.fn(),
     splitCueAtCaret: vi.fn(),
     insertShotSplit: vi.fn(),
     deleteCue: vi.fn(),
@@ -264,11 +265,10 @@ describe("resolveShortcut", () => {
     expect(resolveShortcut(makeKeyEvent("a"), ctx())?.id).toBe("assign-role");
   });
 
-  it("assigns shot from shift-number keys", () => {
+  it("cycles shot type on S", () => {
     const c2 = ctx();
-    const shotKey = makeKeyEvent("!", { shiftKey: true });
-    resolveShortcut(shotKey, c2)?.run(c2, shotKey);
-    expect(c2.ps.setSegmentShot).toHaveBeenCalledWith("cue-1", 0, "ON");
+    resolveShortcut(makeKeyEvent("s"), c2)?.run(c2, makeKeyEvent("s"));
+    expect(c2.ps.cycleSegmentShot).toHaveBeenCalledWith("cue-1", 0);
   });
 
   it("handles program start shortcuts on 0 and legacy Home/End keys", () => {

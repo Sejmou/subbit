@@ -241,7 +241,7 @@ function CueRowImpl({
               className="shot-select"
               value={seg.shot}
               onChange={(e) => setSegmentShot(cue.id, i, e.target.value)}
-              title="Shot type (Info)"
+              title={`Cycle shot type (${shortcutLabel("cycle-shot")})`}
             >
               {project.shots.map((sh) => (
                 <option key={sh.id} value={sh.id}>

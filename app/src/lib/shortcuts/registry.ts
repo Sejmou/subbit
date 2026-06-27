@@ -460,22 +460,19 @@ export const SHORTCUTS: ShortcutDef[] = [
     preventDefault: true,
   },
   {
-    id: "assign-shot",
+    id: "cycle-shot",
     group: "Metadata",
-    label: "Shift + 1 / 2 / 3 …",
-    description: "Set the active segment's shot type",
+    label: "S",
+    description: "Cycle the active segment's shot type",
     match: (e, ctx) =>
       plainKey(e) &&
       !ctx.editing &&
       !!ctx.cue &&
-      e.shiftKey &&
-      /^[!@#$%^&*(]$/.test(e.key),
-    run: (ctx, e) => {
-      const map = "!@#$%^&*(";
-      const shot = ctx.project!.shots[map.indexOf(e.key)];
-      if (shot)
-        ctx.ps.setSegmentShot(ctx.cue!.id, ctx.ps.selectedSegment, shot.id);
-    },
+      !!ctx.project &&
+      (e.key === "s" || e.key === "S"),
+    run: (ctx) =>
+      ctx.ps.cycleSegmentShot(ctx.cue!.id, ctx.ps.selectedSegment),
+    preventDefault: true,
   },
 ];
 
