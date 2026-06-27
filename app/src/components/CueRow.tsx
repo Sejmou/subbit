@@ -3,6 +3,7 @@ import type { Cue, Project } from "../types";
 import { useProject } from "../store/project";
 import { usePlayback } from "../store/playback";
 import { openRolePicker, NO_ROLE_LABEL } from "../lib/role-picker";
+import { shortcutLabel } from "../lib/shortcuts";
 import { secondsToTimecode } from "../lib/timecode";
 
 interface Props {
@@ -11,6 +12,26 @@ interface Props {
   project: Project;
   selected: boolean;
   active: boolean;
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 6h18" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+    </svg>
+  );
 }
 
 function CueRowImpl({ cue, index, project, selected, active }: Props) {
@@ -22,6 +43,7 @@ function CueRowImpl({ cue, index, project, selected, active }: Props) {
     setSegmentShot,
     toggleReviewed,
     splitAtMergedSegment,
+    deleteCue,
   } = useProject();
   const seek = usePlayback((s) => s.seek);
 
@@ -145,6 +167,19 @@ function CueRowImpl({ cue, index, project, selected, active }: Props) {
           </Fragment>
         ))}
       </div>
+
+      <button
+        type="button"
+        className="cue-delete-btn"
+        title={`Delete cue (${shortcutLabel("delete-cue")})`}
+        aria-label={`Delete cue ${index + 1}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          deleteCue(cue.id);
+        }}
+      >
+        <TrashIcon />
+      </button>
     </div>
   );
 }

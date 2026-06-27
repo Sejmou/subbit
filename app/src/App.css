@@ -702,9 +702,8 @@
 .speaker-panel .speaker-name {
   flex: 1;
 }
-.speaker-remove-btn {
-  width: 24px;
-  height: 24px;
+.speaker-remove-btn,
+.cue-delete-btn {
   padding: 0;
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -712,12 +711,29 @@
   color: var(--text-dim);
   line-height: 1;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.speaker-remove-btn {
+  width: 24px;
+  height: 24px;
+}
+.cue-delete-btn {
+  width: 28px;
+  height: 28px;
+}
+.cue-delete-btn svg {
+  width: 14px;
+  height: 14px;
 }
 .speaker-remove-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
 }
-.speaker-remove-btn:not(:disabled):hover {
+.speaker-remove-btn:not(:disabled):hover,
+.cue-delete-btn:hover {
   color: #e6194b;
   border-color: #e6194b;
 }
@@ -769,7 +785,7 @@
 }
 .cue-row {
   display: grid;
-  grid-template-columns: 48px 130px 130px 1fr;
+  grid-template-columns: 48px 130px 130px 1fr auto;
   gap: 8px;
   align-items: start;
   padding: 6px 12px;
