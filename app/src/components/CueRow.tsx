@@ -71,7 +71,7 @@ function CueRowImpl({ cue, index, project, selected, active }: Props) {
         onChange={(e) => setCueSpeaker(cue.id, e.target.value || null)}
         style={{ color: speaker?.color }}
       >
-        <option value="">— Rolle —</option>
+        <option value="">— Role —</option>
         {project.speakers.map((s) => (
           <option key={s.id} value={s.id}>
             {s.name}

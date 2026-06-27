@@ -47,6 +47,7 @@ import {
   parseWaveformPeaksFile,
 } from './lib/waveform-peaks'
 import { usePlayback } from './store/playback'
+import type { ReviewStatusFilter } from './lib/cue-filters'
 import { readPreviewEnabled, writePreviewEnabled } from './lib/preview-settings'
 
 const JSON_ACCEPT = { 'application/json': ['.json'] }
@@ -79,6 +80,8 @@ export default function App() {
   const [saving, setSaving] = useState(false)
   const [unsavedOpen, setUnsavedOpen] = useState(false)
   const [previewEnabled, setPreviewEnabled] = useState(readPreviewEnabled)
+  const [speakerFilter, setSpeakerFilter] = useState<string[]>([])
+  const [statusFilter, setStatusFilter] = useState<ReviewStatusFilter[]>([])
 
   const movieHandle = useRef<FsFileHandle | null>(null)
   const projectHandle = useRef<FsFileHandle | null>(null)
@@ -382,6 +385,32 @@ export default function App() {
     })
   }, [])
 
+  const toggleSpeakerFilter = useCallback((speakerId: string) => {
+    setSpeakerFilter((prev) =>
+      prev.includes(speakerId) ? prev.filter((id) => id !== speakerId) : [...prev, speakerId],
+    )
+  }, [])
+
+  const toggleStatusFilter = useCallback((status: ReviewStatusFilter) => {
+    setStatusFilter((prev) =>
+      prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status],
+    )
+  }, [])
+
+  const clearFilters = useCallback(() => {
+    setSpeakerFilter([])
+    setStatusFilter([])
+  }, [])
+
+  // Drop stale filter ids when speakers are removed.
+  useEffect(() => {
+    if (!project) return
+    setSpeakerFilter((prev) => {
+      const valid = prev.filter((id) => project.speakers.some((s) => s.id === id))
+      return valid.length === prev.length ? prev : valid
+    })
+  }, [project?.speakers])
+
   // Cmd/Ctrl+S from the shortcut hook.
   useEffect(() => {
     const onSave = () => void save()
@@ -490,6 +519,11 @@ export default function App() {
         waveformLoaded={waveformLoaded}
         previewEnabled={previewEnabled}
         onTogglePreview={togglePreview}
+        speakerFilter={speakerFilter}
+        statusFilter={statusFilter}
+        onToggleSpeakerFilter={toggleSpeakerFilter}
+        onToggleStatusFilter={toggleStatusFilter}
+        onClearFilters={clearFilters}
       />
       <ExportDialog
         open={exportOpen}
@@ -518,7 +552,7 @@ export default function App() {
           )}
           <SpeakerPanel project={project} />
         </div>
-        <CueList project={project} />
+        <CueList project={project} speakerFilter={speakerFilter} statusFilter={statusFilter} />
       </div>
       {waveformLoaded && <WaveformTimeline project={project} />}
     </div>

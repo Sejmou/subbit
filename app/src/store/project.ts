@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Cue, Project, Segment, ShotId, Speaker, VideoIdentity, Word } from '../types'
 import { computeInsertCueRange, findInsertCueIndex } from '../lib/cue-insert'
+import { isSpeakerReferenced } from '../lib/speaker-refs'
 import { splitTimeAtSegment } from '../lib/segment-timing'
 
 const EPS = 0.001
@@ -92,6 +93,7 @@ interface ProjectState {
   renameSpeaker: (id: string, name: string) => void
   setSpeakerColor: (id: string, color: string) => void
   addSpeaker: (name: string) => Speaker
+  removeSpeaker: (id: string) => boolean
 
   // settings
   setTimecodeOffset: (offset: string) => void
@@ -578,6 +580,13 @@ export const useProject = create<ProjectState>((set, getState) => {
       }
       update((p) => ({ ...p, speakers: [...p.speakers, speaker] }))
       return speaker
+    },
+    removeSpeaker: (id) => {
+      const project = getState().project
+      if (!project || !project.speakers.some((s) => s.id === id)) return false
+      if (isSpeakerReferenced(project, id)) return false
+      update((p) => ({ ...p, speakers: p.speakers.filter((s) => s.id !== id) }))
+      return true
     },
 
     setTimecodeOffset: (offset) => update((p) => ({ ...p, timecodeOffset: offset }), 'offset'),

@@ -4,6 +4,8 @@ import { useProject } from '../store/project'
 import { shortcutLabel } from '../lib/shortcuts'
 import { formatRelativeTime } from '../lib/relative-time'
 import { FileMenu } from './FileMenu'
+import { FiltersMenu } from './FiltersMenu'
+import type { ReviewStatusFilter } from '../lib/cue-filters'
 
 type SaveStateVariant = 'saving' | 'edited' | 'unsaved' | 'saved'
 
@@ -25,6 +27,11 @@ interface Props {
   waveformLoaded: boolean
   previewEnabled: boolean
   onTogglePreview: () => void
+  speakerFilter: string[]
+  statusFilter: ReviewStatusFilter[]
+  onToggleSpeakerFilter: (speakerId: string) => void
+  onToggleStatusFilter: (status: ReviewStatusFilter) => void
+  onClearFilters: () => void
 }
 
 function saveStateLabel(
@@ -64,6 +71,11 @@ export function Toolbar({
   waveformLoaded,
   previewEnabled,
   onTogglePreview,
+  speakerFilter,
+  statusFilter,
+  onToggleSpeakerFilter,
+  onToggleStatusFilter,
+  onClearFilters,
 }: Props) {
   const undo = useProject((s) => s.undo)
   const redo = useProject((s) => s.redo)
@@ -91,6 +103,14 @@ export function Toolbar({
         onImportWhisperx={onImportWhisperx}
         onImportWaveform={onImportWaveform}
         onCloseProject={onCloseProject}
+      />
+      <FiltersMenu
+        project={project}
+        speakerFilter={speakerFilter}
+        statusFilter={statusFilter}
+        onToggleSpeakerFilter={onToggleSpeakerFilter}
+        onToggleStatusFilter={onToggleStatusFilter}
+        onClearFilters={onClearFilters}
       />
       {waveformLoaded && (
         <span className="waveform-badge" title="Waveform peaks loaded (ready for timeline)">

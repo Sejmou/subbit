@@ -319,3 +319,44 @@ describe('insertCueAtPlayhead / deleteCue', () => {
     expect(store().selectedCueId).toBeNull()
   })
 })
+
+describe('speakers', () => {
+  it('removes an unreferenced speaker', () => {
+    store().loadProject({
+      ...makeProject(),
+      speakers: [
+        { id: 'A', name: 'Alice', color: '#fff' },
+        { id: 'B', name: 'Bob', color: '#000' },
+      ],
+      cues: [{ id: 'c1', start: 0, end: 2, speakerId: 'A', segments: [{ text: 'hi', shot: 'ON' }] }],
+    })
+    expect(store().removeSpeaker('B')).toBe(true)
+    expect(store().project!.speakers.map((s) => s.id)).toEqual(['A'])
+  })
+
+  it('refuses to remove a referenced speaker', () => {
+    expect(store().removeSpeaker('SPEAKER_00')).toBe(false)
+    expect(store().project!.speakers).toHaveLength(1)
+  })
+
+  it('refuses to remove a speaker referenced in merged segments', () => {
+    store().loadProject({
+      ...makeProject(),
+      speakers: [
+        { id: 'A', name: 'Alice', color: '#fff' },
+        { id: 'B', name: 'Bob', color: '#000' },
+      ],
+      cues: [
+        {
+          id: 'c1',
+          start: 0,
+          end: 4,
+          speakerId: 'A',
+          segments: [{ text: 'merged', shot: 'ON', mergedWithPrevious: true, mergedSpeakerId: 'B' }],
+        },
+      ],
+    })
+    expect(store().removeSpeaker('B')).toBe(false)
+    expect(store().removeSpeaker('A')).toBe(false)
+  })
+})

@@ -382,7 +382,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     id: 'assign-speaker',
     group: 'Metadata',
     label: '1 - 9',
-    description: 'Assign that speaker (Rolle) to the cue',
+    description: 'Assign that role to the cue',
     match: (e, ctx) =>
       plainKey(e) && !ctx.editing && !!ctx.cue && /^[1-9]$/.test(e.key) && !e.shiftKey,
     run: (ctx, e) => {
