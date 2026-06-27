@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
 
 interface Props {
   open: boolean;
@@ -8,28 +8,22 @@ interface Props {
 
 /** Explains timeline-only mode and how to import waveform peaks. */
 export function WaveformPeaksHelpDialog({ open, onClose, onImport }: Props) {
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-      }
-    }
-    window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [open, onClose]);
+  const modalRef = useModalFocusTrap(open, onClose);
 
   if (!open) return null;
 
   return (
     <div className="help-backdrop" onMouseDown={onClose}>
       <div
+        ref={modalRef}
         className="help-modal waveform-peaks-help"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="waveform-peaks-help-title"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="help-head">
-          <h2>Waveform peaks</h2>
+          <h2 id="waveform-peaks-help-title">Waveform peaks</h2>
           <button type="button" onClick={onClose}>
             Close
           </button>

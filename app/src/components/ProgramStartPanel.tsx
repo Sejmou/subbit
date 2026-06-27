@@ -10,6 +10,7 @@ import {
   programStartTimecode,
 } from "../lib/program-start";
 import { secondsToClock, secondsToTimecode } from "../lib/timecode";
+import { ProgramStartHelpDialog } from "./ProgramStartHelpDialog";
 
 interface Props {
   project: Project;
@@ -28,6 +29,7 @@ export function ProgramStartPanel({ project, ready }: Props) {
   const contentStart = contentStartSeconds(project);
   const [draft, setDraft] = useState(() => programStartTimecode(project));
   const [inputError, setInputError] = useState<string | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   useEffect(() => {
     setDraft(
@@ -71,11 +73,17 @@ export function ProgramStartPanel({ project, ready }: Props) {
 
   return (
     <div className="program-start-panel">
-      <label
-        className="program-start-label"
-        title="Where the actual program begins in this file (after leader/black/slate). Cue times in the editor stay on the file timeline; only exported subtitle times count from here."
-      >
+      <span className="program-start-label">
         Program start
+        <button
+          type="button"
+          className="program-start-help-btn"
+          onClick={() => setHelpOpen(true)}
+          title="About program start"
+          aria-label="About program start"
+        >
+          ?
+        </button>
         <input
           className={
             inputError
@@ -99,7 +107,7 @@ export function ProgramStartPanel({ project, ready }: Props) {
           disabled={!ready}
           aria-label="Program start timecode"
         />
-      </label>
+      </span>
       <button
         type="button"
         disabled={!ready}
@@ -136,6 +144,10 @@ export function ProgramStartPanel({ project, ready }: Props) {
         </span>
       )}
       {inputError && <span className="program-start-error">{inputError}</span>}
+      <ProgramStartHelpDialog
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+      />
     </div>
   );
 }

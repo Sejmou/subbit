@@ -22,6 +22,7 @@ import {
   peaksZoomLevels,
   peaksInitialZoomSeconds,
 } from "../lib/waveform-peaks";
+import { createProgramStartPointMarker } from "../lib/program-start-point-marker";
 import { WaveformPeaksHelpDialog } from "./WaveformPeaksHelpDialog";
 import {
   findCuesOverlappingRange,
@@ -348,6 +349,7 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
       waveformData: peaksWaveformData(peaksInput),
       keyboard: false,
       waveformCache: true,
+      createPointMarker: createProgramStartPointMarker,
       zoomLevels: peaksZoomLevels(samplesPerPixel),
       segmentOptions: {
         markers: true,

@@ -479,7 +479,40 @@
   gap: 4px;
   font-size: 11px;
   color: var(--text-dim);
-  cursor: help;
+}
+.program-start-help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  padding: 0;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1;
+}
+.program-start-help {
+  width: min(480px, 92vw);
+}
+.program-start-help h3 {
+  margin: 16px 0 8px;
+  font-size: 13px;
+  color: var(--accent);
+}
+.program-start-help p {
+  margin: 0 0 10px;
+  color: var(--text-dim);
+}
+.program-start-help-steps {
+  margin: 0 0 10px;
+  padding-left: 20px;
+  color: var(--text-dim);
+}
+.program-start-help-steps li + li {
+  margin-top: 8px;
 }
 .program-start-input {
   font-family: ui-monospace, monospace;
