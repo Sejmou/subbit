@@ -8,14 +8,16 @@ import { resolveShortcut } from "./resolve";
 function makeKeyEvent(
   keyVal: string,
   init: Partial<
-    Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" | "shiftKey">
+    Pick<KeyboardEvent, "key" | "code" | "metaKey" | "ctrlKey" | "shiftKey" | "altKey">
   > = {},
 ): KeyboardEvent {
   return {
     key: keyVal,
+    code: "",
     metaKey: false,
     ctrlKey: false,
     shiftKey: false,
+    altKey: false,
     ...init,
   } as KeyboardEvent;
 }
@@ -64,6 +66,7 @@ function ctx(overrides: Partial<ShortcutContext> = {}): ShortcutContext {
     setSegmentShot: vi.fn(),
     splitCueAtCaret: vi.fn(),
     insertShotSplit: vi.fn(),
+    setContentStartSeconds: vi.fn(),
     selectedSegment: 0,
   };
   const pb = {
@@ -244,5 +247,57 @@ describe("resolveShortcut", () => {
     const shotKey = makeKeyEvent("!", { shiftKey: true });
     resolveShortcut(shotKey, c2)?.run(c2, shotKey);
     expect(c2.ps.setSegmentShot).toHaveBeenCalledWith("cue-1", 0, "ON");
+  });
+
+  it("handles program start shortcuts on 0 and legacy Home/End keys", () => {
+    const c = ctx({
+      project: { ...project, contentStartSeconds: 12 },
+      pb: { ...ctx().pb, currentTime: 5, duration: 100 },
+    });
+
+    expect(
+      resolveShortcut(makeKeyEvent("0", { code: "Digit0" }), c)?.id,
+    ).toBe("seek-program-start");
+    resolveShortcut(makeKeyEvent("0", { code: "Digit0" }), c)?.run(
+      c,
+      makeKeyEvent("0", { code: "Digit0" }),
+    );
+    expect(c.pb.seek).toHaveBeenCalledWith(12);
+
+    expect(
+      resolveShortcut(makeKeyEvent("Home"), c)?.id,
+    ).toBe("seek-program-start");
+
+    expect(
+      resolveShortcut(
+        makeKeyEvent("0", { code: "Digit0", shiftKey: true }),
+        c,
+      )?.id,
+    ).toBe("set-program-start");
+    resolveShortcut(
+      makeKeyEvent("0", { code: "Digit0", shiftKey: true }),
+      c,
+    )?.run(c, makeKeyEvent("0", { code: "Digit0", shiftKey: true }));
+    expect(c.ps.setContentStartSeconds).toHaveBeenCalledWith(5);
+
+    expect(
+      resolveShortcut(makeKeyEvent("Home", { shiftKey: true }), c)?.id,
+    ).toBe("set-program-start");
+
+    expect(
+      resolveShortcut(
+        makeKeyEvent("0", { code: "Digit0", altKey: true }),
+        c,
+      )?.id,
+    ).toBe("clear-program-start");
+    resolveShortcut(
+      makeKeyEvent("0", { code: "Digit0", altKey: true }),
+      c,
+    )?.run(c, makeKeyEvent("0", { code: "Digit0", altKey: true }));
+    expect(c.ps.setContentStartSeconds).toHaveBeenCalledWith(0);
+
+    expect(
+      resolveShortcut(makeKeyEvent("End", { shiftKey: true }), c)?.id,
+    ).toBe("clear-program-start");
   });
 });

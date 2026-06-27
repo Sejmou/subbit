@@ -28,6 +28,16 @@ function plainKey(e: KeyEvent): boolean {
   return !e.metaKey && !e.ctrlKey && !e.altKey;
 }
 
+/** Main or numpad 0 — layout-independent (Shift+0 is ")" on US keyboards). */
+function isZeroKey(e: KeyEvent): boolean {
+  return e.code === "Digit0" || e.code === "Numpad0";
+}
+
+/** Cmd/Ctrl-free keys; allows Alt for Option/Alt combos. */
+function navKey(e: KeyEvent): boolean {
+  return !e.metaKey && !e.ctrlKey;
+}
+
 /** Video transport works whenever a project is open, even before the first cue exists. */
 function canPlayback(e: KeyEvent, ctx: ShortcutContext): boolean {
   return plainKey(e) && !ctx.editing && !!ctx.project;
@@ -309,14 +319,15 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "seek-program-start",
     group: "Program sync",
-    label: "Home",
+    label: "0",
     description: "Seek to program start (or file start if unset)",
     match: (e, ctx) =>
-      plainKey(e) &&
+      navKey(e) &&
+      !e.altKey &&
+      !e.shiftKey &&
       !ctx.editing &&
       !!ctx.project &&
-      e.key === "Home" &&
-      !e.shiftKey,
+      (isZeroKey(e) || e.key === "Home"),
     run: (ctx) => {
       const start = ctx.project!.contentStartSeconds ?? 0;
       ctx.pb.seek(start > 0 ? start : 0);
@@ -326,14 +337,15 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "set-program-start",
     group: "Program sync",
-    label: "Shift + Home",
+    label: "Shift + 0",
     description: "Set program start to the playhead (skip leader on export)",
     match: (e, ctx) =>
-      plainKey(e) &&
+      navKey(e) &&
+      !e.altKey &&
+      e.shiftKey &&
       !ctx.editing &&
       !!ctx.project &&
-      e.key === "Home" &&
-      e.shiftKey,
+      (isZeroKey(e) || e.key === "Home"),
     run: (ctx) => {
       const duration = ctx.pb.duration;
       const t = Math.max(0, ctx.pb.currentTime);
@@ -348,14 +360,14 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "clear-program-start",
     group: "Program sync",
-    label: "Shift + End",
+    label: "Alt + 0",
     description: "Clear program start",
     match: (e, ctx) =>
-      plainKey(e) &&
+      navKey(e) &&
       !ctx.editing &&
       !!ctx.project &&
-      e.key === "End" &&
-      e.shiftKey,
+      ((e.altKey && !e.shiftKey && isZeroKey(e)) ||
+        (!e.altKey && e.shiftKey && e.key === "End")),
     run: (ctx) => ctx.ps.setContentStartSeconds(0),
     preventDefault: true,
   },
