@@ -22,7 +22,9 @@ export function SpeakerPanel({ project }: { project: Project }) {
     <div className="speaker-panel">
       <div className="speaker-panel-header">
         <h3>Roles</h3>
-        <p className="hint">No roles yet.</p>
+        {project.speakers.length === 0 && (
+          <p className="hint">No roles yet.</p>
+        )}
       </div>
       <ul className="speaker-panel-list">
         {project.speakers.map((s, i) => {
