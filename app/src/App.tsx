@@ -33,6 +33,7 @@ import { CueList } from './components/CueList'
 import { SpeakerPanel } from './components/SpeakerPanel'
 import { Toolbar } from './components/Toolbar'
 import { ExportDialog } from './components/ExportDialog'
+import { RolePicker } from './components/RolePicker'
 import { HelpOverlay } from './components/HelpOverlay'
 import { HistoryPanel } from './components/HistoryPanel'
 import { UnsavedDialog } from './components/UnsavedDialog'
@@ -82,6 +83,7 @@ export default function App() {
   const [previewEnabled, setPreviewEnabled] = useState(readPreviewEnabled)
   const [speakerFilter, setSpeakerFilter] = useState<string[]>([])
   const [statusFilter, setStatusFilter] = useState<ReviewStatusFilter[]>([])
+  const [rolePickerCueId, setRolePickerCueId] = useState<string | null>(null)
 
   const movieHandle = useRef<FsFileHandle | null>(null)
   const projectHandle = useRef<FsFileHandle | null>(null)
@@ -411,6 +413,16 @@ export default function App() {
     })
   }, [project?.speakers])
 
+  useEffect(() => {
+    function onRolePickerOpen(e: Event) {
+      const detail = (e as CustomEvent<{ cueId?: string } | undefined>).detail
+      const id = detail?.cueId ?? useProject.getState().selectedCueId
+      if (id) setRolePickerCueId(id)
+    }
+    window.addEventListener('subbit:role-picker-open', onRolePickerOpen)
+    return () => window.removeEventListener('subbit:role-picker-open', onRolePickerOpen)
+  }, [])
+
   // Cmd/Ctrl+S from the shortcut hook.
   useEffect(() => {
     const onSave = () => void save()
@@ -537,6 +549,12 @@ export default function App() {
         onCancel={() => void resolveUnsaved('cancel')}
       />
       <HelpOverlay open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <RolePicker
+        open={rolePickerCueId !== null}
+        cueId={rolePickerCueId}
+        project={project}
+        onClose={() => setRolePickerCueId(null)}
+      />
       <HistoryPanel
         open={historyOpen}
         onClose={() => setHistoryOpen(false)}

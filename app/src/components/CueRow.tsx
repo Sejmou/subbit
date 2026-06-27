@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, Fragment } from 'react'
 import type { Cue, Project } from '../types'
 import { useProject } from '../store/project'
 import { usePlayback } from '../store/playback'
+import { openRolePicker, NO_ROLE_LABEL } from '../lib/role-picker'
 import { secondsToTimecode } from '../lib/timecode'
 
 interface Props {
@@ -18,7 +19,6 @@ function CueRowImpl({ cue, index, project, selected, active }: Props) {
     selectCue,
     selectSegment,
     setSegmentText,
-    setCueSpeaker,
     setSegmentShot,
     toggleReviewed,
     splitAtMergedSegment,
@@ -65,19 +65,22 @@ function CueRowImpl({ cue, index, project, selected, active }: Props) {
         </button>
       </div>
 
-      <select
-        className="speaker-select"
-        value={cue.speakerId ?? ''}
-        onChange={(e) => setCueSpeaker(cue.id, e.target.value || null)}
+      <button
+        type="button"
+        className="speaker-select role-trigger"
+        title="Assign role (A)"
         style={{ color: speaker?.color }}
+        onClick={(e) => {
+          e.stopPropagation()
+          selectCue(cue.id)
+          openRolePicker(cue.id)
+        }}
       >
-        <option value="">— Role —</option>
-        {project.speakers.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.name}
-          </option>
-        ))}
-      </select>
+        <span className="role-trigger-label">{speaker?.name?.trim() || NO_ROLE_LABEL}</span>
+        <span className="role-trigger-chevron" aria-hidden>
+          ▾
+        </span>
+      </button>
 
       <div className="cue-segments">
         {cue.segments.map((seg, i) => (

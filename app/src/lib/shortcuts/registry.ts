@@ -2,6 +2,7 @@ import { MOD_LABEL } from './mod-label'
 import type { ShortcutContext } from './context'
 import { reactionAdjustedPlayhead } from '../../store/playback'
 import { focusCueForEdit } from '../focus-cue'
+import { openRolePicker } from '../role-picker'
 
 type KeyEvent = globalThis.KeyboardEvent
 
@@ -379,16 +380,14 @@ export const SHORTCUTS: ShortcutDef[] = [
     run: (ctx) => ctx.pb.seek(ctx.cue!.start),
   },
   {
-    id: 'assign-speaker',
+    id: 'assign-role',
     group: 'Metadata',
-    label: '1 - 9',
-    description: 'Assign that role to the cue',
+    label: 'A',
+    description: 'Open the role picker for the selected cue',
     match: (e, ctx) =>
-      plainKey(e) && !ctx.editing && !!ctx.cue && /^[1-9]$/.test(e.key) && !e.shiftKey,
-    run: (ctx, e) => {
-      const speaker = ctx.project!.speakers[Number(e.key) - 1]
-      if (speaker) ctx.ps.setCueSpeaker(ctx.cue!.id, speaker.id)
-    },
+      plainKey(e) && !ctx.editing && !!ctx.cue && (e.key === 'a' || e.key === 'A'),
+    run: (ctx) => openRolePicker(ctx.cue!.id),
+    preventDefault: true,
   },
   {
     id: 'assign-shot',

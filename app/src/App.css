@@ -485,13 +485,13 @@
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  overflow: auto;
+  min-height: 0;
+  overflow: hidden;
 }
 .video-wrap {
+  position: relative;
   background: #000;
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  flex-shrink: 0;
 }
 .video-wrap video {
   width: 100%;
@@ -531,7 +531,15 @@
 
 /* ---- speakers ---- */
 .speaker-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   padding: 10px 12px;
+  border-top: 1px solid var(--border);
+}
+.speaker-panel-header {
+  flex-shrink: 0;
 }
 .speaker-panel h3 {
   margin: 6px 0;
@@ -540,23 +548,34 @@
   color: var(--text-dim);
   margin: 0 0 8px;
 }
-.speaker-panel ul {
+.speaker-panel-list {
   list-style: none;
   margin: 0;
   padding: 0;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+.speaker-panel-footer {
+  flex-shrink: 0;
+  padding-top: 8px;
 }
 .speaker-panel li {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 .speaker-panel .qk {
-  width: 16px;
+  min-width: 16px;
   color: var(--text-dim);
   text-align: center;
+  flex-shrink: 0;
+  font-size: 11px;
 }
 .speaker-panel input[type='color'] {
   width: 26px;
@@ -594,10 +613,7 @@
   border-radius: 6px;
   padding: 6px 8px;
 }
-.speaker-panel .add-speaker-row {
-  grid-column: 1 / -1;
-}
-.speaker-panel .add-speaker-row .speaker-name {
+.speaker-add-input {
   width: 100%;
 }
 
@@ -683,6 +699,31 @@
 .speaker-select {
   align-self: start;
 }
+.role-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 7.5rem;
+  max-width: 9rem;
+  padding: 4px 6px;
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font: inherit;
+  cursor: pointer;
+}
+.role-trigger-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.role-trigger-chevron {
+  flex-shrink: 0;
+  color: var(--text-dim);
+  font-size: 10px;
+}
 .cue-segments {
   display: flex;
   flex-direction: column;
@@ -719,6 +760,103 @@
   flex: 1;
   min-height: 30px;
   line-height: 1.35;
+}
+
+/* ---- role picker ---- */
+.role-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: min(18vh, 140px);
+  z-index: 110;
+}
+.role-picker {
+  width: min(360px, 92vw);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+.role-picker-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.role-picker-search {
+  width: 100%;
+  margin-bottom: 8px;
+}
+.role-picker-list {
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+.role-picker-empty {
+  margin: 0;
+  padding: 12px 10px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+.role-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.role-picker-option:last-child {
+  border-bottom: none;
+}
+.role-picker-option:hover:not(:disabled),
+.role-picker-option--active {
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+}
+.role-picker-option:last-child:hover:not(:disabled),
+.role-picker-option:last-child.role-picker-option--active {
+  border-bottom: none;
+}
+.role-picker-option--selected {
+  font-weight: 600;
+}
+.role-picker-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.role-picker-option-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.role-picker-current {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.role-picker-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--text-dim);
 }
 
 /* ---- help overlay ---- */

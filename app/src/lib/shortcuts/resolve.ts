@@ -1,3 +1,4 @@
+import { isRolePickerOpen } from '../role-picker'
 import { buildShortcutContext, type ShortcutContext } from './context'
 import { SHORTCUTS, type ShortcutDef } from './registry'
 
@@ -13,6 +14,7 @@ export function resolveShortcut(
 
 /** Run the first matching shortcut, if any. Returns whether a shortcut handled the event. */
 export function handleShortcut(e: globalThis.KeyboardEvent): boolean {
+  if (isRolePickerOpen()) return false
   const ctx = buildShortcutContext(e.target)
   const def = resolveShortcut(e, ctx)
   if (!def) return false

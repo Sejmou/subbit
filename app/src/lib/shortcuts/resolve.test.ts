@@ -188,11 +188,11 @@ describe('resolveShortcut', () => {
     expect(resolveShortcut(makeKeyEvent('r'), ctx())?.id).toBe('toggle-reviewed')
   })
 
-  it('assigns speaker and shot from number keys', () => {
-    const c = ctx()
-    resolveShortcut(makeKeyEvent('1'), c)?.run(c, makeKeyEvent('1'))
-    expect(c.ps.setCueSpeaker).toHaveBeenCalledWith('cue-1', 'SPEAKER_00')
+  it('opens the role picker on A', () => {
+    expect(resolveShortcut(makeKeyEvent('a'), ctx())?.id).toBe('assign-role')
+  })
 
+  it('assigns shot from shift-number keys', () => {
     const c2 = ctx()
     const shotKey = makeKeyEvent('!', { shiftKey: true })
     resolveShortcut(shotKey, c2)?.run(c2, shotKey)

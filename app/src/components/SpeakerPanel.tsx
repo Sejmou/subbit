@@ -19,15 +19,17 @@ export function SpeakerPanel({ project }: { project: Project }) {
 
   return (
     <div className="speaker-panel">
-      <h3>Roles</h3>
-      <p className="hint">Name each role. Press 1–9 to assign to the selected cue.</p>
-      <ul>
+      <div className="speaker-panel-header">
+        <h3>Roles</h3>
+        <p className="hint">Names and colors. Assign with A on a cue.</p>
+      </div>
+      <ul className="speaker-panel-list">
         {project.speakers.map((s, i) => {
           const referenced = isSpeakerReferenced(project, s.id)
           const displayName = s.name.trim() || 'Unnamed role'
           return (
             <li key={s.id}>
-              <span className="qk">{i < 9 ? i + 1 : ''}</span>
+              <span className="qk">{i + 1}</span>
               <input
                 type="color"
                 value={s.color}
@@ -58,35 +60,33 @@ export function SpeakerPanel({ project }: { project: Project }) {
             </li>
           )
         })}
-        {adding ? (
-          <li className="add-speaker-row">
-            <input
-              className="speaker-name"
-              value={newName}
-              placeholder="Character name"
-              autoFocus
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') commitNewSpeaker()
-                if (e.key === 'Escape') {
-                  setNewName('')
-                  setAdding(false)
-                }
-              }}
-              onBlur={() => {
-                if (newName.trim()) commitNewSpeaker()
-                else setAdding(false)
-              }}
-            />
-          </li>
-        ) : (
-          <li>
-            <button type="button" className="add-speaker-btn" onClick={() => setAdding(true)}>
-              + Add role
-            </button>
-          </li>
-        )}
       </ul>
+      <div className="speaker-panel-footer">
+        {adding ? (
+          <input
+            className="speaker-name speaker-add-input"
+            value={newName}
+            placeholder="Character name"
+            autoFocus
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitNewSpeaker()
+              if (e.key === 'Escape') {
+                setNewName('')
+                setAdding(false)
+              }
+            }}
+            onBlur={() => {
+              if (newName.trim()) commitNewSpeaker()
+              else setAdding(false)
+            }}
+          />
+        ) : (
+          <button type="button" className="add-speaker-btn" onClick={() => setAdding(true)}>
+            + Add role
+          </button>
+        )}
+      </div>
     </div>
   )
 }
