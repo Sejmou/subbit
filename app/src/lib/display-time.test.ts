@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Project } from "../types";
 import {
   cueDisplayTimecode,
+  cueTimecodeToFileSeconds,
   playheadClockToFileSeconds,
   playheadDisplayClock,
   referenceSeconds,
@@ -33,6 +34,18 @@ describe("cueDisplayTimecode", () => {
 
   it("shows program time from zero in program mode", () => {
     expect(cueDisplayTimecode(101, project, "program")).toBe("00:00:01:00");
+  });
+});
+
+describe("cueTimecodeToFileSeconds", () => {
+  it("round-trips file mode cue timecodes", () => {
+    const tc = cueDisplayTimecode(101, project, "file");
+    expect(cueTimecodeToFileSeconds(tc, 25, 100, "file")).toBeCloseTo(101, 4);
+  });
+
+  it("round-trips program mode cue timecodes", () => {
+    const tc = cueDisplayTimecode(101, project, "program");
+    expect(cueTimecodeToFileSeconds(tc, 25, 100, "program")).toBeCloseTo(101, 4);
   });
 });
 

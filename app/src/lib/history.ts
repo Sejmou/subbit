@@ -115,7 +115,12 @@ export async function deleteVersion(
 
 /** Remove a project's entire history (metadata list + all version blobs). */
 export async function clearVersions(project: Project): Promise<void> {
-  const pk = projectKey(project);
+  await clearProjectHistoryById(project.id);
+}
+
+/** Remove version history for a project id (no full Project required). */
+export async function clearProjectHistoryById(projectId: string): Promise<void> {
+  const pk = `subbit:history:${projectId}`;
   const all = await keys();
   await Promise.all(
     all

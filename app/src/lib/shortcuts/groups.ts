@@ -1,4 +1,5 @@
 import { MOD_LABEL } from "./mod-label";
+import { createKeyLabeler } from "../keyboard-layout";
 import { SHORTCUTS } from "./registry";
 
 export interface ShortcutGroup {
@@ -25,9 +26,11 @@ export function shortcutGroups(mod: string = MOD_LABEL): ShortcutGroup[] {
     if (seenIds.has(def.id)) continue;
     seenIds.add(def.id);
 
-    const keys = typeof def.label === "function" ? def.label(mod) : def.label;
+    const keys = createKeyLabeler();
+    const keyLabel =
+      typeof def.label === "function" ? def.label(mod, keys) : def.label;
     const list = byGroup.get(def.group) ?? [];
-    list.push({ keys, description: def.description });
+    list.push({ keys: keyLabel, description: def.description });
     byGroup.set(def.group, list);
   }
 

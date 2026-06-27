@@ -1,4 +1,5 @@
 import { isFindReplaceOpen } from "../find-replace-dialog";
+import { isHelpOverlayOpen } from "../help-overlay";
 import { isRolePickerOpen } from "../role-picker";
 import { isSetupDialogOpen } from "../setup-dialog";
 import { buildShortcutContext, type ShortcutContext } from "./context";
@@ -16,7 +17,8 @@ export function resolveShortcut(
 
 /** Run the first matching shortcut, if any. Returns whether a shortcut handled the event. */
 export function handleShortcut(e: globalThis.KeyboardEvent): boolean {
-  if (isRolePickerOpen() || isSetupDialogOpen()) return false;
+  if (isRolePickerOpen() || isSetupDialogOpen() || isHelpOverlayOpen())
+    return false;
   const ctx = buildShortcutContext(e.target);
   const def = resolveShortcut(e, ctx);
   if (!def) return false;

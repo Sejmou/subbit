@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Project } from "../types";
 import { useProject } from "../store/project";
-import { shortcutLabel } from "../lib/shortcuts";
+import { useShortcutLabel } from "../hooks/useShortcutLabel";
 import { formatRelativeTime } from "../lib/relative-time";
 import { FileMenu } from "./FileMenu";
 import { ProjectNameField } from "./ProjectNameField";
@@ -124,6 +124,11 @@ export function Toolbar({
   const setProjectName = useProject((s) => s.setProjectName);
   const canUndo = useProject((s) => s.past.length > 0);
   const canRedo = useProject((s) => s.future.length > 0);
+  const undoLabel = useShortcutLabel("undo");
+  const redoLabel = useShortcutLabel("redo");
+  const previewToggleLabel = useShortcutLabel("preview-toggle");
+  const findReplaceLabel = useShortcutLabel("find-replace");
+  const saveLabel = useShortcutLabel("save");
   const reviewed = project.cues.filter((c) => c.reviewed).length;
   const total = project.cues.length;
 
@@ -164,14 +169,14 @@ export function Toolbar({
         <button
           onClick={undo}
           disabled={!canUndo}
-          title={`Undo (${shortcutLabel("undo")})`}
+          title={`Undo (${undoLabel})`}
         >
           Undo
         </button>
         <button
           onClick={redo}
           disabled={!canRedo}
-          title={`Redo (${shortcutLabel("redo")})`}
+          title={`Redo (${redoLabel})`}
         >
           Redo
         </button>
@@ -195,7 +200,7 @@ export function Toolbar({
             previewEnabled ? "preview-btn preview-btn--on" : "preview-btn"
           }
           onClick={onTogglePreview}
-          title={`${previewEnabled ? "Hide" : "Show"} subtitle preview on video (${shortcutLabel("preview-toggle")})`}
+          title={`${previewEnabled ? "Hide" : "Show"} subtitle preview on video (${previewToggleLabel})`}
         >
           Preview
         </button>
@@ -209,7 +214,7 @@ export function Toolbar({
           }
           aria-pressed={findReplaceOpen}
           onClick={onToggleFindReplace}
-          title={`${findReplaceOpen ? "Close" : "Open"} find & replace (${shortcutLabel("find-replace")})`}
+          title={`${findReplaceOpen ? "Close" : "Open"} find & replace (${findReplaceLabel})`}
         >
           Find…
         </button>
@@ -217,7 +222,7 @@ export function Toolbar({
           className={dirty ? "primary save-btn" : "save-btn"}
           onClick={onSave}
           disabled={saving}
-          title={`Save project (${shortcutLabel("save")})`}
+          title={`Save project (${saveLabel})`}
         >
           Save
         </button>

@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Cue, Project } from "../../types";
 import type { ShortcutContext } from "./context";
+import { createKeyLabeler } from "../keyboard-layout";
 import { setFindReplaceOpen } from "../find-replace-dialog";
+import { setHelpOverlayOpen } from "../help-overlay";
 import { shortcutGroups } from "./groups";
 import { SHORTCUTS } from "./registry";
-import { resolveShortcut } from "./resolve";
+import { resolveShortcut, handleShortcut } from "./resolve";
 
 function makeKeyEvent(
   keyVal: string,
@@ -100,7 +102,9 @@ describe("shortcut registry", () => {
       expect(def.match).toBeTypeOf("function");
       expect(def.run).toBeTypeOf("function");
       const label =
-        typeof def.label === "function" ? def.label("Cmd") : def.label;
+        typeof def.label === "function"
+          ? def.label("Cmd", createKeyLabeler())
+          : def.label;
       expect(label).toBeTruthy();
     }
   });
@@ -208,6 +212,29 @@ describe("resolveShortcut", () => {
     ).toBe("jog-back-frame");
   });
 
+  it("nudges cue times from physical bracket keys (layout-independent)", () => {
+    const c = ctx();
+    resolveShortcut(
+      makeKeyEvent("ü", { code: "BracketLeft" }),
+      c,
+    )?.run(c, makeKeyEvent("ü", { code: "BracketLeft" }));
+    expect(c.ps.nudgeCueStart).toHaveBeenCalledWith("cue-1", -c.frame);
+
+    const c2 = ctx();
+    resolveShortcut(
+      makeKeyEvent("Ü", { code: "BracketLeft", shiftKey: true }),
+      c2,
+    )?.run(c2, makeKeyEvent("Ü", { code: "BracketLeft", shiftKey: true }));
+    expect(c2.ps.nudgeCueStart).toHaveBeenCalledWith("cue-1", c2.frame * 10);
+
+    const c3 = ctx();
+    resolveShortcut(
+      makeKeyEvent("+", { code: "BracketRight" }),
+      c3,
+    )?.run(c3, makeKeyEvent("+", { code: "BracketRight" }));
+    expect(c3.ps.nudgeCueEnd).toHaveBeenCalledWith("cue-1", c3.frame);
+  });
+
   it("ignores navigation shortcuts while editing text", () => {
     expect(
       resolveShortcut(makeKeyEvent(" "), ctx({ editing: true })),
@@ -243,6 +270,13 @@ describe("resolveShortcut", () => {
     expect(
       resolveShortcut(modKey("f", { shiftKey: true }), ctx())?.id,
     ).toBe("find-replace");
+  });
+
+  it("ignores shortcuts while the help overlay is open", () => {
+    setHelpOverlayOpen(true);
+    expect(handleShortcut(makeKeyEvent(" ", { code: "Space" }))).toBe(false);
+    expect(handleShortcut(makeKeyEvent("j"))).toBe(false);
+    setHelpOverlayOpen(false);
   });
 
   it("toggles find and replace on mod+shift+f even while the panel is open", () => {

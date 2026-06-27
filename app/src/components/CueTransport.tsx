@@ -1,7 +1,7 @@
 import type { Project } from "../types";
 import { useProject } from "../store/project";
-import { usePlayback } from "../store/playback";
-import { shortcutLabel } from "../lib/shortcuts";
+import { usePlayback, reactionAdjustedPlayhead } from "../store/playback";
+import { useShortcutLabel } from "../hooks/useShortcutLabel";
 import { cueDisplayTimecode } from "../lib/display-time";
 import { useTimeReference } from "../store/time-reference";
 
@@ -45,8 +45,15 @@ function formatDrift(seconds: number): string {
 export function CueTransport({ project }: { project: Project }) {
   const selectedCueId = useProject((s) => s.selectedCueId);
   const selectCue = useProject((s) => s.selectCue);
+  const setCueStart = useProject((s) => s.setCueStart);
+  const setCueEnd = useProject((s) => s.setCueEnd);
   const timeReference = useTimeReference((s) => s.reference);
-  const { currentTime, seek } = usePlayback();
+  const { currentTime, playing, seek } = usePlayback();
+  const seekToCueLabel = useShortcutLabel("seek-to-cue");
+  const previousCueLabel = useShortcutLabel("previous-cue");
+  const nextCueLabel = useShortcutLabel("next-cue");
+  const setInLabel = useShortcutLabel("set-in");
+  const setOutLabel = useShortcutLabel("set-out");
 
   const cues = project.cues;
   const cueIndex = selectedCueId
@@ -57,12 +64,23 @@ export function CueTransport({ project }: { project: Project }) {
   const canPrev = hasCue && cueIndex > 0;
   const canNext = hasCue && cueIndex < cues.length - 1;
 
-  const drift = cue ? currentTime - cue.start : 0;
-  const offCue = hasCue && Math.abs(drift) > OFF_CUE_THRESHOLD_S;
-  const jumpTitle = hasCue
-    ? offCue
-      ? `Jump to In (${shortcutLabel("seek-to-cue")}) — ${formatDrift(drift)}`
-      : `Jump to In (${shortcutLabel("seek-to-cue")})`
+  const inDrift = cue ? currentTime - cue.start : 0;
+  const outDrift = cue ? currentTime - cue.end : 0;
+  const offIn = hasCue && Math.abs(inDrift) > OFF_CUE_THRESHOLD_S;
+  const offOut = hasCue && Math.abs(outDrift) > OFF_CUE_THRESHOLD_S;
+
+  const playheadForMark = reactionAdjustedPlayhead(currentTime, playing);
+
+  const jumpInTitle = hasCue
+    ? offIn
+      ? `Jump to In (${seekToCueLabel}) — ${formatDrift(inDrift)}`
+      : `Jump to In (${seekToCueLabel})`
+    : undefined;
+
+  const jumpOutTitle = hasCue
+    ? offOut
+      ? `Jump to Out — ${formatDrift(outDrift)}`
+      : "Jump to Out"
     : undefined;
 
   const selectPrev = () => {
@@ -93,37 +111,80 @@ export function CueTransport({ project }: { project: Project }) {
         className="cue-transport-btn"
         disabled={!canPrev}
         onClick={selectPrev}
-        title={`Previous cue (${shortcutLabel("previous-cue")})`}
+        title={`Previous cue (${previousCueLabel})`}
         aria-label="Previous cue"
       >
         <ChevronLeftIcon />
       </button>
-
-      <span className="cue-transport-tc" title={hasCue ? jumpTitle : undefined}>
-        {hasCue ? cueDisplayTimecode(cue.start, project, timeReference) : "—"}
-      </span>
 
       <button
         type="button"
         className="cue-transport-btn"
         disabled={!canNext}
         onClick={selectNext}
-        title={`Next cue (${shortcutLabel("next-cue")})`}
+        title={`Next cue (${nextCueLabel})`}
         aria-label="Next cue"
       >
         <ChevronRightIcon />
       </button>
 
-      <button
-        type="button"
-        className={`cue-transport-in-btn${offCue ? " cue-transport-in-btn--warn" : ""}`}
-        disabled={!hasCue}
-        onClick={() => cue && seek(cue.start)}
-        title={jumpTitle}
-        aria-label="Jump to cue In"
-      >
-        In
-      </button>
+      <span className="cue-transport-sep" aria-hidden />
+
+      <div className="cue-transport-boundary">
+        <span className="cue-transport-boundary-label">In</span>
+        <span className="cue-transport-tc">
+          {hasCue
+            ? cueDisplayTimecode(cue.start, project, timeReference)
+            : "—"}
+        </span>
+        <button
+          type="button"
+          className={`cue-transport-mark-btn${offIn ? " cue-transport-mark-btn--warn" : ""}`}
+          disabled={!hasCue}
+          onClick={() => cue && seek(cue.start)}
+          title={jumpInTitle}
+          aria-label="Jump to In"
+        >
+          ↗
+        </button>
+        <button
+          type="button"
+          className="cue-transport-set-btn"
+          disabled={!hasCue}
+          onClick={() => cue && setCueStart(cue.id, playheadForMark)}
+          title={`Set In to playhead (${setInLabel})`}
+        >
+          Set
+        </button>
+      </div>
+
+      <div className="cue-transport-boundary">
+        <span className="cue-transport-boundary-label">Out</span>
+        <span className="cue-transport-tc">
+          {hasCue
+            ? cueDisplayTimecode(cue.end, project, timeReference)
+            : "—"}
+        </span>
+        <button
+          type="button"
+          className={`cue-transport-mark-btn${offOut ? " cue-transport-mark-btn--warn" : ""}`}
+          disabled={!hasCue}
+          onClick={() => cue && seek(cue.end)}
+          title={jumpOutTitle}
+          aria-label="Jump to Out"
+        >
+          ↗
+        </button>
+        <button
+          type="button"
+          className="cue-transport-set-btn"
+          disabled={!hasCue}
+          onClick={() => cue && setCueEnd(cue.id, playheadForMark)}
+          title={`Set Out to playhead (${setOutLabel})`}
+        >
+          Set
+        </button>
+      </div>
     </div>
   );
 }

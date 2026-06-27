@@ -6,7 +6,7 @@ import {
   setRolePickerOpen,
   type RoleOption,
 } from "../lib/role-picker";
-import { shortcutLabel } from "../lib/shortcuts";
+import { useShortcutLabel } from "../hooks/useShortcutLabel";
 
 interface Props {
   open: boolean;
@@ -21,6 +21,7 @@ export function RolePicker({ open, cueId, project, onClose }: Props) {
   const [highlight, setHighlight] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const assignRoleLabel = useShortcutLabel("assign-role");
 
   const options = useMemo(
     () => filterRoleOptions(project.speakers, query),
@@ -169,7 +170,7 @@ export function RolePicker({ open, cueId, project, onClose }: Props) {
         <p className="role-picker-hint">
           <kbd>↑</kbd> <kbd>↓</kbd> navigate · <kbd>Enter</kbd> assign ·{" "}
           <kbd>Esc</kbd> close ·{" "}
-          <kbd>{shortcutLabel("assign-role") || "A"}</kbd> opens this picker
+          <kbd>{assignRoleLabel || "A"}</kbd> opens this picker
         </p>
       </div>
     </div>

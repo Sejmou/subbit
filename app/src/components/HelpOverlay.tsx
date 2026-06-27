@@ -1,8 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MOD_LABEL, shortcutGroups } from "../lib/shortcuts";
+import { setHelpOverlayOpen } from "../lib/help-overlay";
+import { useKeyboardLayoutStore } from "../store/keyboard-layout";
 import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
 
 type HelpTab = "overview" | "shortcuts";
+
+const HELP_TABS: { id: HelpTab; label: string }[] = [
+  { id: "overview", label: "Overview" },
+  { id: "shortcuts", label: "Keyboard shortcuts" },
+];
 
 function HelpTutorial() {
   return (
@@ -222,6 +229,8 @@ function HelpTutorial() {
 }
 
 function HelpShortcuts() {
+  useKeyboardLayoutStore((s) => s.version);
+
   return (
     <>
       <p className="hint">
@@ -259,6 +268,12 @@ export function HelpOverlay({
 }) {
   const [tab, setTab] = useState<HelpTab>("overview");
   const modalRef = useModalFocusTrap(open, onClose);
+  const tabRefs = useRef<Partial<Record<HelpTab, HTMLButtonElement | null>>>({});
+
+  useEffect(() => {
+    setHelpOverlayOpen(open);
+    return () => setHelpOverlayOpen(false);
+  }, [open]);
 
   useEffect(() => {
     if (open) setTab("overview");
@@ -275,6 +290,29 @@ export function HelpOverlay({
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   }, [open, onClose]);
+
+  function selectTab(id: HelpTab, focus = false) {
+    setTab(id);
+    if (focus) tabRefs.current[id]?.focus();
+  }
+
+  function onTabKeyDown(e: React.KeyboardEvent, index: number) {
+    const last = HELP_TABS.length - 1;
+    let next = index;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      next = index < last ? index + 1 : 0;
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      next = index > 0 ? index - 1 : last;
+    } else if (e.key === "Home") {
+      next = 0;
+    } else if (e.key === "End") {
+      next = last;
+    } else {
+      return;
+    }
+    e.preventDefault();
+    selectTab(HELP_TABS[next].id, true);
+  }
 
   if (!open) return null;
 
@@ -297,32 +335,30 @@ export function HelpOverlay({
           </div>
 
           <div className="help-tabs" role="tablist" aria-label="Help sections">
-            <button
-              type="button"
-              role="tab"
-              id="help-tab-overview"
-              aria-selected={tab === "overview"}
-              aria-controls="help-panel-overview"
-              className={
-                tab === "overview" ? "help-tab help-tab--active" : "help-tab"
-              }
-              onClick={() => setTab("overview")}
-            >
-              Overview
-            </button>
-            <button
-              type="button"
-              role="tab"
-              id="help-tab-shortcuts"
-              aria-selected={tab === "shortcuts"}
-              aria-controls="help-panel-shortcuts"
-              className={
-                tab === "shortcuts" ? "help-tab help-tab--active" : "help-tab"
-              }
-              onClick={() => setTab("shortcuts")}
-            >
-              Keyboard shortcuts
-            </button>
+            {HELP_TABS.map(({ id, label }, index) => {
+              const selected = tab === id;
+              return (
+                <button
+                  key={id}
+                  ref={(el) => {
+                    tabRefs.current[id] = el;
+                  }}
+                  type="button"
+                  role="tab"
+                  id={`help-tab-${id}`}
+                  aria-selected={selected}
+                  aria-controls={`help-panel-${id}`}
+                  tabIndex={selected ? 0 : -1}
+                  className={
+                    selected ? "help-tab help-tab--active" : "help-tab"
+                  }
+                  onClick={() => selectTab(id)}
+                  onKeyDown={(e) => onTabKeyDown(e, index)}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
 

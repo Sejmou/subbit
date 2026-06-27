@@ -1,4 +1,4 @@
-import { shortcutLabel } from "../lib/shortcuts";
+import { useShortcutLabel } from "../hooks/useShortcutLabel";
 import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
 
 interface Props {
@@ -9,12 +9,11 @@ interface Props {
 /** Explains program start and how it affects editing vs export. */
 export function ProgramStartHelpDialog({ open, onClose }: Props) {
   const modalRef = useModalFocusTrap(open, onClose);
+  const setFromPlayhead = useShortcutLabel("set-program-start");
+  const clearStart = useShortcutLabel("clear-program-start");
+  const seekStart = useShortcutLabel("seek-program-start");
 
   if (!open) return null;
-
-  const setFromPlayhead = shortcutLabel("set-program-start");
-  const clearStart = shortcutLabel("clear-program-start");
-  const seekStart = shortcutLabel("seek-program-start");
 
   return (
     <div className="help-backdrop" onMouseDown={onClose}>

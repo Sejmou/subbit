@@ -1,12 +1,10 @@
 import { memo, useEffect, useMemo, useRef, type RefObject } from "react";
 import type { Cue, Project } from "../types";
 import { useProject } from "../store/project";
-import { usePlayback } from "../store/playback";
 import { useAutosizeTextarea } from "../hooks/useAutosizeTextarea";
 import { openRolePicker, NO_ROLE_LABEL } from "../lib/role-picker";
-import { shortcutLabel } from "../lib/shortcuts";
-import { cueDisplayTimecode } from "../lib/display-time";
-import { useTimeReference } from "../store/time-reference";
+import { useShortcutLabel } from "../hooks/useShortcutLabel";
+import { CueTimeField } from "./CueTimeField";
 import type { FocusCueDetail } from "../lib/focus-cue";
 import {
   buildHighlightChunks,
@@ -149,8 +147,8 @@ function CueRowImpl({
     toggleReviewed,
     deleteCue,
   } = useProject();
-  const seek = usePlayback((s) => s.seek);
-  const timeReference = useTimeReference((s) => s.reference);
+  const cycleShotLabel = useShortcutLabel("cycle-shot");
+  const deleteCueLabel = useShortcutLabel("delete-cue");
 
   // Focus this row's text when navigation mode requests editing.
   useEffect(() => {
@@ -201,20 +199,18 @@ function CueRowImpl({
       </div>
 
       <div className="cue-times">
-        <button
-          className="tc"
-          title="Seek to In"
-          onClick={() => seek(cue.start)}
-        >
-          {cueDisplayTimecode(cue.start, project, timeReference)}
-        </button>
-        <button
-          className="tc"
-          title="Seek to Out"
-          onClick={() => seek(cue.end)}
-        >
-          {cueDisplayTimecode(cue.end, project, timeReference)}
-        </button>
+        <CueTimeField
+          cueId={cue.id}
+          fileSeconds={cue.start}
+          project={project}
+          kind="in"
+        />
+        <CueTimeField
+          cueId={cue.id}
+          fileSeconds={cue.end}
+          project={project}
+          kind="out"
+        />
       </div>
 
       <button
@@ -243,7 +239,7 @@ function CueRowImpl({
               className="shot-select"
               value={seg.shot}
               onChange={(e) => setSegmentShot(cue.id, i, e.target.value)}
-              title={`Cycle shot type (${shortcutLabel("cycle-shot")})`}
+              title={`Cycle shot type (${cycleShotLabel})`}
             >
               {project.shots.map((sh) => (
                 <option key={sh.id} value={sh.id}>
@@ -273,7 +269,7 @@ function CueRowImpl({
       <button
         type="button"
         className="cue-delete-btn"
-        title={`Delete cue (${shortcutLabel("delete-cue")})`}
+        title={`Delete cue (${deleteCueLabel})`}
         aria-label={`Delete cue ${index + 1}`}
         onClick={(e) => {
           e.stopPropagation();

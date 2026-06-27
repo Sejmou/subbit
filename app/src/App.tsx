@@ -27,8 +27,12 @@ import {
 } from "./lib/project-io";
 import {
   getActiveProjectId,
+  listStoredProjectSummaries,
   loadStoredProject,
   saveStoredProject,
+  setActiveProjectId,
+  deleteStoredProject,
+  type StoredProjectSummary,
 } from "./lib/project-storage";
 import { addVersion } from "./lib/history";
 import { createEmptyProject } from "./lib/create-empty-project";
@@ -38,6 +42,7 @@ import {
   suggestedProjectBundleFilename,
 } from "./lib/project-meta";
 import { useShortcuts } from "./hooks/useShortcuts";
+import { useKeyboardLayoutStore } from "./store/keyboard-layout";
 import { LoadScreen } from "./components/LoadScreen";
 import { ProjectSetupDialog } from "./components/ProjectSetupDialog";
 import { VideoPlayer } from "./components/VideoPlayer";
@@ -54,6 +59,7 @@ import {
   type FindHighlightState,
 } from "./lib/find-highlight";
 import { UnsavedDialog } from "./components/UnsavedDialog";
+import { ConfirmDialog } from "./components/ConfirmDialog";
 import { VideoMismatchBanner } from "./components/VideoMismatchBanner";
 import { WaveformTimeline } from "./components/WaveformTimeline";
 import { useVideoIdentity } from "./hooks/useVideoIdentity";
@@ -112,8 +118,19 @@ export default function App() {
   const [rolePickerCueId, setRolePickerCueId] = useState<string | null>(null);
   const [setupOpen, setSetupOpen] = useState(false);
   const [setupBusy, setSetupBusy] = useState<string | null>(null);
+  const [storedProjects, setStoredProjects] = useState<StoredProjectSummary[]>(
+    [],
+  );
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [activeProjectIdForList, setActiveProjectIdForList] = useState<
+    string | undefined
+  >();
+  const [deleteTarget, setDeleteTarget] = useState<StoredProjectSummary | null>(
+    null,
+  );
 
   const videoHandle = useRef<FsFileHandle | null>(null);
+  const pendingOpenProjectId = useRef<string | null>(null);
   const unsavedResolver = useRef<((proceed: boolean) => void) | null>(null);
   const fsSupported = isFsAccessSupported();
 
@@ -130,6 +147,16 @@ export default function App() {
   const closeSetup = useCallback(() => {
     setSetupOpen(false);
     setSetupBusy(null);
+  }, []);
+
+  const refreshStoredProjects = useCallback(async () => {
+    const [list, activeId] = await Promise.all([
+      listStoredProjectSummaries(),
+      getActiveProjectId(),
+    ]);
+    setStoredProjects(list);
+    setActiveProjectIdForList(activeId);
+    setProjectsLoading(false);
   }, []);
 
   /** Load into editor, persist JSON to IndexedDB, restore stored waveform. */
@@ -188,6 +215,7 @@ export default function App() {
   /** New-user path: video first, empty project, then setup dialog. */
   const beginNewSessionWithVideo = useCallback(
     async (file: File, handle?: FsFileHandle) => {
+      pendingOpenProjectId.current = null;
       if (handle) {
         videoHandle.current = handle;
         await cacheVideoHandle(handle);
@@ -207,9 +235,92 @@ export default function App() {
   }, [beginNewSessionWithVideo]);
 
   const onVideoFile = useCallback(
-    (file: File) => void beginNewSessionWithVideo(file),
-    [beginNewSessionWithVideo],
+    async (file: File) => {
+      const pendingId = pendingOpenProjectId.current;
+      if (pendingId) {
+        pendingOpenProjectId.current = null;
+        setVideoFromFile(file);
+        const stored = await loadStoredProject(pendingId);
+        if (!stored) return;
+        setBusy("Opening project…");
+        try {
+          await setActiveProjectId(pendingId);
+          await activateProject(stored);
+          setStarted(true);
+        } finally {
+          setBusy(null);
+        }
+        return;
+      }
+      await beginNewSessionWithVideo(file);
+    },
+    [beginNewSessionWithVideo, activateProject, setVideoFromFile],
   );
+
+  const openStoredProject = useCallback(
+    async (projectId: string): Promise<boolean> => {
+      const stored = await loadStoredProject(projectId);
+      if (!stored) {
+        alert("Could not load that project.");
+        await refreshStoredProjects();
+        return false;
+      }
+
+      let videoH = videoHandle.current ?? (await getCachedVideoHandle());
+
+      if (!videoH) {
+        if (fsSupported) {
+          const picked = await pickFile(VIDEO_ACCEPT, "Video");
+          if (!picked) return false;
+          videoH = picked;
+          await cacheVideoHandle(picked);
+        } else {
+          pendingOpenProjectId.current = projectId;
+          alert("Select the matching video file below to open this project.");
+          return false;
+        }
+      }
+
+      if (!(await ensurePermission(videoH, "read"))) return false;
+
+      setBusy("Opening project…");
+      try {
+        await setActiveProjectId(projectId);
+        videoHandle.current = videoH;
+        setVideoFromFile(await readHandleAsFile(videoH));
+        await activateProject(stored);
+        setStarted(true);
+        return true;
+      } finally {
+        setBusy(null);
+      }
+    },
+    [fsSupported, activateProject, setVideoFromFile, refreshStoredProjects],
+  );
+
+  const confirmDeleteProject = useCallback(async () => {
+    if (!deleteTarget) return;
+    setBusy("Deleting…");
+    try {
+      const removed = await deleteStoredProject(deleteTarget.id);
+      if (!removed) {
+        alert("Could not delete that project.");
+        return;
+      }
+      if (deleteTarget.id === activeProjectIdForList) {
+        setCanRestore(false);
+        setActiveProjectIdForList(undefined);
+      }
+      setDeleteTarget(null);
+      await refreshStoredProjects();
+    } finally {
+      setBusy(null);
+    }
+  }, [
+    deleteTarget,
+    activeProjectIdForList,
+    refreshStoredProjects,
+  ]);
 
   const doRestore = useCallback(
     async (silent: boolean): Promise<boolean> => {
@@ -240,7 +351,13 @@ export default function App() {
   );
 
   useEffect(() => {
+    void useKeyboardLayoutStore.getState().hydrate();
+  }, []);
+
+  useEffect(() => {
     void (async () => {
+      setProjectsLoading(true);
+      await refreshStoredProjects();
       if (fsSupported && (await doRestore(true))) return;
       const [videoH, projectId] = await Promise.all([
         getCachedVideoHandle(),
@@ -250,7 +367,11 @@ export default function App() {
         setCanRestore(true);
       }
     })();
-  }, [fsSupported, doRestore]);
+  }, [fsSupported, doRestore, refreshStoredProjects]);
+
+  useEffect(() => {
+    if (!started) void refreshStoredProjects();
+  }, [started, refreshStoredProjects]);
 
   const save = useCallback(
     async (opts: { auto?: boolean } = {}): Promise<boolean> => {
@@ -579,9 +700,28 @@ export default function App() {
           fsSupported={fsSupported}
           canRestore={canRestore}
           busy={busy}
+          storedProjects={storedProjects}
+          projectsLoading={projectsLoading}
+          activeProjectId={activeProjectIdForList}
           onPickVideo={() => void pickVideo()}
-          onVideoFile={onVideoFile}
+          onVideoFile={(file) => void onVideoFile(file)}
           onRestore={() => void doRestore(false)}
+          onOpenProject={(id) => void openStoredProject(id)}
+          onDeleteProject={setDeleteTarget}
+        />
+        <ConfirmDialog
+          open={deleteTarget !== null}
+          title="Delete project?"
+          message={
+            deleteTarget
+              ? `“${deleteTarget.name}” will be removed from this browser, including its saved history. This can’t be undone.`
+              : ""
+          }
+          confirmLabel={busy === "Deleting…" ? "Deleting…" : "Delete"}
+          danger
+          busy={busy === "Deleting…"}
+          onConfirm={() => void confirmDeleteProject()}
+          onCancel={() => setDeleteTarget(null)}
         />
       </>
     );

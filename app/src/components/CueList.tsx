@@ -9,7 +9,7 @@ import {
   hasActiveFilters,
   type ReviewStatusFilter,
 } from "../lib/cue-filters";
-import { shortcutLabel } from "../lib/shortcuts";
+import { useShortcutLabel } from "../hooks/useShortcutLabel";
 import { focusCueForEdit, type FocusCueDetail } from "../lib/focus-cue";
 import {
   indexMatchesBySegment,
@@ -35,6 +35,7 @@ export function CueList({
   const selectedCueId = useProject((s) => s.selectedCueId);
   const insertCueAtPlayhead = useProject((s) => s.insertCueAtPlayhead);
   const currentTime = usePlayback((s) => s.currentTime);
+  const insertCueLabel = useShortcutLabel("insert-cue");
   const [activeIndex, setActiveIndex] = useState(-1);
   const isEmpty = project.cues.length === 0;
 
@@ -109,7 +110,7 @@ export function CueList({
       <div className="cue-list cue-list--empty">
         <p>No subtitles yet.</p>
         <p className="hint">
-          Press <kbd>{shortcutLabel("insert-cue")}</kbd> to add a cue at the
+          Press <kbd>{insertCueLabel}</kbd> to add a cue at the
           playhead.
         </p>
         <button

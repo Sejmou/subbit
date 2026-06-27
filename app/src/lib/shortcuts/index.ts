@@ -14,3 +14,5 @@ export {
 } from "./registry";
 export { shortcutGroups, type ShortcutGroup } from "./groups";
 export { resolveShortcut, handleShortcut } from "./resolve";
+export { useShortcutLabel } from "../../hooks/useShortcutLabel";
+export { initKeyboardLayout } from "../keyboard-layout";

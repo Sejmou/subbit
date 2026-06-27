@@ -3,7 +3,7 @@ import {
   contentStartSeconds,
   fileTimeToProgramTime,
 } from "./program-start";
-import { secondsToClock, secondsToTimecode } from "./timecode";
+import { secondsToClock, secondsToTimecode, timecodeToSeconds } from "./timecode";
 import type { TimeReference } from "../store/time-reference";
 
 /** File seconds for the active time reference (editor display / playhead field). */
@@ -47,4 +47,15 @@ export function playheadClockToFileSeconds(
   reference: TimeReference,
 ): number {
   return reference === "file" ? clockSeconds : clockSeconds + contentStart;
+}
+
+/** Parse a displayed cue timecode back to file seconds. */
+export function cueTimecodeToFileSeconds(
+  timecode: string,
+  fps: number,
+  contentStart: number,
+  reference: TimeReference,
+): number {
+  const refSeconds = timecodeToSeconds(timecode, fps);
+  return reference === "file" ? refSeconds : refSeconds + contentStart;
 }

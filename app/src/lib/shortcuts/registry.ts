@@ -3,6 +3,7 @@ import type { ShortcutContext } from "./context";
 import { reactionAdjustedPlayhead } from "../../store/playback";
 import { focusCueForEdit } from "../focus-cue";
 import { openRolePicker } from "../role-picker";
+import { createKeyLabeler, type KeyLabeler } from "../keyboard-layout";
 
 type KeyEvent = globalThis.KeyboardEvent;
 
@@ -10,7 +11,7 @@ export interface ShortcutDef {
   id: string;
   group: string;
   /** Display label in the help overlay and tooltips. */
-  label: string | ((mod: string) => string);
+  label: string | ((mod: string, keys: KeyLabeler) => string);
   description: string;
   /** When false, the shortcut works but is omitted from the help overlay. */
   showInHelp?: boolean;
@@ -31,6 +32,15 @@ function plainKey(e: KeyEvent): boolean {
 /** Main or numpad 0 — layout-independent (Shift+0 is ")" on US keyboards). */
 function isZeroKey(e: KeyEvent): boolean {
   return e.code === "Digit0" || e.code === "Numpad0";
+}
+
+/** Keys beside P on US layout (ü / + on German — use code, not "["/"]" character). */
+function isBracketLeftKey(e: KeyEvent): boolean {
+  return e.code === "BracketLeft" || e.key === "[";
+}
+
+function isBracketRightKey(e: KeyEvent): boolean {
+  return e.code === "BracketRight" || e.key === "]";
 }
 
 /** Cmd/Ctrl-free keys; allows Alt for Option/Alt combos. */
@@ -64,7 +74,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "undo",
     group: "Project",
-    label: (m) => `${m} + Z`,
+    label: (m, k) => k.join([m, k.code("KeyZ")]),
     description: "Undo",
     match: (e, ctx) =>
       !!ctx.project &&
@@ -77,7 +87,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "redo",
     group: "Project",
-    label: (m) => `${m} + Shift + Z`,
+    label: (m, k) => k.join([m, "Shift", k.code("KeyZ")]),
     description: "Redo",
     match: (e, ctx) =>
       !!ctx.project &&
@@ -91,7 +101,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "save",
     group: "Project",
-    label: (m) => `${m} + S`,
+    label: (m, k) => k.join([m, k.code("KeyS")]),
     description: "Save project",
     match: (e, ctx) =>
       !!ctx.project &&
@@ -104,7 +114,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "find-replace",
     group: "Project",
-    label: (m) => `${m} + Shift + F`,
+    label: (m, k) => k.join([m, "Shift", k.code("KeyF")]),
     description: "Toggle find and replace",
     match: (e, ctx) =>
       !!ctx.project &&
@@ -118,7 +128,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "split-at-caret",
     group: "Text & structure",
-    label: (m) => `${m} + Enter`,
+    label: (m, k) => k.join([m, k.code("Enter")]),
     description: "Split cue at the caret + playhead",
     match: (e, ctx) =>
       !!ctx.project && mod(e) && e.key === "Enter" && !!ctx.caret,
@@ -136,7 +146,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "insert-shot-split",
     group: "Text & structure",
-    label: (m) => `${m} + Shift + S`,
+    label: (m, k) => k.join([m, "Shift", k.code("KeyS")]),
     description: "Insert a shot change at the caret",
     match: (e, ctx) =>
       !!ctx.project &&
@@ -161,7 +171,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "preview-toggle",
     group: "Playback & navigation",
-    label: "P",
+    label: (_, k) => k.code("KeyP"),
     description: "Toggle subtitle preview on video",
     match: (e, ctx) => canPlayback(e, ctx) && (e.key === "p" || e.key === "P"),
     run: () => window.dispatchEvent(new CustomEvent("subbit:preview-toggle")),
@@ -170,7 +180,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "play-from-cue",
     group: "Playback & navigation",
-    label: "Shift + Space",
+    label: (_, k) => k.shift("Space"),
     description: "Play from the selected cue In",
     match: (e, ctx) =>
       canPlayback(e, ctx) && e.shiftKey && e.key === " " && !!ctx.cue,
@@ -180,7 +190,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "play-pause",
     group: "Playback & navigation",
-    label: "Space",
+    label: (_, k) => k.code("Space"),
     description: "Play / pause",
     match: (e, ctx) => canPlayback(e, ctx) && !e.shiftKey && e.key === " ",
     run: (ctx) => ctx.pb.togglePlay(),
@@ -189,7 +199,8 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "next-cue",
     group: "Playback & navigation",
-    label: "J / K  or  ↓ / ↑",
+    label: (_, k) =>
+      `${k.code("KeyJ")} / ${k.code("KeyK")}  or  ${k.code("ArrowDown")} / ${k.code("ArrowUp")}`,
     description: "Next / previous cue",
     match: (e, ctx) =>
       plainKey(e) &&
@@ -208,7 +219,8 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "previous-cue",
     group: "Playback & navigation",
-    label: "J / K  or  ↓ / ↑",
+    label: (_, k) =>
+      `${k.code("KeyJ")} / ${k.code("KeyK")}  or  ${k.code("ArrowDown")} / ${k.code("ArrowUp")}`,
     description: "Next / previous cue",
     showInHelp: false,
     match: (e, ctx) =>
@@ -226,7 +238,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "jog-back",
     group: "Playback & navigation",
-    label: "← / →",
+    label: (_, k) => `${k.code("ArrowLeft")} / ${k.code("ArrowRight")}`,
     description: "Jog playhead 1 second",
     match: (e, ctx) =>
       canPlayback(e, ctx) && e.key === "ArrowLeft" && !e.shiftKey,
@@ -236,7 +248,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "jog-forward",
     group: "Playback & navigation",
-    label: "← / →",
+    label: (_, k) => `${k.code("ArrowLeft")} / ${k.code("ArrowRight")}`,
     description: "Jog playhead 1 second",
     showInHelp: false,
     match: (e, ctx) =>
@@ -247,7 +259,8 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "jog-back-frames",
     group: "Playback & navigation",
-    label: "Shift + ← / →",
+    label: (_, k) =>
+      `${k.join(["Shift", k.code("ArrowLeft")])} / ${k.code("ArrowRight")}`,
     description: "Jog playhead 10 frames",
     match: (e, ctx) =>
       canPlayback(e, ctx) && e.shiftKey && e.key === "ArrowLeft",
@@ -257,7 +270,8 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "jog-forward-frames",
     group: "Playback & navigation",
-    label: "Shift + ← / →",
+    label: (_, k) =>
+      `${k.join(["Shift", k.code("ArrowLeft")])} / ${k.code("ArrowRight")}`,
     description: "Jog playhead 10 frames",
     showInHelp: false,
     match: (e, ctx) =>
@@ -268,7 +282,8 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "jog-back-frame",
     group: "Playback & navigation",
-    label: (m) => `${m} + Shift + ← / →`,
+    label: (m, k) =>
+      `${k.join([m, "Shift", k.code("ArrowLeft")])} / ${k.code("ArrowRight")}`,
     description: "Jog playhead 1 frame",
     match: (e, ctx) => canModShiftPlayback(e, ctx) && e.key === "ArrowLeft",
     run: (ctx) => ctx.pb.seek(ctx.pb.currentTime - ctx.frame),
@@ -277,7 +292,8 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "jog-forward-frame",
     group: "Playback & navigation",
-    label: (m) => `${m} + Shift + ← / →`,
+    label: (m, k) =>
+      `${k.join([m, "Shift", k.code("ArrowLeft")])} / ${k.code("ArrowRight")}`,
     description: "Jog playhead 1 frame",
     showInHelp: false,
     match: (e, ctx) => canModShiftPlayback(e, ctx) && e.key === "ArrowRight",
@@ -287,7 +303,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "set-in",
     group: "Timing",
-    label: "I",
+    label: (_, k) => k.code("KeyI"),
     description: "Set cue In to the playhead (500 ms earlier while playing)",
     match: (e, ctx) =>
       plainKey(e) && !ctx.editing && !!ctx.cue && e.key === "i",
@@ -300,7 +316,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "set-out",
     group: "Timing",
-    label: "O",
+    label: (_, k) => k.code("KeyO"),
     description: "Set cue Out to the playhead (500 ms earlier while playing)",
     match: (e, ctx) =>
       plainKey(e) && !ctx.editing && !!ctx.cue && e.key === "o",
@@ -313,27 +329,31 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "nudge-in",
     group: "Timing",
-    label: "[",
-    description: "Nudge In 1 frame (Shift = other direction)",
+    label: (_, k) => k.code("BracketLeft"),
+    description: "Nudge In 1 frame (Shift = 10 frames, other direction)",
     match: (e, ctx) =>
-      plainKey(e) && !ctx.editing && !!ctx.cue && e.key === "[",
-    run: (ctx, e) =>
-      ctx.ps.nudgeCueStart(ctx.cue!.id, e.shiftKey ? ctx.frame : -ctx.frame),
+      plainKey(e) && !ctx.editing && !!ctx.cue && isBracketLeftKey(e),
+    run: (ctx, e) => {
+      const step = e.shiftKey ? ctx.frame * JOG_FRAMES : ctx.frame;
+      ctx.ps.nudgeCueStart(ctx.cue!.id, e.shiftKey ? step : -step);
+    },
   },
   {
     id: "nudge-out",
     group: "Timing",
-    label: "]",
-    description: "Nudge Out 1 frame (Shift = other direction)",
+    label: (_, k) => k.code("BracketRight"),
+    description: "Nudge Out 1 frame (Shift = 10 frames, other direction)",
     match: (e, ctx) =>
-      plainKey(e) && !ctx.editing && !!ctx.cue && e.key === "]",
-    run: (ctx, e) =>
-      ctx.ps.nudgeCueEnd(ctx.cue!.id, e.shiftKey ? -ctx.frame : ctx.frame),
+      plainKey(e) && !ctx.editing && !!ctx.cue && isBracketRightKey(e),
+    run: (ctx, e) => {
+      const step = e.shiftKey ? ctx.frame * JOG_FRAMES : ctx.frame;
+      ctx.ps.nudgeCueEnd(ctx.cue!.id, e.shiftKey ? -step : step);
+    },
   },
   {
     id: "seek-program-start",
     group: "Program sync",
-    label: "0",
+    label: (_, k) => k.code("Digit0"),
     description: "Seek to program start (or file start if unset)",
     match: (e, ctx) =>
       navKey(e) &&
@@ -351,7 +371,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "set-program-start",
     group: "Program sync",
-    label: "Shift + 0",
+    label: (_, k) => k.shift("Digit0"),
     description: "Set program start to the playhead (skip leader on export)",
     match: (e, ctx) =>
       navKey(e) &&
@@ -374,7 +394,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "clear-program-start",
     group: "Program sync",
-    label: "Alt + 0",
+    label: (_, k) => k.alt("Digit0"),
     description: "Clear program start",
     match: (e, ctx) =>
       navKey(e) &&
@@ -388,7 +408,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "insert-cue",
     group: "Text & structure",
-    label: "N",
+    label: (_, k) => k.code("KeyN"),
     description: "Add a cue at the playhead (500 ms earlier while playing)",
     match: (e, ctx) =>
       plainKey(e) &&
@@ -406,7 +426,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "delete-cue",
     group: "Text & structure",
-    label: (m) => `${m} + Backspace`,
+    label: (m, k) => k.join([m, k.code("Backspace")]),
     description: "Delete the selected cue",
     match: (e, ctx) =>
       !!ctx.project &&
@@ -421,7 +441,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "toggle-reviewed",
     group: "Metadata",
-    label: "R",
+    label: (_, k) => k.code("KeyR"),
     description: 'Toggle "reviewed"',
     match: (e, ctx) =>
       plainKey(e) && !ctx.editing && !!ctx.cue && e.key === "r",
@@ -430,7 +450,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "edit-cue",
     group: "Text & structure",
-    label: "Enter",
+    label: (_, k) => k.code("Enter"),
     description: "Edit the selected cue (focus its text)",
     match: (e, ctx) =>
       plainKey(e) && !ctx.editing && !!ctx.cue && e.key === "Enter",
@@ -440,7 +460,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "seek-to-cue",
     group: "Playback & navigation",
-    label: "G",
+    label: (_, k) => k.code("KeyG"),
     description: "Seek video to the selected cue",
     match: (e, ctx) =>
       plainKey(e) && !ctx.editing && !!ctx.cue && e.key === "g",
@@ -449,7 +469,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "assign-role",
     group: "Metadata",
-    label: "A",
+    label: (_, k) => k.code("KeyA"),
     description: "Open the role picker for the selected cue",
     match: (e, ctx) =>
       plainKey(e) &&
@@ -462,7 +482,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "cycle-shot",
     group: "Metadata",
-    label: "S",
+    label: (_, k) => k.code("KeyS"),
     description: "Cycle the active segment's shot type",
     match: (e, ctx) =>
       plainKey(e) &&
@@ -480,7 +500,8 @@ export const SHORTCUTS: ShortcutDef[] = [
 export function shortcutLabel(id: string, mod: string = MOD_LABEL): string {
   const def = SHORTCUTS.find((s) => s.id === id);
   if (!def) return "";
-  return typeof def.label === "function" ? def.label(mod) : def.label;
+  const keys = createKeyLabeler();
+  return typeof def.label === "function" ? def.label(mod, keys) : def.label;
 }
 
 /** Shortcut ids referenced by UI chrome outside the help overlay. */

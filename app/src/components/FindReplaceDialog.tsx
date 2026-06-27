@@ -18,7 +18,7 @@ import {
 } from "../lib/find-highlight";
 import { setFindReplaceOpen } from "../lib/find-replace-dialog";
 import { focusCueForEdit } from "../lib/focus-cue";
-import { shortcutLabel } from "../lib/shortcuts";
+import { useShortcutLabel } from "../hooks/useShortcutLabel";
 
 interface Props {
   open: boolean;
@@ -60,6 +60,7 @@ export function FindReplaceDialog({
   const [searchFilteredOnly, setSearchFilteredOnly] = useState(false);
   /** -1 = typed a query but haven't navigated with Enter yet. */
   const [matchIndex, setMatchIndex] = useState(-1);
+  const findReplaceLabel = useShortcutLabel("find-replace");
 
   const filtersActive = hasActiveFilters(speakerFilter, statusFilter);
 
@@ -327,7 +328,7 @@ export function FindReplaceDialog({
         </div>
         <p className="find-replace-hint">
           <kbd>Enter</kbd> next · <kbd>Shift+Enter</kbd> previous ·{" "}
-          <kbd>Esc</kbd> or <kbd>{shortcutLabel("find-replace")}</kbd> close
+          <kbd>Esc</kbd> or <kbd>{findReplaceLabel}</kbd> close
         </p>
       </div>
     </div>
