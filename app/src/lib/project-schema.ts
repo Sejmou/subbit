@@ -25,7 +25,7 @@ const cueSchema = z.object({
   id: z.string(),
   start: z.number(),
   end: z.number(),
-  speakerId: z.string().nullable(),
+  speakerId: z.union([z.string(), z.null()]).default(null),
   segments: z.array(segmentSchema).min(1),
   reviewed: z.boolean().optional(),
   inferredSpeaker: inferredSpeakerSchema.nullable().optional(),
@@ -78,7 +78,7 @@ const videoIdentitySchema = z
 
 export const projectSchema = z.object({
   version: z.number(),
-  id: z.string().uuid(),
+  id: z.uuid(),
   name: z.string().min(1),
   videoName: z.string(),
   video: videoIdentitySchema.optional(),
