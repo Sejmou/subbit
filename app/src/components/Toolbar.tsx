@@ -20,6 +20,8 @@ interface Props {
   onExport: () => void;
   onHelp: () => void;
   onHistory: () => void;
+  findReplaceOpen: boolean;
+  onToggleFindReplace: () => void;
   onImportProjectBundle: () => void;
   onExportProjectBundle: () => void;
   onNewBlankProject: () => void;
@@ -103,6 +105,8 @@ export function Toolbar({
   onExport,
   onHelp,
   onHistory,
+  findReplaceOpen,
+  onToggleFindReplace,
   onImportProjectBundle,
   onExportProjectBundle,
   onNewBlankProject,
@@ -197,6 +201,17 @@ export function Toolbar({
         </button>
         <button onClick={onHistory} title="Version history">
           History
+        </button>
+        <button
+          type="button"
+          className={
+            findReplaceOpen ? "find-btn find-btn--on" : "find-btn"
+          }
+          aria-pressed={findReplaceOpen}
+          onClick={onToggleFindReplace}
+          title={`${findReplaceOpen ? "Close" : "Open"} find & replace (${shortcutLabel("find-replace")})`}
+        >
+          Find…
         </button>
         <button
           className={dirty ? "primary save-btn" : "save-btn"}

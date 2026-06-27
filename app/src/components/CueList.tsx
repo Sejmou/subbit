@@ -11,18 +11,25 @@ import {
 } from "../lib/cue-filters";
 import { shortcutLabel } from "../lib/shortcuts";
 import { focusCueForEdit, type FocusCueDetail } from "../lib/focus-cue";
+import {
+  indexMatchesBySegment,
+  type FindHighlightState,
+  INACTIVE_FIND_HIGHLIGHT,
+} from "../lib/find-highlight";
 import { CueRow } from "./CueRow";
 
 interface Props {
   project: Project;
   speakerFilter?: string[];
   statusFilter?: ReviewStatusFilter[];
+  findHighlight?: FindHighlightState;
 }
 
 export function CueList({
   project,
   speakerFilter = [],
   statusFilter = [],
+  findHighlight = INACTIVE_FIND_HIGHLIGHT,
 }: Props) {
   const parentRef = useRef<HTMLDivElement>(null);
   const selectedCueId = useProject((s) => s.selectedCueId);
@@ -41,6 +48,11 @@ export function CueList({
 
   const filterActive = hasActiveFilters(speakerFilter, statusFilter);
   const filteredEmpty = filterActive && entries.length === 0;
+
+  const segmentMatchIndex = useMemo(
+    () => indexMatchesBySegment(findHighlight.matches),
+    [findHighlight.matches],
+  );
 
   const virtualizer = useVirtualizer({
     count: entries.length,
@@ -74,15 +86,15 @@ export function CueList({
     if (isEmpty || filteredEmpty) return;
 
     function onFocusCue(e: Event) {
-      const { cueId, scroll } = (e as CustomEvent<FocusCueDetail>).detail;
-      const idx = entries.findIndex(({ cue }) => cue.id === cueId);
+      const detail = (e as CustomEvent<FocusCueDetail>).detail;
+      const idx = entries.findIndex(({ cue }) => cue.id === detail.cueId);
       if (idx < 0) return;
 
-      virtualizer.scrollToIndex(idx, { align: scroll });
+      virtualizer.scrollToIndex(idx, { align: detail.scroll });
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           window.dispatchEvent(
-            new CustomEvent("subbit:edit", { detail: cueId }),
+            new CustomEvent("subbit:edit", { detail }),
           );
         });
       });
@@ -156,6 +168,8 @@ export function CueList({
                 project={project}
                 selected={cue.id === selectedCueId}
                 active={index === activeIndex}
+                findHighlight={findHighlight}
+                segmentMatchIndex={segmentMatchIndex}
               />
             </div>
           );

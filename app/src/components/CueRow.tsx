@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, type RefObject } from "react";
+import { memo, useEffect, useMemo, useRef, type RefObject } from "react";
 import type { Cue, Project } from "../types";
 import { useProject } from "../store/project";
 import { usePlayback } from "../store/playback";
@@ -6,6 +6,14 @@ import { useAutosizeTextarea } from "../hooks/useAutosizeTextarea";
 import { openRolePicker, NO_ROLE_LABEL } from "../lib/role-picker";
 import { shortcutLabel } from "../lib/shortcuts";
 import { secondsToTimecode } from "../lib/timecode";
+import type { FocusCueDetail } from "../lib/focus-cue";
+import {
+  buildHighlightChunks,
+  segmentMatchKey,
+  type FindHighlightState,
+  INACTIVE_FIND_HIGHLIGHT,
+} from "../lib/find-highlight";
+import type { TextMatch } from "../lib/find-replace";
 
 interface Props {
   cue: Cue;
@@ -13,6 +21,8 @@ interface Props {
   project: Project;
   selected: boolean;
   active: boolean;
+  findHighlight?: FindHighlightState;
+  segmentMatchIndex?: Map<string, TextMatch[]>;
 }
 
 function TrashIcon() {
@@ -42,6 +52,8 @@ interface SegmentTextareaProps {
   value: string;
   onFocus: () => void;
   onChange: (value: string) => void;
+  findHighlight?: FindHighlightState;
+  segmentMatches?: TextMatch[];
 }
 
 function SegmentTextarea({
@@ -51,15 +63,37 @@ function SegmentTextarea({
   value,
   onFocus,
   onChange,
+  findHighlight = INACTIVE_FIND_HIGHLIGHT,
+  segmentMatches = [],
 }: SegmentTextareaProps) {
   const localRef = useRef<HTMLTextAreaElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const ref = inputRef ?? localRef;
-  useAutosizeTextarea(ref, value);
 
-  return (
+  const showHighlights =
+    findHighlight.active && segmentMatches.length > 0;
+
+  const currentMatch =
+    findHighlight.currentMatch?.cueId === cueId &&
+    findHighlight.currentMatch.segIndex === segIndex
+      ? findHighlight.currentMatch
+      : null;
+
+  const chunks = useMemo(() => {
+    if (!showHighlights) return null;
+    return buildHighlightChunks(value, segmentMatches, currentMatch);
+  }, [showHighlights, value, segmentMatches, currentMatch]);
+
+  useAutosizeTextarea(ref, value, showHighlights ? wrapRef : undefined);
+
+  const textarea = (
     <textarea
       ref={ref}
-      className="seg-text"
+      className={
+        showHighlights
+          ? "seg-text seg-text-layer seg-text--overlay"
+          : "seg-text"
+      }
       data-cue-id={cueId}
       data-seg-index={segIndex}
       rows={1}
@@ -68,9 +102,43 @@ function SegmentTextarea({
       onChange={(e) => onChange(e.target.value)}
     />
   );
+
+  if (!showHighlights || !chunks) return textarea;
+
+  return (
+    <div ref={wrapRef} className="segment-text-wrap">
+      <div className="seg-text-mirror seg-text-layer" aria-hidden="true">
+        {chunks.map((chunk, i) =>
+          chunk.kind === "plain" ? (
+            <span key={i}>{chunk.text}</span>
+          ) : (
+            <mark
+              key={i}
+              className={
+                chunk.kind === "current"
+                  ? "find-match find-match--current"
+                  : "find-match"
+              }
+            >
+              {chunk.text}
+            </mark>
+          ),
+        )}
+      </div>
+      {textarea}
+    </div>
+  );
 }
 
-function CueRowImpl({ cue, index, project, selected, active }: Props) {
+function CueRowImpl({
+  cue,
+  index,
+  project,
+  selected,
+  active,
+  findHighlight = INACTIVE_FIND_HIGHLIGHT,
+  segmentMatchIndex,
+}: Props) {
   const firstTextarea = useRef<HTMLTextAreaElement>(null);
   const {
     selectCue,
@@ -85,8 +153,20 @@ function CueRowImpl({ cue, index, project, selected, active }: Props) {
   // Focus this row's text when navigation mode requests editing.
   useEffect(() => {
     function onEdit(e: Event) {
-      if ((e as CustomEvent<string>).detail === cue.id)
-        firstTextarea.current?.focus();
+      const raw = (e as CustomEvent<string | FocusCueDetail>).detail;
+      const detail: FocusCueDetail =
+        typeof raw === "string" ? { cueId: raw, scroll: "auto" } : raw;
+      if (detail.cueId !== cue.id) return;
+
+      const segIndex = detail.segIndex ?? 0;
+      const el =
+        document.querySelector<HTMLTextAreaElement>(
+          `textarea[data-cue-id="${cue.id}"][data-seg-index="${segIndex}"]`,
+        ) ?? firstTextarea.current;
+      el?.focus();
+      if (detail.selStart != null && detail.selEnd != null) {
+        el?.setSelectionRange(detail.selStart, detail.selEnd);
+      }
     }
     window.addEventListener("subbit:edit", onEdit);
     return () => window.removeEventListener("subbit:edit", onEdit);
@@ -174,6 +254,10 @@ function CueRowImpl({ cue, index, project, selected, active }: Props) {
               cueId={cue.id}
               segIndex={i}
               value={seg.text}
+              findHighlight={findHighlight}
+              segmentMatches={
+                segmentMatchIndex?.get(segmentMatchKey(cue.id, i)) ?? []
+              }
               onFocus={() => {
                 selectCue(cue.id);
                 selectSegment(i);

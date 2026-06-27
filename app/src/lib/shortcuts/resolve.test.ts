@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Cue, Project } from "../../types";
 import type { ShortcutContext } from "./context";
+import { setFindReplaceOpen } from "../find-replace-dialog";
 import { shortcutGroups } from "./groups";
 import { SHORTCUTS } from "./registry";
 import { resolveShortcut } from "./resolve";
@@ -235,6 +236,20 @@ describe("resolveShortcut", () => {
     expect(resolveShortcut(makeKeyEvent("r"), ctx())?.id).toBe(
       "toggle-reviewed",
     );
+  });
+
+  it("opens find and replace on mod+shift+f", () => {
+    expect(
+      resolveShortcut(modKey("f", { shiftKey: true }), ctx())?.id,
+    ).toBe("find-replace");
+  });
+
+  it("toggles find and replace on mod+shift+f even while the panel is open", () => {
+    setFindReplaceOpen(true);
+    expect(
+      resolveShortcut(modKey("f", { shiftKey: true }), ctx())?.id,
+    ).toBe("find-replace");
+    setFindReplaceOpen(false);
   });
 
   it("deletes the selected cue on mod+backspace", () => {

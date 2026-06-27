@@ -86,6 +86,10 @@ interface ProjectState {
 
   // cue text / timing
   setSegmentText: (cueId: string, segIndex: number, text: string) => void;
+  /** Replace many segment texts in one undo step (find & replace). */
+  replaceSegmentTexts: (
+    updates: { cueId: string; segIndex: number; text: string }[],
+  ) => void;
   setCueStart: (cueId: string, time: number) => void;
   setCueEnd: (cueId: string, time: number) => void;
   /** Set In and Out together (e.g. dragging a cue on the timeline). */
@@ -333,6 +337,28 @@ export const useProject = create<ProjectState>((set, getState) => {
           })),
         `text:${cueId}:${segIndex}`,
       ),
+
+    replaceSegmentTexts: (updates) =>
+      update((p) => {
+        if (updates.length === 0) return p;
+        const lookup = new Map(
+          updates.map((u) => [`${u.cueId}:${u.segIndex}`, u.text] as const),
+        );
+        let changed = false;
+        const cues = p.cues.map((c) => {
+          let cueChanged = false;
+          const segments = c.segments.map((s, i) => {
+            const text = lookup.get(`${c.id}:${i}`);
+            if (text === undefined || text === s.text) return s;
+            cueChanged = true;
+            return { ...s, text };
+          });
+          if (!cueChanged) return c;
+          changed = true;
+          return { ...c, segments };
+        });
+        return changed ? { ...p, cues } : p;
+      }),
 
     setCueStart: (cueId, time) =>
       update((p) => {

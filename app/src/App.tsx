@@ -48,6 +48,11 @@ import { ExportDialog } from "./components/ExportDialog";
 import { RolePicker } from "./components/RolePicker";
 import { HelpOverlay } from "./components/HelpOverlay";
 import { HistoryPanel } from "./components/HistoryPanel";
+import { FindReplaceDialog } from "./components/FindReplaceDialog";
+import {
+  INACTIVE_FIND_HIGHLIGHT,
+  type FindHighlightState,
+} from "./lib/find-highlight";
 import { UnsavedDialog } from "./components/UnsavedDialog";
 import { VideoMismatchBanner } from "./components/VideoMismatchBanner";
 import { WaveformTimeline } from "./components/WaveformTimeline";
@@ -94,6 +99,10 @@ export default function App() {
   const [canRestore, setCanRestore] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [findReplaceOpen, setFindReplaceOpen] = useState(false);
+  const [findHighlight, setFindHighlight] = useState<FindHighlightState>(
+    INACTIVE_FIND_HIGHLIGHT,
+  );
   const [exportOpen, setExportOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [unsavedOpen, setUnsavedOpen] = useState(false);
@@ -515,6 +524,13 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const onToggle = () => setFindReplaceOpen((open) => !open);
+    window.addEventListener("subbit:find-replace-toggle", onToggle);
+    return () =>
+      window.removeEventListener("subbit:find-replace-toggle", onToggle);
+  }, []);
+
+  useEffect(() => {
     const onToggle = () => togglePreview();
     window.addEventListener("subbit:preview-toggle", onToggle);
     return () => window.removeEventListener("subbit:preview-toggle", onToggle);
@@ -589,6 +605,8 @@ export default function App() {
         onExport={() => setExportOpen(true)}
         onHelp={() => setHelpOpen(true)}
         onHistory={() => setHistoryOpen(true)}
+        findReplaceOpen={findReplaceOpen}
+        onToggleFindReplace={() => setFindReplaceOpen((open) => !open)}
         onImportProjectBundle={() => void doImportProjectBundle()}
         onExportProjectBundle={doExportProjectBundle}
         onNewBlankProject={() => void doNewBlankProject()}
@@ -646,11 +664,22 @@ export default function App() {
           )}
           <SpeakerPanel project={project} />
         </div>
-        <CueList
-          project={project}
-          speakerFilter={speakerFilter}
-          statusFilter={statusFilter}
-        />
+        <div className="cue-column">
+          <FindReplaceDialog
+            open={findReplaceOpen}
+            onClose={() => setFindReplaceOpen(false)}
+            onHighlightChange={setFindHighlight}
+            project={project}
+            speakerFilter={speakerFilter}
+            statusFilter={statusFilter}
+          />
+          <CueList
+            project={project}
+            speakerFilter={speakerFilter}
+            statusFilter={statusFilter}
+            findHighlight={findHighlight}
+          />
+        </div>
       </div>
       {showTimeline && (
         <WaveformTimeline

@@ -192,6 +192,22 @@ describe("restoreProject", () => {
   });
 });
 
+describe("replaceSegmentTexts", () => {
+  it("updates many segments in one undo step", () => {
+    store().replaceSegmentTexts([
+      { cueId: "c1", segIndex: 0, text: "hey" },
+      { cueId: "c2", segIndex: 0, text: "earth" },
+    ]);
+    expect(firstText()).toBe("hey");
+    expect(store().project!.cues[1].segments[0].text).toBe("earth");
+    expect(store().past).toHaveLength(1);
+
+    store().undo();
+    expect(firstText()).toBe("hello");
+    expect(store().project!.cues[1].segments[0].text).toBe("world");
+  });
+});
+
 describe("insertCueAtPlayhead / deleteCue", () => {
   it("inserts an empty cue in a gap and selects it", () => {
     store().loadProject({

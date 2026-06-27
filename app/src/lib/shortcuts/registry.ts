@@ -102,6 +102,20 @@ export const SHORTCUTS: ShortcutDef[] = [
     preventDefault: true,
   },
   {
+    id: "find-replace",
+    group: "Project",
+    label: (m) => `${m} + Shift + F`,
+    description: "Toggle find and replace",
+    match: (e, ctx) =>
+      !!ctx.project &&
+      mod(e) &&
+      e.shiftKey &&
+      (e.key === "f" || e.key === "F"),
+    run: () =>
+      window.dispatchEvent(new CustomEvent("subbit:find-replace-toggle")),
+    preventDefault: true,
+  },
+  {
     id: "split-at-caret",
     group: "Text & structure",
     label: (m) => `${m} + Enter`,
