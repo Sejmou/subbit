@@ -1238,40 +1238,16 @@ kbd {
   letter-spacing: -0.01em;
 }
 .setup-modal-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
   margin-bottom: 12px;
 }
-.setup-progress {
-  margin: 0 0 20px;
-}
-.setup-progress-track {
+.setup-step-header {
   display: flex;
-  gap: 6px;
-  margin-bottom: 8px;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 20px;
 }
-.setup-progress-segment {
-  flex: 1;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--border);
-  transition: background 0.2s ease;
-}
-.setup-progress-segment--filled {
-  background: var(--accent);
-}
-.setup-progress-caption {
-  margin: 0;
-  font-size: 12px;
-  color: var(--text-dim);
-}
-.setup-panel-lead {
-  margin: 0 0 12px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text);
+.setup-step-header h2 {
+  min-width: 0;
 }
 .setup-panel {
   display: flex;
@@ -1302,9 +1278,6 @@ kbd {
   margin: 0 0 16px;
   font-size: 12px;
   color: var(--text-dim);
-}
-.setup-continue {
-  margin-top: 0;
 }
 .setup-back {
   flex-shrink: 0;
@@ -1431,6 +1404,11 @@ kbd {
   color: var(--ok);
   background: rgba(62, 207, 142, 0.12);
   border-color: rgba(62, 207, 142, 0.24);
+}
+.setup-choice--new .setup-choice-icon {
+  color: #5ec4b6;
+  background: rgba(62, 196, 182, 0.12);
+  border-color: rgba(62, 196, 182, 0.24);
 }
 .setup-choice-body {
   display: flex;

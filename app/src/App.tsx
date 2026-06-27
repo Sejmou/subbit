@@ -33,6 +33,7 @@ import {
 import { addVersion } from "./lib/history";
 import { createEmptyProject } from "./lib/create-empty-project";
 import {
+  resolveProjectName,
   suggestedExportFilename,
   suggestedProjectBundleFilename,
 } from "./lib/project-meta";
@@ -373,27 +374,41 @@ export default function App() {
     }
   }, [videoFile]);
 
-  const onSetupManual = useCallback(() => {
-    closeSetup();
-  }, [closeSetup]);
-
-  const onSetupWhisperx = useCallback(async () => {
-    setSetupBusy("Importing whisperx…");
-    try {
-      const handle = await pickFile(JSON_ACCEPT, "whisperx JSON");
-      if (!handle) return;
-      const text = await (await readHandleAsFile(handle)).text();
-      const data = parseSubtitleJsonText(text);
-      await activateProject(
-        projectFromWhisperxData(data, videoFileName ?? "video"),
+  const onSetupManual = useCallback(
+    async (projectName: string) => {
+      const video = videoFileName ?? "video";
+      useProject.getState().setProjectName(
+        resolveProjectName(projectName, video),
       );
+      await save({ auto: true });
       closeSetup();
-    } catch (err) {
-      alert((err as Error).message);
-    } finally {
-      setSetupBusy(null);
-    }
-  }, [activateProject, videoFileName, closeSetup]);
+    },
+    [closeSetup, save, videoFileName],
+  );
+
+  const onSetupWhisperx = useCallback(
+    async (projectName: string) => {
+      setSetupBusy("Importing whisperx…");
+      try {
+        const handle = await pickFile(JSON_ACCEPT, "whisperx JSON");
+        if (!handle) return;
+        const video = videoFileName ?? "video";
+        const text = await (await readHandleAsFile(handle)).text();
+        const data = parseSubtitleJsonText(text);
+        const imported = projectFromWhisperxData(data, video);
+        await activateProject({
+          ...imported,
+          name: resolveProjectName(projectName, video),
+        });
+        closeSetup();
+      } catch (err) {
+        alert((err as Error).message);
+      } finally {
+        setSetupBusy(null);
+      }
+    },
+    [activateProject, videoFileName, closeSetup],
+  );
 
   const onSetupImportProject = useCallback(async () => {
     setSetupBusy("Opening project…");
@@ -615,8 +630,8 @@ export default function App() {
         videoFile={videoFile}
         busy={setupBusy}
         onImportProject={() => void onSetupImportProject()}
-        onImportWhisperx={() => void onSetupWhisperx()}
-        onAnnotateManually={onSetupManual}
+        onImportWhisperx={(name) => void onSetupWhisperx(name)}
+        onAnnotateManually={(name) => void onSetupManual(name)}
       />
       <div className="main">
         <div className="left">

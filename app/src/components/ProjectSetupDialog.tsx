@@ -7,6 +7,7 @@ import {
   SetupClankerIcon,
   SetupFolderIcon,
   SetupManualIcon,
+  SetupNewProjectIcon,
 } from "./SetupChoiceIcons";
 
 interface Props {
@@ -14,8 +15,8 @@ interface Props {
   videoFile: File | null;
   busy: string | null;
   onImportProject: () => void;
-  onImportWhisperx: () => void;
-  onAnnotateManually: () => void;
+  onImportWhisperx: (projectName: string) => void;
+  onAnnotateManually: (projectName: string) => void;
 }
 
 const FOCUSABLE =
@@ -27,7 +28,7 @@ function focusableElements(root: HTMLElement): HTMLElement[] {
 
 interface ChoiceProps {
   icon: ReactNode;
-  tint: "project" | "transcript" | "manual";
+  tint: "project" | "transcript" | "manual" | "new";
   title: string;
   description: ReactNode;
   disabled: boolean;
@@ -58,33 +59,7 @@ function SetupChoice({
   );
 }
 
-const SETUP_STEPS = [
-  { label: "Project name" },
-  { label: "Subtitle source" },
-] as const;
-
-function SetupStepper({ step }: { step: 1 | 2 }) {
-  return (
-    <div className="setup-progress" aria-label="Setup progress">
-      <div className="setup-progress-track" role="presentation">
-        {SETUP_STEPS.map((_, index) => {
-          const n = (index + 1) as 1 | 2;
-          return (
-            <div
-              key={n}
-              className={`setup-progress-segment${step >= n ? " setup-progress-segment--filled" : ""}`}
-            />
-          );
-        })}
-      </div>
-      <p className="setup-progress-caption">
-        Step {step} of {SETUP_STEPS.length} · {SETUP_STEPS[step - 1].label}
-      </p>
-    </div>
-  );
-}
-
-/** Post-video onboarding: name the project, then pick how to populate it. */
+/** Post-video onboarding: import an existing project or set up a new one. */
 export function ProjectSetupDialog({
   open,
   videoFile,
@@ -99,7 +74,6 @@ export function ProjectSetupDialog({
   const meta = useVideoFileMetadata(open ? videoFile : null);
 
   const project = useProject((s) => s.project);
-  const setProjectName = useProject((s) => s.setProjectName);
   const videoName = project?.videoName ?? videoFile?.name ?? "video";
 
   const [step, setStep] = useState<1 | 2>(1);
@@ -108,8 +82,8 @@ export function ProjectSetupDialog({
   useEffect(() => {
     if (!open) return;
     setStep(1);
-    setNameDraft(project?.name ?? fallbackProjectName(videoName));
-  }, [open, project?.name, videoName]);
+    setNameDraft("");
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -139,7 +113,7 @@ export function ProjectSetupDialog({
     }
 
     const id = requestAnimationFrame(() => {
-      if (step === 1) {
+      if (step === 2) {
         nameInputRef.current?.focus();
         nameInputRef.current?.select();
       } else {
@@ -148,15 +122,6 @@ export function ProjectSetupDialog({
     });
 
     function onKeyDown(e: KeyboardEvent) {
-      if (step === 1 && e.key === "Enter" && !disabled) {
-        const target = e.target as HTMLElement;
-        if (target.tagName === "INPUT") {
-          e.preventDefault();
-          setProjectName(resolveProjectName(nameDraft, videoName));
-          setStep(2);
-        }
-        return;
-      }
       if (e.key === "ArrowDown") {
         e.preventDefault();
         moveFocus(1);
@@ -200,11 +165,16 @@ export function ProjectSetupDialog({
       document.removeEventListener("keydown", onKeyDown, true);
       document.removeEventListener("focusin", onFocusIn, true);
     };
-  }, [open, step, disabled, nameDraft, videoName, setProjectName]);
+  }, [open, step]);
 
-  const continueToStep2 = () => {
-    setProjectName(resolveProjectName(nameDraft, videoName));
-    setStep(2);
+  const resolvedName = () => resolveProjectName(nameDraft, videoName);
+
+  const finishWithWhisperx = () => {
+    onImportWhisperx(resolvedName());
+  };
+
+  const finishManually = () => {
+    onAnnotateManually(resolvedName());
   };
 
   const suggestedName = fallbackProjectName(videoName);
@@ -218,83 +188,54 @@ export function ProjectSetupDialog({
         className="setup-modal"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="setup-title"
+        aria-labelledby={step === 2 ? "setup-step-title" : "setup-title"}
         aria-busy={!!busy}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="setup-modal-top">
-          <h2 id="setup-title">Get started</h2>
-          {step === 2 && (
+        {step === 1 ? (
+          <div className="setup-modal-top">
+            <h2 id="setup-title">Get started</h2>
+          </div>
+        ) : (
+          <div className="setup-step-header">
             <button
               type="button"
               className="setup-back"
-              onClick={() => {
-                setNameDraft(project?.name ?? fallbackProjectName(videoName));
-                setStep(1);
-              }}
+              onClick={() => setStep(1)}
               disabled={disabled}
             >
               ← Back
             </button>
-          )}
-        </div>
-        <SetupStepper step={step} />
+            <h2 id="setup-step-title">Create new project</h2>
+          </div>
+        )}
+
+        {step === 1 && meta && (
+          <div className="setup-name-field setup-video-field">
+            You&apos;ll be working on subtitles for:
+            <div className="setup-video-card">
+              <p className="setup-video-file" title={meta.fileName}>
+                {meta.fileName}
+              </p>
+              <dl className="setup-video-meta">
+                <div>
+                  <dt>Size</dt>
+                  <dd>{meta.fileSize}</dd>
+                </div>
+                <div>
+                  <dt>Duration</dt>
+                  <dd>{meta.duration ?? (meta.pending ? "…" : "—")}</dd>
+                </div>
+                <div>
+                  <dt>Frame rate</dt>
+                  <dd>{meta.frameRate ?? (meta.pending ? "…" : "—")}</dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+        )}
 
         {step === 1 ? (
-          <>
-            {meta && (
-              <div className="setup-name-field setup-video-field">
-                You&apos;ll be working on
-                <div className="setup-video-card">
-                  <p className="setup-video-file" title={meta.fileName}>
-                    {meta.fileName}
-                  </p>
-                  <dl className="setup-video-meta">
-                    <div>
-                      <dt>Size</dt>
-                      <dd>{meta.fileSize}</dd>
-                    </div>
-                    <div>
-                      <dt>Duration</dt>
-                      <dd>{meta.duration ?? (meta.pending ? "…" : "—")}</dd>
-                    </div>
-                    <div>
-                      <dt>Frame rate</dt>
-                      <dd>{meta.frameRate ?? (meta.pending ? "…" : "—")}</dd>
-                    </div>
-                  </dl>
-                </div>
-              </div>
-            )}
-            <div className="setup-panel">
-              <label className="setup-name-field" htmlFor="setup-project-name">
-                Project name
-                <input
-                  ref={nameInputRef}
-                  id="setup-project-name"
-                  className="project-name-field"
-                  value={nameDraft}
-                  placeholder={suggestedName}
-                  onChange={(e) => setNameDraft(e.target.value)}
-                  disabled={disabled}
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-              </label>
-              <p className="setup-name-hint">
-                Leave blank to use the video file name.
-              </p>
-              <button
-                type="button"
-                className="primary wide setup-continue"
-                onClick={continueToStep2}
-                disabled={disabled}
-              >
-                Continue
-              </button>
-            </div>
-          </>
-        ) : (
           <div className="setup-panel">
             <div className="setup-choices">
               <SetupChoice
@@ -303,13 +244,43 @@ export function ProjectSetupDialog({
                 title="Import an existing project"
                 description={
                   <>
-                    Start from a subbit project bundle (<code>.zip</code>) for
-                    your video.
+                    Open a subbit project bundle (<code>.zip</code>) for your
+                    video.
                   </>
                 }
                 disabled={disabled}
                 onClick={onImportProject}
               />
+              <SetupChoice
+                tint="new"
+                icon={<SetupNewProjectIcon />}
+                title="Create a new project"
+                description="Name your project and choose how to populate subtitles."
+                disabled={disabled}
+                onClick={() => setStep(2)}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="setup-panel">
+            <label className="setup-name-field" htmlFor="setup-project-name">
+              Project name
+              <input
+                ref={nameInputRef}
+                id="setup-project-name"
+                className="project-name-field"
+                value={nameDraft}
+                placeholder={suggestedName}
+                onChange={(e) => setNameDraft(e.target.value)}
+                disabled={disabled}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+            <p className="setup-name-hint">
+              Leave blank to use the video file name.
+            </p>
+            <div className="setup-choices">
               <SetupChoice
                 tint="transcript"
                 icon={<SetupClankerIcon />}
@@ -321,7 +292,7 @@ export function ProjectSetupDialog({
                   </>
                 }
                 disabled={disabled}
-                onClick={onImportWhisperx}
+                onClick={finishWithWhisperx}
               />
               <SetupChoice
                 tint="manual"
@@ -329,7 +300,7 @@ export function ProjectSetupDialog({
                 title="Annotate manually"
                 description="Begin with an empty cue list and add subtitles yourself."
                 disabled={disabled}
-                onClick={onAnnotateManually}
+                onClick={finishManually}
               />
             </div>
           </div>

@@ -47,6 +47,26 @@ export function SetupClankerIcon({ className }: IconProps) {
   );
 }
 
+export function SetupNewProjectIcon({ className }: IconProps) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      aria-hidden
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6" />
+      <path d="M12 18v-4" />
+      <path d="M10 16h4" />
+    </svg>
+  );
+}
+
 export function SetupManualIcon({ className }: IconProps) {
   return (
     <svg
