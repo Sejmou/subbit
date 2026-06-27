@@ -55,6 +55,63 @@ export function secondsToClock(seconds: number): string {
   return `${pad(h)}:${pad(m)}:${pad(s)}.${pad(ms, 3)}`;
 }
 
+/** Format file time as HH:MM:SS (no fractional seconds). */
+export function secondsToClockShort(seconds: number): string {
+  const total = Math.max(0, seconds);
+  const s = Math.floor(total) % 60;
+  const m = Math.floor(total / 60) % 60;
+  const h = Math.floor(total / 3600);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+
+/** Visible timeline window as `start – end`, optionally with `/ duration`. */
+export function formatTimelineViewRange(
+  start: number,
+  end: number,
+  duration?: number,
+): string {
+  const span = Math.max(0, end - start);
+  const fmt = (t: number) =>
+    span <= 10 ? secondsToClock(t) : secondsToClockShort(t);
+  let label = `${fmt(start)} – ${fmt(end)}`;
+  if (duration != null && Number.isFinite(duration) && duration > 0) {
+    label += ` / ${secondsToClockShort(duration)}`;
+  }
+  return label;
+}
+
+/** Parse "HH:MM:SS.mmm" (milliseconds optional) into seconds. */
+export function parseClock(clock: string): number {
+  const trimmed = clock.trim();
+  const match = trimmed.match(/^(\d+):(\d{2}):(\d{2})(?:\.(\d{1,3}))?$/);
+  if (!match) {
+    throw new Error(`Invalid clock "${clock}" (expected HH:MM:SS.mmm)`);
+  }
+  const h = Number(match[1]);
+  const m = Number(match[2]);
+  const s = Number(match[3]);
+  if (m > 59 || s > 59) {
+    throw new Error(`Invalid clock "${clock}"`);
+  }
+  let ms = 0;
+  if (match[4]) {
+    const frac = match[4].padEnd(3, "0").slice(0, 3);
+    ms = Number(frac);
+    if (!Number.isFinite(ms)) {
+      throw new Error(`Invalid clock "${clock}"`);
+    }
+  }
+  return h * 3600 + m * 60 + s + ms / 1000;
+}
+
+/** Clamp a playhead seek target to [0, duration]. */
+export function clampPlayheadTime(seconds: number, duration: number): number {
+  if (!Number.isFinite(seconds) || seconds <= 0) return 0;
+  if (!Number.isFinite(duration) || duration <= 0) return seconds;
+  return Math.min(seconds, duration);
+}
+
 /** Duration of a single frame in seconds, for nudging. */
 export function frameDuration(fps: number): number {
   return 1 / fps;

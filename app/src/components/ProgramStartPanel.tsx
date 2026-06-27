@@ -1,7 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from "react";
 import type { Project } from "../types";
 import { useProject } from "../store/project";
 import { usePlayback } from "../store/playback";
+import { useTimeReference } from "../store/time-reference";
 import {
   clampProgramStart,
   contentStartSeconds,
@@ -9,7 +17,15 @@ import {
   parseProgramStartTimecode,
   programStartTimecode,
 } from "../lib/program-start";
-import { secondsToClock, secondsToTimecode } from "../lib/timecode";
+import {
+  playheadClockToFileSeconds,
+  playheadDisplayClock,
+} from "../lib/display-time";
+import {
+  clampPlayheadTime,
+  parseClock,
+  secondsToTimecode,
+} from "../lib/timecode";
 import { ProgramStartHelpDialog } from "./ProgramStartHelpDialog";
 
 interface Props {
@@ -25,49 +41,98 @@ export function ProgramStartPanel({ project, ready }: Props) {
   const setContentStartSeconds = useProject((s) => s.setContentStartSeconds);
   const currentTime = usePlayback((s) => s.currentTime);
   const duration = usePlayback((s) => s.duration);
+  const seek = usePlayback((s) => s.seek);
+  const timeReference = useTimeReference((s) => s.reference);
+  const setTimeReference = useTimeReference((s) => s.setReference);
 
   const contentStart = contentStartSeconds(project);
-  const [draft, setDraft] = useState(() => programStartTimecode(project));
-  const [inputError, setInputError] = useState<string | null>(null);
+  const [startDraft, setStartDraft] = useState(() => programStartTimecode(project));
+  const [playheadDraft, setPlayheadDraft] = useState(() =>
+    playheadDisplayClock(currentTime, contentStart, timeReference),
+  );
+  const [startError, setStartError] = useState<string | null>(null);
+  const [playheadError, setPlayheadError] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const playheadFocused = useRef(false);
 
   useEffect(() => {
-    setDraft(
+    setStartDraft(
       contentStart <= 0
         ? "00:00:00:00"
         : secondsToTimecode(contentStart, project.fps, "00:00:00:00"),
     );
-    setInputError(null);
+    setStartError(null);
   }, [contentStart, project.fps]);
 
-  const applyDraft = useCallback(() => {
+  useEffect(() => {
+    if (!playheadFocused.current) {
+      setPlayheadDraft(
+        playheadDisplayClock(currentTime, contentStart, timeReference),
+      );
+      setPlayheadError(null);
+    }
+  }, [currentTime, contentStart, timeReference]);
+
+  const applyStartDraft = useCallback(() => {
     try {
       const seconds = clampProgramStart(
-        parseProgramStartTimecode(draft, project.fps),
+        parseProgramStartTimecode(startDraft, project.fps),
         duration,
       );
       setContentStartSeconds(seconds);
-      setDraft(
+      setStartDraft(
         seconds <= 0
           ? "00:00:00:00"
           : programStartTimecode({ ...project, contentStartSeconds: seconds }),
       );
-      setInputError(null);
+      setStartError(null);
     } catch {
-      setInputError("Use HH:MM:SS:FF");
+      setStartError("Use HH:MM:SS:FF");
     }
-  }, [draft, duration, project, setContentStartSeconds]);
+  }, [startDraft, duration, project, setContentStartSeconds]);
+
+  const applyPlayheadDraft = useCallback(() => {
+    try {
+      const parsed = parseClock(playheadDraft);
+      const fileSeconds = playheadClockToFileSeconds(
+        parsed,
+        contentStart,
+        timeReference,
+      );
+      const clamped = clampPlayheadTime(fileSeconds, duration);
+      seek(clamped);
+      setPlayheadDraft(
+        playheadDisplayClock(clamped, contentStart, timeReference),
+      );
+      setPlayheadError(null);
+    } catch {
+      setPlayheadError("Use HH:MM:SS.mmm");
+    }
+  }, [
+    playheadDraft,
+    timeReference,
+    contentStart,
+    duration,
+    seek,
+  ]);
 
   const setFromPlayhead = useCallback(() => {
     const seconds = clampProgramStart(currentTime, duration);
     setContentStartSeconds(seconds);
-    setInputError(null);
+    setStartError(null);
   }, [currentTime, duration, setContentStartSeconds]);
 
   const clearStart = useCallback(() => {
     setContentStartSeconds(0);
-    setInputError(null);
+    setStartError(null);
   }, [setContentStartSeconds]);
+
+  const onPlayheadRefChange = (e: ChangeEvent<HTMLSelectElement>) => {
+    const next = e.target.value as "file" | "program";
+    setTimeReference(next);
+    setPlayheadDraft(playheadDisplayClock(currentTime, contentStart, next));
+    setPlayheadError(null);
+  };
 
   const beforeCount = cuesBeforeProgramStart(project).length;
 
@@ -86,20 +151,20 @@ export function ProgramStartPanel({ project, ready }: Props) {
         </button>
         <input
           className={
-            inputError
+            startError
               ? "program-start-input program-start-input--error"
               : "program-start-input"
           }
-          value={draft}
+          value={startDraft}
           onChange={(e) => {
-            setDraft(e.target.value);
-            setInputError(null);
+            setStartDraft(e.target.value);
+            setStartError(null);
           }}
-          onBlur={applyDraft}
+          onBlur={applyStartDraft}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
-              applyDraft();
+              applyStartDraft();
             }
           }}
           size={11}
@@ -114,7 +179,7 @@ export function ProgramStartPanel({ project, ready }: Props) {
         onClick={setFromPlayhead}
         title="Use the current playhead position as program start"
       >
-        Set from playhead
+        Set
       </button>
       {contentStart > 0 && (
         <button
@@ -126,15 +191,58 @@ export function ProgramStartPanel({ project, ready }: Props) {
           Clear
         </button>
       )}
-      {contentStart > 0 && (
-        <span
-          className="program-start-playhead"
-          title="Current playhead in file time and program time"
+      <span className="program-start-sep" aria-hidden />
+      <span className="program-start-playhead-fields">
+        <span className="program-start-playhead-label">Playhead</span>
+        <select
+          className="program-start-playhead-ref"
+          value={timeReference}
+          onChange={onPlayheadRefChange}
+          disabled={!ready}
+          aria-label="Time reference for playhead and cue times"
         >
-          Playhead file {secondsToClock(currentTime)} · program{" "}
-          {secondsToClock(Math.max(0, currentTime - contentStart))}
-        </span>
-      )}
+          <option value="file">File</option>
+          <option value="program">Program</option>
+        </select>
+        <input
+          className={
+            playheadError
+              ? "program-start-clock-input program-start-input--error"
+              : "program-start-clock-input"
+          }
+          value={playheadDraft}
+          onChange={(e) => {
+            setPlayheadDraft(e.target.value);
+            setPlayheadError(null);
+          }}
+          onFocus={() => {
+            playheadFocused.current = true;
+          }}
+          onBlur={() => {
+            playheadFocused.current = false;
+            applyPlayheadDraft();
+          }}
+          onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              applyPlayheadDraft();
+            }
+          }}
+          size={12}
+          spellCheck={false}
+          disabled={!ready}
+          aria-label={
+            timeReference === "file"
+              ? "Playhead file time"
+              : "Playhead program time"
+          }
+          title={
+            timeReference === "file"
+              ? "Seek by file time (HH:MM:SS.mmm)"
+              : "Seek by program time (HH:MM:SS.mmm)"
+          }
+        />
+      </span>
       {beforeCount > 0 && (
         <span
           className="program-start-warn"
@@ -143,7 +251,10 @@ export function ProgramStartPanel({ project, ready }: Props) {
           {beforeCount} cue{beforeCount === 1 ? "" : "s"} before program start
         </span>
       )}
-      {inputError && <span className="program-start-error">{inputError}</span>}
+      {startError && <span className="program-start-error">{startError}</span>}
+      {playheadError && (
+        <span className="program-start-error">{playheadError}</span>
+      )}
       <ProgramStartHelpDialog
         open={helpOpen}
         onClose={() => setHelpOpen(false)}

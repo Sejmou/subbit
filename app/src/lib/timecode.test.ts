@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  clampPlayheadTime,
+  formatTimelineViewRange,
+  frameDuration,
+  parseClock,
+  secondsToClock,
   secondsToTimecode,
   timecodeToSeconds,
-  frameDuration,
 } from "./timecode";
 
 const FPS = 25;
@@ -46,5 +50,59 @@ describe("timecodeToSeconds", () => {
 describe("frameDuration", () => {
   it("is 40ms at 25fps", () => {
     expect(frameDuration(25)).toBeCloseTo(0.04, 10);
+  });
+});
+
+describe("secondsToClock", () => {
+  it("formats fractional seconds with milliseconds", () => {
+    expect(secondsToClock(3661.5)).toBe("01:01:01.500");
+  });
+});
+
+describe("parseClock", () => {
+  it("parses HH:MM:SS.mmm", () => {
+    expect(parseClock("01:01:01.500")).toBe(3661.5);
+  });
+
+  it("parses without fractional seconds", () => {
+    expect(parseClock("00:00:05")).toBe(5);
+  });
+
+  it("pads short millisecond fields", () => {
+    expect(parseClock("00:00:01.5")).toBe(1.5);
+  });
+
+  it("round-trips secondsToClock", () => {
+    const clock = secondsToClock(123.456);
+    expect(parseClock(clock)).toBeCloseTo(123.456, 3);
+  });
+
+  it("throws on malformed input", () => {
+    expect(() => parseClock("00:00")).toThrow();
+    expect(() => parseClock("00:61:00.000")).toThrow();
+  });
+});
+
+describe("clampPlayheadTime", () => {
+  it("clamps to duration", () => {
+    expect(clampPlayheadTime(120, 100)).toBe(100);
+  });
+
+  it("clamps negative to zero", () => {
+    expect(clampPlayheadTime(-1, 100)).toBe(0);
+  });
+});
+
+describe("formatTimelineViewRange", () => {
+  it("shows short clocks for wide views", () => {
+    expect(formatTimelineViewRange(754, 910, 3600)).toBe(
+      "00:12:34 – 00:15:10 / 01:00:00",
+    );
+  });
+
+  it("shows milliseconds when zoomed in", () => {
+    expect(formatTimelineViewRange(1.5, 4.25)).toBe(
+      "00:00:01.500 – 00:00:04.250",
+    );
   });
 });

@@ -22,7 +22,9 @@ import {
   peaksZoomLevels,
   peaksInitialZoomSeconds,
 } from "../lib/waveform-peaks";
+import { formatTimelineViewRange } from "../lib/timecode";
 import { createProgramStartPointMarker } from "../lib/program-start-point-marker";
+import { CueTransport } from "./CueTransport";
 import { WaveformPeaksHelpDialog } from "./WaveformPeaksHelpDialog";
 import {
   findCuesOverlappingRange,
@@ -130,6 +132,14 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
   const [subtitlesHidden, setSubtitlesHidden] = useState(false);
   const [leaderWidthPx, setLeaderWidthPx] = useState(0);
   const [peaksHelpOpen, setPeaksHelpOpen] = useState(false);
+  const [viewRange, setViewRange] = useState<{
+    start: number;
+    end: number;
+  } | null>(null);
+
+  const updateViewRange = useCallback((startTime: number, endTime: number) => {
+    setViewRange({ start: startTime, end: endTime });
+  }, []);
 
   const updateLeaderOverlay = useCallback(() => {
     const start = contentStartRef.current;
@@ -305,11 +315,11 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
   const syncCurrentView = useCallback(() => {
     const zoomview = peaksRef.current?.views.getView("zoomview");
     if (!zoomview) return;
-    syncVisibleSegmentsRef.current(
-      zoomview.getStartTime(),
-      zoomview.getEndTime(),
-    );
-  }, []);
+    const startTime = zoomview.getStartTime();
+    const endTime = zoomview.getEndTime();
+    syncVisibleSegmentsRef.current(startTime, endTime);
+    updateViewRange(startTime, endTime);
+  }, [updateViewRange]);
 
   useEffect(() => {
     if (
@@ -372,6 +382,7 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
       viewSyncRaf = requestAnimationFrame(() => {
         syncVisibleSegmentsRef.current(startTime, endTime);
         updateLeaderOverlay();
+        updateViewRange(startTime, endTime);
       });
     };
 
@@ -488,6 +499,7 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
     hasRealPeaks,
     syncProgramStartPoint,
     updateLeaderOverlay,
+    updateViewRange,
   ]);
 
   useEffect(() => {
@@ -586,6 +598,7 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
       zoomview.getStartTime(),
       zoomview.getEndTime(),
     );
+    updateViewRange(zoomview.getStartTime(), zoomview.getEndTime());
   };
 
   return (
@@ -595,7 +608,20 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
       <div className="waveform-toolbar">
         <span className="waveform-toolbar-label">Timeline</span>
         <ProgramStartPanel project={project} ready={ready} />
+        <CueTransport project={project} />
         <span className="waveform-toolbar-actions">
+          <span
+            className="waveform-view-range"
+            title="Visible file-time range / total duration"
+          >
+            {ready && viewRange
+              ? formatTimelineViewRange(
+                  viewRange.start,
+                  viewRange.end,
+                  duration,
+                )
+              : "—"}
+          </span>
           <button
             type="button"
             onClick={zoomOut}

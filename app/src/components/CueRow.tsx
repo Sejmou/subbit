@@ -5,7 +5,8 @@ import { usePlayback } from "../store/playback";
 import { useAutosizeTextarea } from "../hooks/useAutosizeTextarea";
 import { openRolePicker, NO_ROLE_LABEL } from "../lib/role-picker";
 import { shortcutLabel } from "../lib/shortcuts";
-import { secondsToTimecode } from "../lib/timecode";
+import { cueDisplayTimecode } from "../lib/display-time";
+import { useTimeReference } from "../store/time-reference";
 import type { FocusCueDetail } from "../lib/focus-cue";
 import {
   buildHighlightChunks,
@@ -149,6 +150,7 @@ function CueRowImpl({
     deleteCue,
   } = useProject();
   const seek = usePlayback((s) => s.seek);
+  const timeReference = useTimeReference((s) => s.reference);
 
   // Focus this row's text when navigation mode requests editing.
   useEffect(() => {
@@ -204,14 +206,14 @@ function CueRowImpl({
           title="Seek to In"
           onClick={() => seek(cue.start)}
         >
-          {secondsToTimecode(cue.start, project.fps, project.timecodeOffset)}
+          {cueDisplayTimecode(cue.start, project, timeReference)}
         </button>
         <button
           className="tc"
           title="Seek to Out"
           onClick={() => seek(cue.end)}
         >
-          {secondsToTimecode(cue.end, project.fps, project.timecodeOffset)}
+          {cueDisplayTimecode(cue.end, project, timeReference)}
         </button>
       </div>
 
