@@ -114,6 +114,15 @@ export const SHORTCUTS: ShortcutDef[] = [
     run: (ctx) => (ctx.target as HTMLElement).blur(),
   },
   {
+    id: 'preview-toggle',
+    group: 'Playback & navigation',
+    label: 'P',
+    description: 'Toggle subtitle preview on video',
+    match: (e, ctx) => canPlayback(e, ctx) && (e.key === 'p' || e.key === 'P'),
+    run: () => window.dispatchEvent(new CustomEvent('subbit:preview-toggle')),
+    preventDefault: true,
+  },
+  {
     id: 'play-from-cue',
     group: 'Playback & navigation',
     label: 'Shift + Space',

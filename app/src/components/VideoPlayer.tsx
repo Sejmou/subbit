@@ -1,11 +1,21 @@
 import { useEffect, useRef } from 'react'
+import type { Project } from '../types'
+import { SubtitlePreview } from './SubtitlePreview'
 import { usePlayback } from '../store/playback'
 
 /**
  * Plays the local movie via an object URL. The browser streams the file from
  * disk, so multi-GB files work without loading into memory.
  */
-export function VideoPlayer({ src }: { src: string }) {
+export function VideoPlayer({
+  src,
+  project,
+  previewEnabled,
+}: {
+  src: string
+  project: Project
+  previewEnabled: boolean
+}) {
   const ref = useRef<HTMLVideoElement>(null)
   const { setVideoEl, setTime, setDuration, setPlaying, togglePlay } = usePlayback()
 
@@ -58,6 +68,7 @@ export function VideoPlayer({ src }: { src: string }) {
         onClick={() => togglePlay()}
         title="Click or press Space to play / pause"
       />
+      {previewEnabled && <SubtitlePreview project={project} />}
     </div>
   )
 }

@@ -23,6 +23,8 @@ interface Props {
   onImportWaveform: () => void
   onCloseProject: () => void
   waveformLoaded: boolean
+  previewEnabled: boolean
+  onTogglePreview: () => void
 }
 
 function saveStateLabel(
@@ -60,6 +62,8 @@ export function Toolbar({
   onImportWaveform,
   onCloseProject,
   waveformLoaded,
+  previewEnabled,
+  onTogglePreview,
 }: Props) {
   const undo = useProject((s) => s.undo)
   const redo = useProject((s) => s.redo)
@@ -115,6 +119,13 @@ export function Toolbar({
         >
           {saveState.label}
         </span>
+        <button
+          className={previewEnabled ? 'preview-btn preview-btn--on' : 'preview-btn'}
+          onClick={onTogglePreview}
+          title={`${previewEnabled ? 'Hide' : 'Show'} subtitle preview on video (${shortcutLabel('preview-toggle')})`}
+        >
+          Preview
+        </button>
         <button onClick={onHistory} title="Version history">
           History
         </button>

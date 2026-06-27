@@ -47,6 +47,7 @@ import {
   parseWaveformPeaksFile,
 } from './lib/waveform-peaks'
 import { usePlayback } from './store/playback'
+import { readPreviewEnabled, writePreviewEnabled } from './lib/preview-settings'
 
 const JSON_ACCEPT = { 'application/json': ['.json'] }
 const VIDEO_ACCEPT = { 'video/mp4': ['.mp4', '.m4v', '.mov'] }
@@ -77,6 +78,7 @@ export default function App() {
   const [autosaveEnabled, setAutosaveEnabled] = useState(false)
   const [saving, setSaving] = useState(false)
   const [unsavedOpen, setUnsavedOpen] = useState(false)
+  const [previewEnabled, setPreviewEnabled] = useState(readPreviewEnabled)
 
   const movieHandle = useRef<FsFileHandle | null>(null)
   const projectHandle = useRef<FsFileHandle | null>(null)
@@ -372,6 +374,14 @@ export default function App() {
     setStarted(true)
   }, [loadProject, movieName])
 
+  const togglePreview = useCallback(() => {
+    setPreviewEnabled((prev) => {
+      const next = !prev
+      writePreviewEnabled(next)
+      return next
+    })
+  }, [])
+
   // Cmd/Ctrl+S from the shortcut hook.
   useEffect(() => {
     const onSave = () => void save()
@@ -385,6 +395,13 @@ export default function App() {
     window.addEventListener('subbit:help-toggle', onToggle)
     return () => window.removeEventListener('subbit:help-toggle', onToggle)
   }, [])
+
+  // `P` toggles subtitle preview on the video.
+  useEffect(() => {
+    const onToggle = () => togglePreview()
+    window.addEventListener('subbit:preview-toggle', onToggle)
+    return () => window.removeEventListener('subbit:preview-toggle', onToggle)
+  }, [togglePreview])
 
   // Autosave (only when a project file handle exists, to avoid surprise downloads).
   useEffect(() => {
@@ -471,6 +488,8 @@ export default function App() {
         onImportWaveform={() => void doImportWaveform()}
         onCloseProject={() => void doCloseProject()}
         waveformLoaded={waveformLoaded}
+        previewEnabled={previewEnabled}
+        onTogglePreview={togglePreview}
       />
       <ExportDialog
         open={exportOpen}
@@ -492,7 +511,11 @@ export default function App() {
       />
       <div className="main">
         <div className="left">
-          {movieUrl ? <VideoPlayer src={movieUrl} /> : <div className="video-wrap empty">No movie loaded</div>}
+          {movieUrl ? (
+            <VideoPlayer src={movieUrl} project={project} previewEnabled={previewEnabled} />
+          ) : (
+            <div className="video-wrap empty">No movie loaded</div>
+          )}
           <SpeakerPanel project={project} />
         </div>
         <CueList project={project} />
