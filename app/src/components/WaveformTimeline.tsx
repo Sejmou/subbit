@@ -161,14 +161,8 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
     const peaks = peaksRef.current;
     if (!peaks) return;
 
-    const start = contentStartRef.current;
+    const start = Math.max(0, contentStartRef.current);
     const existing = peaks.points.getPoint(PROGRAM_START_POINT_ID);
-
-    if (start <= 0) {
-      if (existing) peaks.points.removeById(PROGRAM_START_POINT_ID);
-      setLeaderWidthPx(0);
-      return;
-    }
 
     if (existing) {
       if (Math.abs(existing.time - start) > 0.0001) {
@@ -633,29 +627,25 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
             {initError}
           </span>
         )}
-        {ready && !hasRealPeaks && (
+        {ready && !initError && (!hasRealPeaks || subtitlesHidden) && (
           <span className="waveform-hint-wrap">
-            <span className="waveform-hint">
-              No waveform peaks — use File → Import waveform… for audio detail
-            </span>
-            <button
-              type="button"
-              className="waveform-help-btn"
-              onClick={() => setPeaksHelpOpen(true)}
-              title="About waveform peaks"
-              aria-label="About waveform peaks"
-            >
-              ?
-            </button>
-          </span>
-        )}
-        {ready && hasRealPeaks && subtitlesHidden && (
-          <span className="waveform-hint">Zoom in to see subtitles</span>
-        )}
-        {ready && hasRealPeaks && !subtitlesHidden && !initError && (
-          <span className="waveform-hint">
-            Drag the orange marker to skip leader · Shift+Home sets from
-            playhead
+            {!hasRealPeaks && (
+              <>
+                <span className="waveform-hint">No waveform data available</span>
+                <button
+                  type="button"
+                  className="waveform-import-btn"
+                  onClick={() => setPeaksHelpOpen(true)}
+                  title="Import waveform peaks"
+                  aria-label="Import waveform peaks"
+                >
+                  Import
+                </button>
+              </>
+            )}
+            {subtitlesHidden && (
+              <span className="waveform-hint">Zoom in to see subtitles</span>
+            )}
           </span>
         )}
       </div>

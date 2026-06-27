@@ -67,8 +67,8 @@ export function WaveformPeaksHelpDialog({ open, onClose, onImport }: Props) {
             (macOS: <code>brew install audiowaveform</code>).
           </li>
           <li>
-            Extract mono 44.1&nbsp;kHz audio, then generate peaks (80&nbsp;px/s
-            — same zoom defaults as the timeline placeholder):
+            Extract mono 44.1&nbsp;kHz audio, then generate peaks (with
+            80&nbsp;px/s - recommended so that max. zoom is granular enough):
             <pre>
               <code>{`ffmpeg -i your-video.mp4 -vn -ac 1 -ar 44100 your-video.wav
 audiowaveform -i your-video.wav -o your-video.dat -b 8 --pixels-per-second 80`}</code>
@@ -82,7 +82,7 @@ audiowaveform -i your-video.wav -o your-video.dat -b 8 --pixels-per-second 80`}<
             with your paths.
           </li>
           <li>
-            Import the <code>.dat</code> file:
+            Import the generated <code>.dat</code> file here:
             <div className="waveform-peaks-help-import">
               <button
                 type="button"
