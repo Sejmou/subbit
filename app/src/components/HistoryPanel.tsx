@@ -102,11 +102,14 @@ export function HistoryPanel({ open, onClose, project, onRestore }: Props) {
         className="help-modal history-modal"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="help-head">
-          <h2>Version history</h2>
-          <button onClick={onClose}>Close</button>
+        <div className="help-modal-header">
+          <div className="help-head">
+            <h2>Version history</h2>
+            <button onClick={onClose}>Close</button>
+          </div>
         </div>
-        <p className="hint">
+        <div className="help-modal-body">
+          <p className="hint">
           Snapshots are saved automatically on each save and stored in this
           browser. Restoring loads an earlier state into the editor (which you
           can still undo).
@@ -166,6 +169,7 @@ export function HistoryPanel({ open, onClose, project, onRestore }: Props) {
             ))}
           </ul>
         )}
+        </div>
       </div>
     </div>
   );

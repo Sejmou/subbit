@@ -56,7 +56,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     id: "help-toggle",
     group: "Project",
     label: "?",
-    description: "Show / hide this help",
+    description: "Show / hide help",
     match: (e, ctx) => plainKey(e) && !ctx.editing && e.key === "?",
     run: () => window.dispatchEvent(new CustomEvent("subbit:help-toggle")),
     preventDefault: true,

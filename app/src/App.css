@@ -1159,11 +1159,24 @@
 .help-modal {
   width: min(860px, 92vw);
   max-height: 86vh;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 20px 24px;
+}
+.help-modal-header {
+  flex-shrink: 0;
+  padding: 20px 24px 16px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+}
+.help-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 24px 20px;
 }
 .help-head {
   display: flex;
@@ -1172,6 +1185,69 @@
 }
 .help-head h2 {
   margin: 0;
+}
+.help-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 12px 0 0;
+  padding: 3px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: fit-content;
+}
+.help-tab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.help-tab:hover {
+  color: var(--text);
+}
+.help-tab--active {
+  background: var(--bg-2);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border);
+}
+.help-tutorial-lede {
+  margin-top: 0;
+}
+.help-tutorial section + section {
+  margin-top: 18px;
+}
+.help-tutorial h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--accent);
+}
+.help-tutorial-subhead {
+  margin: 12px 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.help-tutorial p {
+  margin: 0 0 8px;
+  color: var(--text-dim);
+  line-height: 1.45;
+}
+.help-steps {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text-dim);
+  line-height: 1.45;
+}
+.help-steps li + li {
+  margin-top: 8px;
+}
+.help-steps--bullets {
+  list-style: disc;
 }
 .help-modal .hint {
   color: var(--text-dim);

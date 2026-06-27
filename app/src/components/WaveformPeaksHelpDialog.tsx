@@ -22,13 +22,16 @@ export function WaveformPeaksHelpDialog({ open, onClose, onImport }: Props) {
         aria-labelledby="waveform-peaks-help-title"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="help-head">
-          <h2 id="waveform-peaks-help-title">Waveform peaks</h2>
-          <button type="button" onClick={onClose}>
-            Close
-          </button>
+        <div className="help-modal-header">
+          <div className="help-head">
+            <h2 id="waveform-peaks-help-title">Waveform peaks</h2>
+            <button type="button" onClick={onClose}>
+              Close
+            </button>
+          </div>
         </div>
-        <p>The timeline allows you to scrub, zoom, and edit cue times.</p>
+        <div className="help-modal-body">
+          <p>The timeline allows you to scrub, zoom, and edit cue times.</p>
         <p>
           You can make the experience even better by generating and importing
           audio waveform data for the audio track (unfortunately, computing that
@@ -96,6 +99,7 @@ audiowaveform -i your-video.wav -o your-video.dat -b 8 --pixels-per-second 80`}<
           regenerate with a higher <code>--pixels-per-second</code> value (e.g.{" "}
           <code>100</code>), then import again.
         </p>
+        </div>
       </div>
     </div>
   );
