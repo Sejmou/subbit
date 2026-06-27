@@ -1,6 +1,6 @@
 import type { Cue, Project } from "../types";
 
-/** Whether a speaker id appears on a cue or in merged segment metadata. */
+/** Whether a speaker id appears on a cue. */
 export function isSpeakerReferenced(
   project: Project,
   speakerId: string,
@@ -12,8 +12,7 @@ export function isSpeakerReferenced(
 }
 
 export function cueReferencesSpeaker(cue: Cue, speakerId: string): boolean {
-  if (cue.speakerId === speakerId) return true;
-  return cue.segments.some((seg) => seg.mergedSpeakerId === speakerId);
+  return cue.speakerId === speakerId;
 }
 
 /** When `filter` is empty, every cue matches (no filter active). */

@@ -24,23 +24,6 @@ describe("speaker refs", () => {
     );
   });
 
-  it("detects merged segment speaker references", () => {
-    const merged = cue({
-      id: "c1",
-      speakerId: "A",
-      segments: [
-        {
-          text: "x",
-          shot: "ON",
-          mergedWithPrevious: true,
-          mergedSpeakerId: "B",
-        },
-      ],
-    });
-    expect(cueReferencesSpeaker(merged, "B")).toBe(true);
-    expect(cueReferencesSpeaker(merged, "C")).toBe(false);
-  });
-
   it("checks project-wide references", () => {
     const project = {
       cues: [cue({ id: "c1", speakerId: "A" })],

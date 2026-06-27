@@ -82,12 +82,6 @@ describe("undo / redo", () => {
     expect(store().future).toHaveLength(0);
   });
 
-  it("does not record no-op transforms (merge on the last cue)", () => {
-    store().mergeWithNext("c2");
-    expect(store().past).toHaveLength(0);
-    expect(store().project!.cues).toHaveLength(2);
-  });
-
   it("clears the redo stack once a new edit happens", () => {
     store().toggleReviewed("c1");
     store().undo();
@@ -172,112 +166,6 @@ describe("cue boundary clamping", () => {
     const cue = store().project!.cues[1];
     expect(cue.start).toBe(2);
     expect(cue.end).toBe(4);
-  });
-});
-
-describe("merge / unmerge", () => {
-  it("tags the absorbed segment on merge", () => {
-    store().loadProject({
-      ...makeProject(),
-      speakers: [
-        { id: "SPEAKER_00", name: "A", color: "#fff" },
-        { id: "SPEAKER_01", name: "B", color: "#ccc" },
-      ],
-      cues: [
-        {
-          id: "c1",
-          start: 0,
-          end: 2,
-          speakerId: "SPEAKER_00",
-          segments: [{ text: "hello", shot: "ON" }],
-        },
-        {
-          id: "c2",
-          start: 2,
-          end: 4,
-          speakerId: "SPEAKER_01",
-          segments: [{ text: "world", shot: "OFF" }],
-        },
-      ],
-    });
-
-    store().mergeWithNext("c1");
-    const merged = store().project!.cues[0];
-    expect(store().project!.cues).toHaveLength(1);
-    expect(merged.segments).toHaveLength(2);
-    expect(merged.segments[1]).toMatchObject({
-      text: "world",
-      mergedWithPrevious: true,
-      mergedSpeakerId: "SPEAKER_01",
-    });
-  });
-
-  it("unmerges at a tagged segment and restores the absorbed speaker", () => {
-    store().loadProject({
-      ...makeProject(),
-      speakers: [
-        { id: "SPEAKER_00", name: "A", color: "#fff" },
-        { id: "SPEAKER_01", name: "B", color: "#ccc" },
-      ],
-      cues: [
-        {
-          id: "c1",
-          start: 0,
-          end: 2,
-          speakerId: "SPEAKER_00",
-          segments: [{ text: "hello", shot: "ON" }],
-        },
-        {
-          id: "c2",
-          start: 2,
-          end: 4,
-          speakerId: "SPEAKER_01",
-          segments: [{ text: "world", shot: "OFF" }],
-        },
-      ],
-    });
-
-    store().mergeWithNext("c1");
-    store().splitAtMergedSegment("c1", 1);
-
-    const cues = store().project!.cues;
-    expect(cues).toHaveLength(2);
-    expect(cues[0]).toMatchObject({
-      start: 0,
-      end: 2,
-      speakerId: "SPEAKER_00",
-    });
-    expect(cues[0].segments[0].text).toBe("hello");
-    expect(cues[0].segments[0].mergedWithPrevious).toBeUndefined();
-    expect(cues[1]).toMatchObject({
-      start: 2,
-      end: 4,
-      speakerId: "SPEAKER_01",
-    });
-    expect(cues[1].segments[0].text).toBe("world");
-    expect(cues[1].segments[0].mergedWithPrevious).toBeUndefined();
-    expect(store().selectedCueId).toBe(cues[1].id);
-  });
-
-  it("is a no-op when the segment is not a merge seam", () => {
-    store().splitAtMergedSegment("c1", 0);
-    expect(store().past).toHaveLength(0);
-    expect(store().project!.cues).toHaveLength(2);
-  });
-
-  it("undoes and redoes unmerge", () => {
-    store().mergeWithNext("c1");
-    expect(store().project!.cues).toHaveLength(1);
-
-    store().splitAtMergedSegment("c1", 1);
-    expect(store().project!.cues).toHaveLength(2);
-
-    store().undo();
-    expect(store().project!.cues).toHaveLength(1);
-    expect(store().project!.cues[0].segments[1].mergedWithPrevious).toBe(true);
-
-    store().redo();
-    expect(store().project!.cues).toHaveLength(2);
   });
 });
 
@@ -415,33 +303,5 @@ describe("speakers", () => {
   it("refuses to remove a referenced speaker", () => {
     expect(store().removeSpeaker("SPEAKER_00")).toBe(false);
     expect(store().project!.speakers).toHaveLength(1);
-  });
-
-  it("refuses to remove a speaker referenced in merged segments", () => {
-    store().loadProject({
-      ...makeProject(),
-      speakers: [
-        { id: "A", name: "Alice", color: "#fff" },
-        { id: "B", name: "Bob", color: "#000" },
-      ],
-      cues: [
-        {
-          id: "c1",
-          start: 0,
-          end: 4,
-          speakerId: "A",
-          segments: [
-            {
-              text: "merged",
-              shot: "ON",
-              mergedWithPrevious: true,
-              mergedSpeakerId: "B",
-            },
-          ],
-        },
-      ],
-    });
-    expect(store().removeSpeaker("B")).toBe(false);
-    expect(store().removeSpeaker("A")).toBe(false);
   });
 });

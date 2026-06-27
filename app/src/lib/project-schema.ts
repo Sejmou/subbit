@@ -12,8 +12,6 @@ const wordSchema = z.object({
 const segmentSchema = z.object({
   text: z.string(),
   shot: z.string(),
-  mergedWithPrevious: z.boolean().optional(),
-  mergedSpeakerId: z.string().nullable().optional(),
 });
 
 const inferredSpeakerSchema = z.object({

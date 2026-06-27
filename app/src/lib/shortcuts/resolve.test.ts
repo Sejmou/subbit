@@ -59,8 +59,6 @@ function ctx(overrides: Partial<ShortcutContext> = {}): ShortcutContext {
     setCueEnd: vi.fn(),
     nudgeCueStart: vi.fn(),
     nudgeCueEnd: vi.fn(),
-    mergeWithNext: vi.fn(),
-    splitAtMergedSegment: vi.fn(),
     toggleReviewed: vi.fn(),
     setCueSpeaker: vi.fn(),
     setSegmentShot: vi.fn(),

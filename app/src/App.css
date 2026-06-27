@@ -867,24 +867,6 @@
   gap: 6px;
   align-items: stretch;
 }
-.segment-seam {
-  display: flex;
-  align-items: center;
-  padding: 2px 0 2px 86px;
-}
-.segment-seam-btn {
-  font-size: 11px;
-  padding: 2px 8px;
-  color: var(--text-dim);
-  background: transparent;
-  border: 1px dashed var(--border);
-  border-radius: 4px;
-}
-.segment-seam-btn:hover {
-  color: var(--text);
-  border-color: var(--accent);
-  background: var(--bg);
-}
 .shot-select {
   width: 80px;
   flex-shrink: 0;

@@ -405,36 +405,6 @@ export const SHORTCUTS: ShortcutDef[] = [
     preventDefault: true,
   },
   {
-    id: "merge",
-    group: "Text & structure",
-    label: "M",
-    description: "Merge the selected cue with the next",
-    match: (e, ctx) =>
-      plainKey(e) &&
-      !ctx.editing &&
-      !!ctx.cue &&
-      (e.key === "m" || e.key === "M") &&
-      !e.shiftKey,
-    run: (ctx) => ctx.ps.mergeWithNext(ctx.cue!.id),
-  },
-  {
-    id: "unmerge",
-    group: "Text & structure",
-    label: "Shift + M",
-    description:
-      "Unmerge at the active segment (split back into separate cues)",
-    match: (e, ctx) =>
-      plainKey(e) &&
-      !ctx.editing &&
-      !!ctx.cue &&
-      (e.key === "m" || e.key === "M") &&
-      e.shiftKey &&
-      ctx.cue!.segments[ctx.ps.selectedSegment]?.mergedWithPrevious === true &&
-      ctx.ps.selectedSegment > 0,
-    run: (ctx) =>
-      ctx.ps.splitAtMergedSegment(ctx.cue!.id, ctx.ps.selectedSegment),
-  },
-  {
     id: "toggle-reviewed",
     group: "Metadata",
     label: "R",

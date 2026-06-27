@@ -57,8 +57,7 @@ autosaves in place.
   is a normal subtitle; multiple segments represent a shot change inside one
   subtitle and export by joining text and shot tokens with `" / "`
   (e.g. `Info = "CONTRE / ON"`).
-- The project keeps whisperx word-level timing so cues can be split/merged
-  losslessly.
+- The project keeps whisperx word-level timing so cues can be split losslessly.
 
 ### Speaker inference (whisperx import)
 
