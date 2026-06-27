@@ -4,75 +4,76 @@ import {
   type ParsedWaveformPeaks,
 } from "../lib/waveform-peaks";
 import {
-  cacheWaveformPeaks,
-  getCachedWaveformPeaks,
-  waveformCacheKey,
-  type CachedWaveformPeaks,
-} from "../lib/waveform-cache";
-import type { VideoIdentity } from "../types";
+  loadStoredWaveform,
+  saveStoredWaveform,
+} from "../lib/project-storage";
+import type { CachedWaveformPeaks } from "../lib/waveform-cache";
 
 interface WaveformState {
   peaks: ParsedWaveformPeaks | null;
-  cacheKey: string | null;
+  projectId: string | null;
   sourceName: string | null;
   setPeaks: (
     parsed: ParsedWaveformPeaks,
     sourceName: string,
-    cacheKey: string | null,
+    projectId: string | null,
   ) => void;
   clearPeaks: () => void;
-  /** Restore peaks from IndexedDB when video identity is known. */
-  restoreFromCache: (identity: VideoIdentity) => Promise<boolean>;
-  /** Persist current peaks to IndexedDB. */
-  persistToCache: () => Promise<void>;
-  /** peaks.js-ready payload, or null when no peaks loaded. */
+  /** Restore peaks stored for this project (IndexedDB). */
+  restoreForProject: (projectId: string) => Promise<boolean>;
+  /** Persist peaks for this project — call on import only, not on edit. */
+  persistForProject: (projectId: string) => Promise<void>;
   peaksJsInput: () => CachedWaveformPeaks["input"] | null;
+}
+
+function peaksFromCached(cached: CachedWaveformPeaks): ParsedWaveformPeaks {
+  if (cached.input.kind === "json") {
+    const { json } = cached.input;
+    return {
+      input: cached.input,
+      meta: {
+        duration: (json.length * json.samples_per_pixel) / json.sample_rate,
+        sampleRate: json.sample_rate,
+        samplesPerPixel: json.samples_per_pixel,
+        length: json.length,
+        bits: 8,
+        channels: json.channels ?? 1,
+      },
+    };
+  }
+  return parseWaveformDat(cached.input.arrayBuffer);
 }
 
 export const useWaveform = create<WaveformState>((set, getState) => ({
   peaks: null,
-  cacheKey: null,
+  projectId: null,
   sourceName: null,
 
-  setPeaks: (parsed, sourceName, cacheKey) =>
-    set({ peaks: parsed, sourceName, cacheKey }),
+  setPeaks: (parsed, sourceName, projectId) =>
+    set({ peaks: parsed, sourceName, projectId }),
 
-  clearPeaks: () => set({ peaks: null, sourceName: null, cacheKey: null }),
+  clearPeaks: () => set({ peaks: null, sourceName: null, projectId: null }),
 
-  restoreFromCache: async (identity) => {
-    const key = waveformCacheKey(identity);
-    const cached = await getCachedWaveformPeaks(key);
+  restoreForProject: async (projectId) => {
+    const cached = await loadStoredWaveform(projectId);
     if (!cached) return false;
-
-    if (cached.input.kind === "json") {
-      const { json } = cached.input;
-      const parsed: ParsedWaveformPeaks = {
-        input: cached.input,
-        meta: {
-          duration: (json.length * json.samples_per_pixel) / json.sample_rate,
-          sampleRate: json.sample_rate,
-          samplesPerPixel: json.samples_per_pixel,
-          length: json.length,
-          bits: 8,
-          channels: json.channels ?? 1,
-        },
-      };
-      set({ peaks: parsed, sourceName: "(cached)", cacheKey: key });
-      return true;
-    }
-
-    const parsed = parseWaveformDat(cached.input.arrayBuffer);
-    set({ peaks: parsed, sourceName: "(cached)", cacheKey: key });
+    set({
+      peaks: peaksFromCached(cached),
+      sourceName: "(stored)",
+      projectId,
+    });
     return true;
   },
 
-  persistToCache: async () => {
-    const { peaks, cacheKey } = getState();
-    if (!peaks || !cacheKey) return;
-    await cacheWaveformPeaks(cacheKey, peaks);
+  persistForProject: async (projectId) => {
+    const { peaks } = getState();
+    if (!peaks) return;
+    await saveStoredWaveform(projectId, {
+      input: peaks.input,
+      cachedAt: new Date().toISOString(),
+    });
+    set({ projectId });
   },
 
   peaksJsInput: () => getState().peaks?.input ?? null,
 }));
-
-export { waveformCacheKey };

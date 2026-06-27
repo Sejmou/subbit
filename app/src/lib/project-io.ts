@@ -37,6 +37,30 @@ export function isFsAccessSupported(): boolean {
   return typeof window !== "undefined" && "showOpenFilePicker" in window;
 }
 
+/** True when the user dismissed a native file/save picker (not an app error). */
+export function isFilePickerAbortError(err: unknown): boolean {
+  if (err instanceof DOMException && err.name === "AbortError") return true;
+  if (err instanceof Error && err.name === "AbortError") return true;
+  if (
+    err instanceof Error &&
+    /aborted a request|user aborted/i.test(err.message)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+async function ignorePickerAbort<T>(
+  promise: Promise<T>,
+): Promise<T | undefined> {
+  try {
+    return await promise;
+  } catch (err) {
+    if (isFilePickerAbortError(err)) return undefined;
+    throw err;
+  }
+}
+
 export type { FsFileHandle };
 
 const HANDLE_KEYS = {
@@ -66,15 +90,17 @@ export async function pickFile(
   accept: Record<string, string[]>,
   description: string,
 ) {
-  const handles = await win().showOpenFilePicker?.({
+  const picker = win().showOpenFilePicker?.({
     multiple: false,
     types: [{ description, accept }],
   });
+  if (!picker) return undefined;
+  const handles = await ignorePickerAbort(picker);
   return handles?.[0];
 }
 
 export async function pickProjectSaveFile(suggestedName: string) {
-  return win().showSaveFilePicker?.({
+  const picker = win().showSaveFilePicker?.({
     suggestedName,
     types: [
       {
@@ -83,6 +109,8 @@ export async function pickProjectSaveFile(suggestedName: string) {
       },
     ],
   });
+  if (!picker) return undefined;
+  return ignorePickerAbort(picker);
 }
 
 export async function readHandleAsFile(handle: FsFileHandle): Promise<File> {
@@ -131,7 +159,10 @@ export function downloadText(
   text: string,
   mime = "text/plain",
 ) {
-  const blob = new Blob([text], { type: `${mime};charset=utf-8` });
+  downloadBlob(filename, new Blob([text], { type: `${mime};charset=utf-8` }));
+}
+
+export function downloadBlob(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;

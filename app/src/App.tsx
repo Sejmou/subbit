@@ -2,37 +2,43 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
 import { useProject } from "./store/project";
 import { buildExport, type ExportRequest } from "./lib/export-format";
+import { parseSubtitleJsonText, projectFromWhisperxData } from "./lib/load-subtitles";
 import {
-  parseSubtitleJsonText,
-  projectFromSubtitleData,
-  projectFromWhisperxData,
-} from "./lib/load-subtitles";
+  buildProjectBundleZip,
+  parseProjectBundleZip,
+  waveformInputToBundleFile,
+} from "./lib/project-bundle";
+import {
+  projectFromBundleText,
+  parseWaveformFromBundle,
+} from "./lib/import-project-bundle";
 import {
   cacheVideoHandle,
-  cacheProjectHandle,
+  downloadBlob,
   downloadText,
   ensurePermission,
   getCachedVideoHandle,
-  getCachedProjectHandle,
   hasPermission,
   isFsAccessSupported,
-  parseProject,
   pickFile,
-  pickProjectSaveFile,
   readHandleAsFile,
   serializeProject,
-  writeTextToHandle,
   type FsFileHandle,
 } from "./lib/project-io";
+import {
+  getActiveProjectId,
+  loadStoredProject,
+  saveStoredProject,
+} from "./lib/project-storage";
 import { addVersion } from "./lib/history";
 import { createEmptyProject } from "./lib/create-empty-project";
 import {
   suggestedExportFilename,
-  suggestedProjectFilename,
-  resolveProjectName,
+  suggestedProjectBundleFilename,
 } from "./lib/project-meta";
 import { useShortcuts } from "./hooks/useShortcuts";
 import { LoadScreen } from "./components/LoadScreen";
+import { ProjectSetupDialog } from "./components/ProjectSetupDialog";
 import { VideoPlayer } from "./components/VideoPlayer";
 import { CueList } from "./components/CueList";
 import { SpeakerPanel } from "./components/SpeakerPanel";
@@ -45,21 +51,24 @@ import { UnsavedDialog } from "./components/UnsavedDialog";
 import { VideoMismatchBanner } from "./components/VideoMismatchBanner";
 import { WaveformTimeline } from "./components/WaveformTimeline";
 import { useVideoIdentity } from "./hooks/useVideoIdentity";
-import { useWaveform, waveformCacheKey } from "./store/waveform";
-import { cacheWaveformPeaks } from "./lib/waveform-cache";
-import { buildVideoIdentity } from "./lib/video-identity";
+import { useWaveform } from "./store/waveform";
 import {
   formatWaveformDurationMismatch,
   parseWaveformPeaksFile,
 } from "./lib/waveform-peaks";
 import { usePlayback } from "./store/playback";
 import type { ReviewStatusFilter } from "./lib/cue-filters";
+import type { Project } from "./types";
 import {
   readPreviewEnabled,
   writePreviewEnabled,
 } from "./lib/preview-settings";
 
 const JSON_ACCEPT = { "application/json": [".json"] };
+const ZIP_ACCEPT = {
+  "application/zip": [".zip"],
+  "application/x-zip-compressed": [".zip"],
+};
 const VIDEO_ACCEPT = { "video/mp4": [".mp4", ".m4v", ".mov"] };
 const WAVEFORM_ACCEPT = {
   "application/octet-stream": [".dat"],
@@ -85,16 +94,16 @@ export default function App() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
-  const [autosaveEnabled, setAutosaveEnabled] = useState(false);
   const [saving, setSaving] = useState(false);
   const [unsavedOpen, setUnsavedOpen] = useState(false);
   const [previewEnabled, setPreviewEnabled] = useState(readPreviewEnabled);
   const [speakerFilter, setSpeakerFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<ReviewStatusFilter[]>([]);
   const [rolePickerCueId, setRolePickerCueId] = useState<string | null>(null);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [setupBusy, setSetupBusy] = useState<string | null>(null);
 
   const videoHandle = useRef<FsFileHandle | null>(null);
-  const projectHandle = useRef<FsFileHandle | null>(null);
   const unsavedResolver = useRef<((proceed: boolean) => void) | null>(null);
   const fsSupported = isFsAccessSupported();
 
@@ -108,134 +117,131 @@ export default function App() {
     setVideoFileName(file.name);
   }, []);
 
-  // --- file pickers (FS Access) ---
+  const closeSetup = useCallback(() => {
+    setSetupOpen(false);
+    setSetupBusy(null);
+  }, []);
+
+  /** Load into editor, persist JSON to IndexedDB, restore stored waveform. */
+  const activateProject = useCallback(
+    async (next: Project) => {
+      loadProject(next);
+      setVideoMismatchDismissed(false);
+      const text = serializeProject(next);
+      await saveStoredProject(next, text);
+      markSaved();
+      useWaveform.getState().clearPeaks();
+      await useWaveform.getState().restoreForProject(next.id);
+    },
+    [loadProject, markSaved],
+  );
+
+  const loadProjectBundleBytes = useCallback(
+    async (data: Uint8Array) => {
+      const bundle = parseProjectBundleZip(data);
+      const next = projectFromBundleText(
+        bundle.projectText,
+        videoFileName ?? "video",
+      );
+      await activateProject(next);
+      if (bundle.waveform) {
+        const videoDuration = usePlayback.getState().duration;
+        const parsed = await parseWaveformFromBundle(bundle.waveform);
+        if (
+          videoFile &&
+          Number.isFinite(videoDuration) &&
+          videoDuration > 0
+        ) {
+          const mismatch = formatWaveformDurationMismatch(
+            parsed.meta.duration,
+            videoDuration,
+          );
+          if (mismatch && !window.confirm(`${mismatch}\n\nImport anyway?`)) {
+            return;
+          }
+        }
+        useWaveform
+          .getState()
+          .setPeaks(parsed, bundle.waveform.fileName, next.id);
+        await useWaveform.getState().persistForProject(next.id);
+      }
+    },
+    [activateProject, videoFile, videoFileName],
+  );
+
+  const pickProjectBundle = useCallback(async () => {
+    const handle = await pickFile(ZIP_ACCEPT, "Subbit project bundle");
+    if (!handle) return null;
+    return new Uint8Array(await (await readHandleAsFile(handle)).arrayBuffer());
+  }, []);
+
+  /** New-user path: video first, empty project, then setup dialog. */
+  const beginNewSessionWithVideo = useCallback(
+    async (file: File, handle?: FsFileHandle) => {
+      if (handle) {
+        videoHandle.current = handle;
+        await cacheVideoHandle(handle);
+      }
+      setVideoFromFile(file);
+      await activateProject(createEmptyProject(file.name));
+      setSetupOpen(true);
+      setStarted(true);
+    },
+    [setVideoFromFile, activateProject],
+  );
+
   const pickVideo = useCallback(async () => {
     const handle = await pickFile(VIDEO_ACCEPT, "Video");
     if (!handle) return;
-    videoHandle.current = handle;
-    await cacheVideoHandle(handle);
-    setVideoFromFile(await readHandleAsFile(handle));
-  }, [setVideoFromFile]);
+    await beginNewSessionWithVideo(await readHandleAsFile(handle), handle);
+  }, [beginNewSessionWithVideo]);
 
-  /**
-   * Load subtitles from a JSON string, auto-detecting whether it's a saved
-   * Subbit project (has `cues`) or raw whisperx output (has `segments`). When a
-   * writable handle is provided for a project file, save-in-place is enabled.
-   */
-  const loadSubtitlesText = useCallback(
-    (text: string, projectFileHandle?: FsFileHandle) => {
-      const data = parseSubtitleJsonText(text);
-      const parsed = projectFromSubtitleData(data, videoFileName ?? "video");
-      const isSubbitProject =
-        typeof data === "object" &&
-        data !== null &&
-        Array.isArray((data as Record<string, unknown>).cues) &&
-        Array.isArray((data as Record<string, unknown>).speakers);
-
-      loadProject(parsed);
-      setVideoMismatchDismissed(false);
-      if (isSubbitProject) {
-        projectHandle.current = projectFileHandle ?? null;
-        setAutosaveEnabled(!!projectFileHandle);
-        if (projectFileHandle) void cacheProjectHandle(projectFileHandle);
-      } else {
-        projectHandle.current = null;
-        setAutosaveEnabled(false);
-      }
-    },
-    [loadProject, videoFileName],
-  );
-
-  const loadSubtitlesFromHandle = useCallback(
-    async (handle: FsFileHandle) => {
-      try {
-        loadSubtitlesText(
-          await (await readHandleAsFile(handle)).text(),
-          handle,
-        );
-      } catch (err) {
-        alert((err as Error).message);
-      }
-    },
-    [loadSubtitlesText],
-  );
-
-  const pickSubtitles = useCallback(async () => {
-    const handle = await pickFile(
-      JSON_ACCEPT,
-      "whisperx JSON or Subbit project",
-    );
-    if (handle) await loadSubtitlesFromHandle(handle);
-  }, [loadSubtitlesFromHandle]);
-
-  // --- fallback file inputs ---
   const onVideoFile = useCallback(
-    (file: File) => setVideoFromFile(file),
-    [setVideoFromFile],
-  );
-  const onSubtitlesFile = useCallback(
-    async (file: File) => {
-      try {
-        loadSubtitlesText(await file.text());
-      } catch (err) {
-        alert((err as Error).message);
-      }
-    },
-    [loadSubtitlesText],
+    (file: File) => void beginNewSessionWithVideo(file),
+    [beginNewSessionWithVideo],
   );
 
-  /**
-   * Reopen the last session from cached file handles.
-   * `silent` only proceeds if permission is already granted (used on page load,
-   * where we can't show a permission prompt without a user gesture). A button
-   * click passes silent=false and may prompt to re-grant access.
-   */
   const doRestore = useCallback(
     async (silent: boolean): Promise<boolean> => {
-      const [m, p] = await Promise.all([
+      const [videoH, projectId] = await Promise.all([
         getCachedVideoHandle(),
-        getCachedProjectHandle(),
+        getActiveProjectId(),
       ]);
-      if (!m || !p) return false;
+      if (!videoH || !projectId) return false;
+
+      const stored = await loadStoredProject(projectId);
+      if (!stored) return false;
 
       const check = silent ? hasPermission : ensurePermission;
-      const [mOk, pOk] = await Promise.all([
-        check(m, "read"),
-        check(p, "readwrite"),
-      ]);
-      if (!mOk || !pOk) return false;
+      if (!(await check(videoH, "read"))) return false;
 
       setBusy("Reopening...");
       try {
-        videoHandle.current = m;
-        setVideoFromFile(await readHandleAsFile(m));
-        projectHandle.current = p;
-        setAutosaveEnabled(true);
-        loadProject(parseProject(await (await readHandleAsFile(p)).text()));
-        setVideoMismatchDismissed(false);
+        videoHandle.current = videoH;
+        setVideoFromFile(await readHandleAsFile(videoH));
+        await activateProject(stored);
         setStarted(true);
         return true;
       } finally {
         setBusy(null);
       }
     },
-    [loadProject, setVideoFromFile],
+    [activateProject, setVideoFromFile],
   );
 
-  // On load: auto-reopen if permission persisted, else offer a one-click button.
   useEffect(() => {
-    if (!fsSupported) return;
     void (async () => {
-      if (await doRestore(true)) return;
-      const [m, p] = await Promise.all([
+      if (fsSupported && (await doRestore(true))) return;
+      const [videoH, projectId] = await Promise.all([
         getCachedVideoHandle(),
-        getCachedProjectHandle(),
+        getActiveProjectId(),
       ]);
-      if (m && p) setCanRestore(true);
+      if (videoH && projectId && (await loadStoredProject(projectId))) {
+        setCanRestore(true);
+      }
     })();
   }, [fsSupported, doRestore]);
 
-  // --- save / export ---
   const save = useCallback(
     async (opts: { auto?: boolean } = {}): Promise<boolean> => {
       const current = useProject.getState().project;
@@ -243,26 +249,8 @@ export default function App() {
       const text = serializeProject(current);
       setSaving(true);
       try {
-        if (projectHandle.current) {
-          await writeTextToHandle(projectHandle.current, text);
-        } else if (fsSupported) {
-          const handle = await pickProjectSaveFile(
-            suggestedProjectFilename(current),
-          );
-          if (!handle) return false;
-          projectHandle.current = handle;
-          setAutosaveEnabled(true);
-          await cacheProjectHandle(handle);
-          await writeTextToHandle(handle, text);
-        } else {
-          downloadText(
-            suggestedProjectFilename(current),
-            text,
-            "application/json",
-          );
-        }
+        await saveStoredProject(current, text);
         markSaved();
-        // Capture a persisted version snapshot (deduped on identical content).
         void addVersion(current, text, { auto: opts.auto }).catch((err) =>
           console.error("History snapshot failed", err),
         );
@@ -275,7 +263,7 @@ export default function App() {
         setSaving(false);
       }
     },
-    [fsSupported, markSaved],
+    [markSaved],
   );
 
   const doExport = useCallback((request: ExportRequest) => {
@@ -285,7 +273,21 @@ export default function App() {
     downloadText(suggestedExportFilename(current, ext), content, mime);
   }, []);
 
-  /** Returns true when it's safe to leave or replace the current project. */
+  const doExportProjectBundle = useCallback(() => {
+    const current = useProject.getState().project;
+    if (!current) return;
+    const text = serializeProject(current);
+    const peaks = useWaveform.getState().peaks;
+    const waveform = peaks
+      ? waveformInputToBundleFile(peaks.input)
+      : undefined;
+    const zip = buildProjectBundleZip(text, waveform);
+    downloadBlob(
+      suggestedProjectBundleFilename(current),
+      new Blob([new Uint8Array(zip)], { type: "application/zip" }),
+    );
+  }, []);
+
   const guardUnsaved = useCallback((): Promise<boolean> => {
     if (!useProject.getState().dirty) return Promise.resolve(true);
     return new Promise((resolve) => {
@@ -314,9 +316,9 @@ export default function App() {
   );
 
   const closeProject = useCallback(() => {
-    projectHandle.current = null;
-    setAutosaveEnabled(false);
     setStarted(false);
+    setSetupOpen(false);
+    setSetupBusy(null);
     clearProject();
     useWaveform.getState().clearPeaks();
   }, [clearProject]);
@@ -326,16 +328,16 @@ export default function App() {
     closeProject();
   }, [guardUnsaved, closeProject]);
 
-  const doOpenProject = useCallback(async () => {
+  const doImportProjectBundle = useCallback(async () => {
     if (!(await guardUnsaved())) return;
-    const handle = await pickFile(JSON_ACCEPT, "Subbit project");
-    if (!handle) return;
     try {
-      loadSubtitlesText(await (await readHandleAsFile(handle)).text(), handle);
+      const bytes = await pickProjectBundle();
+      if (!bytes) return;
+      await loadProjectBundleBytes(bytes);
     } catch (err) {
       alert((err as Error).message);
     }
-  }, [guardUnsaved, loadSubtitlesText]);
+  }, [guardUnsaved, pickProjectBundle, loadProjectBundleBytes]);
 
   const doImportWhisperx = useCallback(async () => {
     if (!(await guardUnsaved())) return;
@@ -344,27 +346,27 @@ export default function App() {
     try {
       const text = await (await readHandleAsFile(handle)).text();
       const data = parseSubtitleJsonText(text);
-      loadProject(projectFromWhisperxData(data, videoFileName ?? "video"));
-      projectHandle.current = null;
-      setAutosaveEnabled(false);
+      await activateProject(
+        projectFromWhisperxData(data, videoFileName ?? "video"),
+      );
     } catch (err) {
       alert((err as Error).message);
     }
-  }, [guardUnsaved, loadProject, videoFileName]);
+  }, [guardUnsaved, activateProject, videoFileName]);
 
-  const doImportWaveform = useCallback(async () => {
+  const importWaveformFile = useCallback(async (): Promise<boolean> => {
     const current = useProject.getState().project;
-    if (!current) return;
+    if (!current) return false;
     const videoDuration = usePlayback.getState().duration;
     if (!videoFile || !Number.isFinite(videoDuration) || videoDuration <= 0) {
       alert(
         "Load a video first so waveform peaks can be matched to it.",
       );
-      return;
+      return false;
     }
 
     const handle = await pickFile(WAVEFORM_ACCEPT, "waveform peaks");
-    if (!handle) return;
+    if (!handle) return false;
 
     try {
       const file = await readHandleAsFile(handle);
@@ -373,17 +375,58 @@ export default function App() {
         parsed.meta.duration,
         videoDuration,
       );
-      if (mismatch && !window.confirm(`${mismatch}\n\nImport anyway?`)) return;
+      if (mismatch && !window.confirm(`${mismatch}\n\nImport anyway?`)) {
+        return false;
+      }
 
-      const identity =
-        current.video ?? (await buildVideoIdentity(videoFile, videoDuration));
-      const key = waveformCacheKey(identity);
-      useWaveform.getState().setPeaks(parsed, file.name, key);
-      await cacheWaveformPeaks(key, parsed);
+      useWaveform.getState().setPeaks(parsed, file.name, current.id);
+      await useWaveform.getState().persistForProject(current.id);
+      return true;
     } catch (err) {
       alert((err as Error).message);
+      return false;
     }
   }, [videoFile]);
+
+  const doImportWaveform = useCallback(async () => {
+    await importWaveformFile();
+  }, [importWaveformFile]);
+
+  const onSetupManual = useCallback(() => {
+    closeSetup();
+  }, [closeSetup]);
+
+  const onSetupWhisperx = useCallback(async () => {
+    setSetupBusy("Importing whisperx…");
+    try {
+      const handle = await pickFile(JSON_ACCEPT, "whisperx JSON");
+      if (!handle) return;
+      const text = await (await readHandleAsFile(handle)).text();
+      const data = parseSubtitleJsonText(text);
+      await activateProject(
+        projectFromWhisperxData(data, videoFileName ?? "video"),
+      );
+      closeSetup();
+    } catch (err) {
+      alert((err as Error).message);
+    } finally {
+      setSetupBusy(null);
+    }
+  }, [activateProject, videoFileName, closeSetup]);
+
+  const onSetupImportProject = useCallback(async () => {
+    setSetupBusy("Opening project…");
+    try {
+      const bytes = await pickProjectBundle();
+      if (!bytes) return;
+      await loadProjectBundleBytes(bytes);
+      closeSetup();
+    } catch (err) {
+      alert((err as Error).message);
+    } finally {
+      setSetupBusy(null);
+    }
+  }, [pickProjectBundle, loadProjectBundleBytes, closeSetup]);
 
   const doNewBlankProject = useCallback(async () => {
     if (!(await guardUnsaved())) return;
@@ -395,44 +438,23 @@ export default function App() {
       await cacheVideoHandle(handle);
       const file = await readHandleAsFile(handle);
       setVideoFromFile(file);
-      loadProject(createEmptyProject(file.name));
+      await activateProject(createEmptyProject(file.name));
     } else if (videoFileName) {
-      loadProject(createEmptyProject(videoFileName));
+      await activateProject(createEmptyProject(videoFileName));
     } else {
       closeProject();
       return;
     }
 
-    projectHandle.current = null;
-    setAutosaveEnabled(false);
     setStarted(true);
   }, [
     guardUnsaved,
     fsSupported,
     videoFileName,
     setVideoFromFile,
-    loadProject,
+    activateProject,
     closeProject,
   ]);
-
-  const startEditing = useCallback(
-    (projectName: string) => {
-      const state = useProject.getState();
-      const resolvedName = resolveProjectName(
-        projectName,
-        videoFileName ?? "video",
-      );
-      if (!state.project) {
-        loadProject(createEmptyProject(videoFileName ?? "video", resolvedName));
-        projectHandle.current = null;
-        setAutosaveEnabled(false);
-      } else if (projectName.trim()) {
-        state.setProjectName(resolvedName);
-      }
-      setStarted(true);
-    },
-    [loadProject, videoFileName],
-  );
 
   const togglePreview = useCallback(() => {
     setPreviewEnabled((prev) => {
@@ -465,7 +487,6 @@ export default function App() {
 
   const speakers = project?.speakers;
 
-  // Drop stale filter ids when speakers are removed.
   useEffect(() => {
     if (!speakers) return;
     setSpeakerFilter((prev) => {
@@ -485,35 +506,30 @@ export default function App() {
       window.removeEventListener("subbit:role-picker-open", onRolePickerOpen);
   }, []);
 
-  // Cmd/Ctrl+S from the shortcut hook.
   useEffect(() => {
     const onSave = () => void save();
     window.addEventListener("subbit:save", onSave);
     return () => window.removeEventListener("subbit:save", onSave);
   }, [save]);
 
-  // `?` toggles the shortcuts overlay.
   useEffect(() => {
     const onToggle = () => setHelpOpen((v) => !v);
     window.addEventListener("subbit:help-toggle", onToggle);
     return () => window.removeEventListener("subbit:help-toggle", onToggle);
   }, []);
 
-  // `P` toggles subtitle preview on the video.
   useEffect(() => {
     const onToggle = () => togglePreview();
     window.addEventListener("subbit:preview-toggle", onToggle);
     return () => window.removeEventListener("subbit:preview-toggle", onToggle);
   }, [togglePreview]);
 
-  // Autosave (only when a project file handle exists, to avoid surprise downloads).
   useEffect(() => {
-    if (!dirty || !projectHandle.current) return;
+    if (!dirty || !started) return;
     const id = setTimeout(() => void save({ auto: true }), 3000);
     return () => clearTimeout(id);
-  }, [dirty, save]);
+  }, [dirty, started, save]);
 
-  // Tab close / refresh — browsers only allow their native leave prompt here, not UnsavedDialog.
   useEffect(() => {
     if (!dirty) return;
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -527,16 +543,10 @@ export default function App() {
   useShortcuts();
 
   const waveformLoaded = useWaveform((s) => s.peaks !== null);
-  const restoreWaveform = useWaveform((s) => s.restoreFromCache);
 
   const { status: videoIdentityStatus, message: videoMismatchMessage } =
     useVideoIdentity(videoFile);
 
-  // Restore cached waveform peaks when video identity is known.
-  useEffect(() => {
-    if (!started || !project?.video) return;
-    void restoreWaveform(project.video);
-  }, [started, project?.video, restoreWaveform]);
   const showVideoMismatch =
     !videoMismatchDismissed &&
     (videoIdentityStatus === "mismatch" || videoIdentityStatus === "missing") &&
@@ -553,17 +563,11 @@ export default function App() {
         )}
         <LoadScreen
           fsSupported={fsSupported}
-          videoFileName={videoFileName}
-          loadedProjectName={project?.name ?? null}
-          hasSubtitles={!!project}
           canRestore={canRestore}
           busy={busy}
-          onPickVideo={pickVideo}
-          onPickSubtitles={pickSubtitles}
+          onPickVideo={() => void pickVideo()}
           onVideoFile={onVideoFile}
-          onSubtitlesFile={onSubtitlesFile}
           onRestore={() => void doRestore(false)}
-          onStart={startEditing}
         />
       </>
     );
@@ -581,13 +585,14 @@ export default function App() {
         project={project}
         dirty={dirty}
         lastSavedAt={lastSavedAt}
-        autosaveEnabled={autosaveEnabled}
+        autosaveEnabled
         saving={saving}
         onSave={() => void save()}
         onExport={() => setExportOpen(true)}
         onHelp={() => setHelpOpen(true)}
         onHistory={() => setHistoryOpen(true)}
-        onOpenProject={() => void doOpenProject()}
+        onImportProjectBundle={() => void doImportProjectBundle()}
+        onExportProjectBundle={doExportProjectBundle}
         onNewBlankProject={() => void doNewBlankProject()}
         onImportWhisperx={() => void doImportWhisperx()}
         onImportWaveform={() => void doImportWaveform()}
@@ -623,6 +628,14 @@ export default function App() {
         onClose={() => setHistoryOpen(false)}
         project={project}
         onRestore={restoreProject}
+      />
+      <ProjectSetupDialog
+        open={setupOpen}
+        videoFile={videoFile}
+        busy={setupBusy}
+        onImportProject={() => void onSetupImportProject()}
+        onImportWhisperx={() => void onSetupWhisperx()}
+        onAnnotateManually={onSetupManual}
       />
       <div className="main">
         <div className="left">

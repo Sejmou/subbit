@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
 interface Props {
-  onOpenProject: () => void;
+  onImportProjectBundle: () => void;
+  onExportProjectBundle: () => void;
   onNewBlankProject: () => void;
   onImportWhisperx: () => void;
   onImportWaveform: () => void;
@@ -9,7 +10,8 @@ interface Props {
 }
 
 export function FileMenu({
-  onOpenProject,
+  onImportProjectBundle,
+  onExportProjectBundle,
   onNewBlankProject,
   onImportWhisperx,
   onImportWaveform,
@@ -46,9 +48,16 @@ export function FileMenu({
           <button
             type="button"
             role="menuitem"
-            onClick={() => run(onOpenProject)}
+            onClick={() => run(onImportProjectBundle)}
           >
-            Open project…
+            Import project bundle…
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => run(onExportProjectBundle)}
+          >
+            Export project bundle…
           </button>
           <button
             type="button"

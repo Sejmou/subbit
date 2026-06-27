@@ -31,3 +31,7 @@ export function suggestedExportFilename(
 ): string {
   return `${sanitizeFilename(resolveProjectName(project.name, project.videoName))}.${ext}`;
 }
+
+export function suggestedProjectBundleFilename(project: Project): string {
+  return `${sanitizeFilename(resolveProjectName(project.name, project.videoName))}.subbit.zip`;
+}
