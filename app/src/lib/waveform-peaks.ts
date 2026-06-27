@@ -127,6 +127,28 @@ export function peaksInitialZoomSeconds(
   return Math.min(Math.max(maxZoomSpan, 0.5), duration);
 }
 
+const DEFAULT_MIN_VISIBLE_SPAN_S = 0.5;
+
+/**
+ * Clamp a requested zoom-view span to [minSpan, duration].
+ * Returns null when already fully zoomed out and requesting wider.
+ */
+export function clampTimelineVisibleSpan(
+  requestedSpan: number,
+  currentSpan: number,
+  duration: number,
+  opts?: { minSpan?: number; zoomOut?: boolean },
+): number | null {
+  const minSpan = opts?.minSpan ?? DEFAULT_MIN_VISIBLE_SPAN_S;
+  const zoomOut = opts?.zoomOut ?? requestedSpan > currentSpan;
+  if (!Number.isFinite(requestedSpan)) return null;
+
+  const span = Math.max(minSpan, requestedSpan);
+  if (!Number.isFinite(duration) || duration <= 0) return span;
+  if (zoomOut && currentSpan >= duration - 0.001) return null;
+  return Math.min(span, duration);
+}
+
 /** Target `--pixels-per-second` when regenerating peaks (~targetSeconds at max zoom). */
 export function peaksPixelsPerSecondForZoom(
   targetMinVisibleSeconds: number,

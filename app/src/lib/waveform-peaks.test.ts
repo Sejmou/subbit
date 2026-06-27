@@ -8,6 +8,7 @@ import {
   peaksMaxZoomVisibleSeconds,
   peaksInitialZoomSeconds,
   peaksZoomLevels,
+  clampTimelineVisibleSpan,
 } from "./waveform-peaks";
 
 /** Build a minimal v2 8-bit mono .dat header + one min/max pair. */
@@ -130,6 +131,22 @@ describe("peaksDuration", () => {
     expect(
       peaksDuration({ length: 100, samplesPerPixel: 512, sampleRate: 44100 }),
     ).toBeCloseTo((100 * 512) / 44100);
+  });
+});
+
+describe("clampTimelineVisibleSpan", () => {
+  it("caps zoom-out at duration", () => {
+    expect(clampTimelineVisibleSpan(200, 100, 120, { zoomOut: true })).toBe(
+      120,
+    );
+  });
+
+  it("returns null when already fully zoomed out", () => {
+    expect(clampTimelineVisibleSpan(150, 120, 120, { zoomOut: true })).toBeNull();
+  });
+
+  it("allows zoom-in below duration", () => {
+    expect(clampTimelineVisibleSpan(30, 120, 120, { zoomOut: false })).toBe(30);
   });
 });
 

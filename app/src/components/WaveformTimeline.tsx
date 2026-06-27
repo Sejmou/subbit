@@ -19,6 +19,7 @@ import {
 import type { WaveformPeaksInput } from "../lib/waveform-peaks";
 import {
   buildPlaceholderWaveformPeaks,
+  clampTimelineVisibleSpan,
   peaksZoomLevels,
   peaksInitialZoomSeconds,
 } from "../lib/waveform-peaks";
@@ -138,7 +139,15 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
   } | null>(null);
 
   const updateViewRange = useCallback((startTime: number, endTime: number) => {
-    setViewRange({ start: startTime, end: endTime });
+    const d = durationRef.current;
+    let start = startTime;
+    let end = endTime;
+    if (Number.isFinite(d) && d > 0) {
+      end = Math.min(end, d);
+      start = Math.max(0, Math.min(start, end));
+    }
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return;
+    setViewRange({ start, end });
   }, []);
 
   const updateLeaderOverlay = useCallback(() => {
@@ -209,18 +218,26 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
         anchorX !== undefined ? Math.min(1, Math.max(0, anchorX / width)) : 0.5;
       const anchorTime = startTime + ratio * span;
       const requestedSpan = Math.max(0.5, span * factor);
+      const cappedSpan = clampTimelineVisibleSpan(
+        requestedSpan,
+        span,
+        durationRef.current,
+        { zoomOut: factor >= 1 },
+      );
+      if (cappedSpan === null) return;
 
-      zoomview.setZoom({ seconds: requestedSpan });
+      zoomview.setZoom({ seconds: cappedSpan });
 
       const actualSpan = zoomview.getEndTime() - zoomview.getStartTime();
-      const maxStart = Math.max(0, duration - actualSpan);
+      const d = durationRef.current;
+      const maxStart = Math.max(0, (Number.isFinite(d) && d > 0 ? d : actualSpan) - actualSpan);
       const newStart = Math.min(
         Math.max(0, anchorTime - ratio * actualSpan),
         maxStart,
       );
       zoomview.setStartTime(newStart);
     },
-    [duration],
+    [],
   );
 
   const syncHighlight = useCallback((time: number) => {
