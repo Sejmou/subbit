@@ -24,7 +24,6 @@ interface Props {
   onImportWhisperx: () => void
   onImportWaveform: () => void
   onCloseProject: () => void
-  waveformLoaded: boolean
   previewEnabled: boolean
   onTogglePreview: () => void
   speakerFilter: string[]
@@ -53,6 +52,34 @@ function saveStateLabel(
   return { label: '', variant: null }
 }
 
+function ReviewProgress({ reviewed, total }: { reviewed: number; total: number }) {
+  const radius = 8
+  const circumference = 2 * Math.PI * radius
+  const ratio = total > 0 ? reviewed / total : 0
+  const dashOffset = circumference * (1 - ratio)
+  const percent = (ratio * 100).toFixed(1)
+  const summary = `${reviewed} of ${total} cues reviewed (${percent}%)`
+
+  return (
+    <span className="review-progress" title={summary} aria-label={summary}>
+      <svg className="review-progress-ring" viewBox="0 0 22 22" aria-hidden>
+        <circle className="review-progress-track" cx="11" cy="11" r={radius} />
+        <circle
+          className="review-progress-fill"
+          cx="11"
+          cy="11"
+          r={radius}
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+        />
+      </svg>
+      <span className="review-progress-label">
+        {reviewed}/{total} reviewed
+      </span>
+    </span>
+  )
+}
+
 export function Toolbar({
   project,
   dirty,
@@ -68,7 +95,6 @@ export function Toolbar({
   onImportWhisperx,
   onImportWaveform,
   onCloseProject,
-  waveformLoaded,
   previewEnabled,
   onTogglePreview,
   speakerFilter,
@@ -112,14 +138,7 @@ export function Toolbar({
         onToggleStatusFilter={onToggleStatusFilter}
         onClearFilters={onClearFilters}
       />
-      {waveformLoaded && (
-        <span className="waveform-badge" title="Waveform peaks loaded (ready for timeline)">
-          Waveform
-        </span>
-      )}
-      <span className="progress">
-        {reviewed}/{total} reviewed
-      </span>
+      <ReviewProgress reviewed={reviewed} total={total} />
 
       <span className="btn-group">
         <button onClick={undo} disabled={!canUndo} title={`Undo (${shortcutLabel('undo')})`}>

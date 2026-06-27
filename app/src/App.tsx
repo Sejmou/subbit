@@ -528,7 +528,6 @@ export default function App() {
         onImportWhisperx={() => void doImportWhisperx()}
         onImportWaveform={() => void doImportWaveform()}
         onCloseProject={() => void doCloseProject()}
-        waveformLoaded={waveformLoaded}
         previewEnabled={previewEnabled}
         onTogglePreview={togglePreview}
         speakerFilter={speakerFilter}
