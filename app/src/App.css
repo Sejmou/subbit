@@ -893,6 +893,8 @@
   flex: 1;
   min-height: 30px;
   line-height: 1.35;
+  resize: none;
+  overflow: hidden;
 }
 
 /* ---- role picker ---- */

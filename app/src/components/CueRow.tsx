@@ -1,7 +1,8 @@
-import { memo, useEffect, useRef, Fragment } from "react";
+import { memo, useEffect, useRef, Fragment, type RefObject } from "react";
 import type { Cue, Project } from "../types";
 import { useProject } from "../store/project";
 import { usePlayback } from "../store/playback";
+import { useAutosizeTextarea } from "../hooks/useAutosizeTextarea";
 import { openRolePicker, NO_ROLE_LABEL } from "../lib/role-picker";
 import { shortcutLabel } from "../lib/shortcuts";
 import { secondsToTimecode } from "../lib/timecode";
@@ -31,6 +32,41 @@ function TrashIcon() {
       <path d="M10 11v6" />
       <path d="M14 11v6" />
     </svg>
+  );
+}
+
+interface SegmentTextareaProps {
+  inputRef?: RefObject<HTMLTextAreaElement | null>;
+  cueId: string;
+  segIndex: number;
+  value: string;
+  onFocus: () => void;
+  onChange: (value: string) => void;
+}
+
+function SegmentTextarea({
+  inputRef,
+  cueId,
+  segIndex,
+  value,
+  onFocus,
+  onChange,
+}: SegmentTextareaProps) {
+  const localRef = useRef<HTMLTextAreaElement>(null);
+  const ref = inputRef ?? localRef;
+  useAutosizeTextarea(ref, value);
+
+  return (
+    <textarea
+      ref={ref}
+      className="seg-text"
+      data-cue-id={cueId}
+      data-seg-index={segIndex}
+      rows={1}
+      value={value}
+      onFocus={onFocus}
+      onChange={(e) => onChange(e.target.value)}
+    />
   );
 }
 
@@ -150,18 +186,16 @@ function CueRowImpl({ cue, index, project, selected, active }: Props) {
                   </option>
                 ))}
               </select>
-              <textarea
-                ref={i === 0 ? firstTextarea : undefined}
-                className="seg-text"
-                data-cue-id={cue.id}
-                data-seg-index={i}
-                rows={1}
+              <SegmentTextarea
+                inputRef={i === 0 ? firstTextarea : undefined}
+                cueId={cue.id}
+                segIndex={i}
                 value={seg.text}
                 onFocus={() => {
                   selectCue(cue.id);
                   selectSegment(i);
                 }}
-                onChange={(e) => setSegmentText(cue.id, i, e.target.value)}
+                onChange={(text) => setSegmentText(cue.id, i, text)}
               />
             </div>
           </Fragment>
