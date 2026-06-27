@@ -1,10 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { setSetupDialogOpen } from "../lib/setup-dialog";
 import { useVideoFileMetadata } from "../hooks/useVideoFileMetadata";
-import {
-  fallbackProjectName,
-  resolveProjectName,
-} from "../lib/project-meta";
+import { fallbackProjectName, resolveProjectName } from "../lib/project-meta";
 import { useProject } from "../store/project";
 import {
   SetupClankerIcon,
@@ -61,25 +58,29 @@ function SetupChoice({
   );
 }
 
+const SETUP_STEPS = [
+  { label: "Project name" },
+  { label: "Subtitle source" },
+] as const;
+
 function SetupStepper({ step }: { step: 1 | 2 }) {
   return (
-    <ol className="setup-stepper" aria-label="Setup progress">
-      <li
-        className={`setup-step-marker${step === 1 ? " setup-step-marker--current" : ""}${step > 1 ? " setup-step-marker--done" : ""}`}
-        aria-current={step === 1 ? "step" : undefined}
-      >
-        <span className="setup-step-num">1</span>
-        <span className="setup-step-label">Video &amp; name</span>
-      </li>
-      <li className="setup-step-line" aria-hidden data-active={step > 1} />
-      <li
-        className={`setup-step-marker${step === 2 ? " setup-step-marker--current" : ""}`}
-        aria-current={step === 2 ? "step" : undefined}
-      >
-        <span className="setup-step-num">2</span>
-        <span className="setup-step-label">Starting point</span>
-      </li>
-    </ol>
+    <div className="setup-progress" aria-label="Setup progress">
+      <div className="setup-progress-track" role="presentation">
+        {SETUP_STEPS.map((_, index) => {
+          const n = (index + 1) as 1 | 2;
+          return (
+            <div
+              key={n}
+              className={`setup-progress-segment${step >= n ? " setup-progress-segment--filled" : ""}`}
+            />
+          );
+        })}
+      </div>
+      <p className="setup-progress-caption">
+        Step {step} of {SETUP_STEPS.length} · {SETUP_STEPS[step - 1].label}
+      </p>
+    </div>
   );
 }
 
@@ -221,59 +222,9 @@ export function ProjectSetupDialog({
         aria-busy={!!busy}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <h2 id="setup-title">Get started</h2>
-        <SetupStepper step={step} />
-
-        {step === 1 ? (
-          <div className="setup-panel">
-            <p className="setup-panel-lead">Video loaded!</p>
-            {meta && (
-              <div className="setup-video-card">
-                <p className="setup-video-name">{meta.fileName}</p>
-                <dl className="setup-video-meta">
-                  <div>
-                    <dt>Size</dt>
-                    <dd>{meta.fileSize}</dd>
-                  </div>
-                  <div>
-                    <dt>Duration</dt>
-                    <dd>{meta.duration ?? (meta.pending ? "…" : "—")}</dd>
-                  </div>
-                  <div>
-                    <dt>Frame rate</dt>
-                    <dd>{meta.frameRate ?? (meta.pending ? "…" : "—")}</dd>
-                  </div>
-                </dl>
-              </div>
-            )}
-            <label className="setup-name-field" htmlFor="setup-project-name">
-              Project name
-              <input
-                ref={nameInputRef}
-                id="setup-project-name"
-                className="project-name-field"
-                value={nameDraft}
-                placeholder={suggestedName}
-                onChange={(e) => setNameDraft(e.target.value)}
-                disabled={disabled}
-                autoComplete="off"
-                spellCheck={false}
-              />
-            </label>
-            <p className="setup-name-hint">
-              Leave blank to use “{suggestedName}”.
-            </p>
-            <button
-              type="button"
-              className="primary wide setup-continue"
-              onClick={continueToStep2}
-              disabled={disabled}
-            >
-              Continue
-            </button>
-          </div>
-        ) : (
-          <div className="setup-panel">
+        <div className="setup-modal-top">
+          <h2 id="setup-title">Get started</h2>
+          {step === 2 && (
             <button
               type="button"
               className="setup-back"
@@ -285,7 +236,66 @@ export function ProjectSetupDialog({
             >
               ← Back
             </button>
-            <p className="setup-panel-lead">Choose your starting point</p>
+          )}
+        </div>
+        <SetupStepper step={step} />
+
+        {step === 1 ? (
+          <>
+            {meta && (
+              <div className="setup-name-field setup-video-field">
+                You&apos;ll be working on
+                <div className="setup-video-card">
+                  <p className="setup-video-file" title={meta.fileName}>
+                    {meta.fileName}
+                  </p>
+                  <dl className="setup-video-meta">
+                    <div>
+                      <dt>Size</dt>
+                      <dd>{meta.fileSize}</dd>
+                    </div>
+                    <div>
+                      <dt>Duration</dt>
+                      <dd>{meta.duration ?? (meta.pending ? "…" : "—")}</dd>
+                    </div>
+                    <div>
+                      <dt>Frame rate</dt>
+                      <dd>{meta.frameRate ?? (meta.pending ? "…" : "—")}</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+            )}
+            <div className="setup-panel">
+              <label className="setup-name-field" htmlFor="setup-project-name">
+                Project name
+                <input
+                  ref={nameInputRef}
+                  id="setup-project-name"
+                  className="project-name-field"
+                  value={nameDraft}
+                  placeholder={suggestedName}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  disabled={disabled}
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              </label>
+              <p className="setup-name-hint">
+                Leave blank to use the video file name.
+              </p>
+              <button
+                type="button"
+                className="primary wide setup-continue"
+                onClick={continueToStep2}
+                disabled={disabled}
+              >
+                Continue
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="setup-panel">
             <div className="setup-choices">
               <SetupChoice
                 tint="project"
@@ -293,8 +303,8 @@ export function ProjectSetupDialog({
                 title="Import an existing project"
                 description={
                   <>
-                    Open a <code>.subbit.zip</code> bundle (project + optional
-                    waveform).
+                    Start from a subbit project bundle (<code>.zip</code>) for
+                    your video.
                   </>
                 }
                 disabled={disabled}

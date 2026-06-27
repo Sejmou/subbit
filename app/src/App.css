@@ -1233,72 +1233,39 @@ kbd {
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
 }
 .setup-modal h2 {
-  margin: 0 0 14px;
+  margin: 0;
   font-size: 19px;
   letter-spacing: -0.01em;
 }
-.setup-stepper {
+.setup-modal-top {
   display: flex;
   align-items: center;
-  gap: 0;
-  list-style: none;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.setup-progress {
   margin: 0 0 20px;
-  padding: 0;
 }
-.setup-step-marker {
+.setup-progress-track {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--text-dim);
-  font-size: 12px;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.setup-progress-segment {
   flex: 1;
-  min-width: 0;
-}
-.setup-step-marker--current {
-  color: var(--text);
-}
-.setup-step-marker--current .setup-step-num {
-  background: var(--accent-2);
-  border-color: var(--accent);
-  color: #fff;
-}
-.setup-step-marker--done {
-  color: var(--text);
-}
-.setup-step-marker--done .setup-step-num {
-  background: rgba(62, 207, 142, 0.15);
-  border-color: rgba(62, 207, 142, 0.45);
-  color: var(--ok);
-}
-.setup-step-num {
-  flex-shrink: 0;
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-.setup-step-label {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.setup-step-line {
-  flex: 0 0 28px;
-  height: 2px;
-  margin: 0 6px;
-  border-radius: 1px;
+  height: 4px;
+  border-radius: 2px;
   background: var(--border);
-  list-style: none;
+  transition: background 0.2s ease;
 }
-.setup-step-line[data-active="true"] {
+.setup-progress-segment--filled {
   background: var(--accent);
+}
+.setup-progress-caption {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-dim);
 }
 .setup-panel-lead {
   margin: 0 0 12px;
@@ -1317,6 +1284,9 @@ kbd {
   margin-bottom: 6px;
   font-size: 12px;
   color: var(--text-dim);
+}
+.setup-video-field {
+  margin-bottom: 16px;
 }
 .setup-modal .project-name-field {
   width: 100%;
@@ -1337,18 +1307,19 @@ kbd {
   margin-top: 0;
 }
 .setup-back {
-  align-self: flex-start;
-  margin: 0 0 10px;
-  padding: 4px 0;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 4px 8px;
   border: none;
   background: none;
   color: var(--text-dim);
   font-size: 12px;
+  border-radius: 4px;
 }
 .setup-back:hover:not(:disabled) {
   color: var(--accent);
+  background: var(--bg);
   border: none;
-  background: none;
 }
 .setup-modal p {
   margin: 0 0 16px;
@@ -1360,14 +1331,16 @@ kbd {
   border-radius: 10px;
   background: var(--bg);
   border: 1px solid var(--border);
-  margin-bottom: 16px;
 }
-.setup-video-name {
-  margin: 0 0 10px;
-  font-weight: 500;
+.setup-modal .setup-video-file {
+  margin: 0 0 12px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
   font-size: 14px;
+  font-weight: 500;
   color: var(--text);
-  word-break: break-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .setup-video-meta {
   display: grid;
