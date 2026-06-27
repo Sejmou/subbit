@@ -51,11 +51,12 @@ export function ProgramStartHelpDialog({ open, onClose }: Props) {
               timeline
             </li>
             <li>
-              Type a timecode in the toolbar field, or click <strong>Set</strong>
+              Type a timecode in the toolbar field, or click{" "}
+              <strong>Set</strong>
             </li>
             <li>
-              Press <kbd>{setFromPlayhead}</kbd> to set from the current playhead
-              position
+              Press <kbd>{setFromPlayhead}</kbd> to set from the current
+              playhead position
             </li>
           </ul>
           <p className="hint">

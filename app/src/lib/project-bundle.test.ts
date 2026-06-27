@@ -30,8 +30,8 @@ describe("project-bundle", () => {
     expect(() =>
       parseProjectBundleZip(
         new Uint8Array([
-          0x50, 0x4b, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0, 0, 0,
+          0x50, 0x4b, 0x05, 0x06, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0,
         ]),
       ),
     ).toThrow(/project\.json/);

@@ -6,6 +6,8 @@
 const US_FALLBACK: Record<string, string> = {
   BracketLeft: "[",
   BracketRight: "]",
+  Quote: "'",
+  Backslash: "\\",
   Space: "Space",
   Enter: "Enter",
   Escape: "Esc",

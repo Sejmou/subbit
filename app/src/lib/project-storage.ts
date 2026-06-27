@@ -73,7 +73,9 @@ export async function loadStoredProjectText(
   return get<string>(projectKey(id));
 }
 
-export async function loadStoredProject(id: string): Promise<Project | undefined> {
+export async function loadStoredProject(
+  id: string,
+): Promise<Project | undefined> {
   const text = await loadStoredProjectText(id);
   if (!text) return undefined;
   return parseProjectData(JSON.parse(text));

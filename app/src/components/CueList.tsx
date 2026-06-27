@@ -94,9 +94,7 @@ export function CueList({
       virtualizer.scrollToIndex(idx, { align: detail.scroll });
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          window.dispatchEvent(
-            new CustomEvent("subbit:edit", { detail }),
-          );
+          window.dispatchEvent(new CustomEvent("subbit:edit", { detail }));
         });
       });
     }
@@ -110,8 +108,7 @@ export function CueList({
       <div className="cue-list cue-list--empty">
         <p>No subtitles yet.</p>
         <p className="hint">
-          Press <kbd>{insertCueLabel}</kbd> to add a cue at the
-          playhead.
+          Press <kbd>{insertCueLabel}</kbd> to add a cue at the playhead.
         </p>
         <button
           type="button"

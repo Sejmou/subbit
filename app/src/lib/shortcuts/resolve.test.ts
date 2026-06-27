@@ -11,7 +11,10 @@ import { resolveShortcut, handleShortcut } from "./resolve";
 function makeKeyEvent(
   keyVal: string,
   init: Partial<
-    Pick<KeyboardEvent, "key" | "code" | "metaKey" | "ctrlKey" | "shiftKey" | "altKey">
+    Pick<
+      KeyboardEvent,
+      "key" | "code" | "metaKey" | "ctrlKey" | "shiftKey" | "altKey"
+    >
   > = {},
 ): KeyboardEvent {
   return {
@@ -212,12 +215,12 @@ describe("resolveShortcut", () => {
     ).toBe("jog-back-frame");
   });
 
-  it("nudges cue times from physical bracket keys (layout-independent)", () => {
+  it("nudges cue times from physical keys (layout-independent)", () => {
     const c = ctx();
-    resolveShortcut(
-      makeKeyEvent("ü", { code: "BracketLeft" }),
+    resolveShortcut(makeKeyEvent("ü", { code: "BracketLeft" }), c)?.run(
       c,
-    )?.run(c, makeKeyEvent("ü", { code: "BracketLeft" }));
+      makeKeyEvent("ü", { code: "BracketLeft" }),
+    );
     expect(c.ps.nudgeCueStart).toHaveBeenCalledWith("cue-1", -c.frame);
 
     const c2 = ctx();
@@ -225,14 +228,35 @@ describe("resolveShortcut", () => {
       makeKeyEvent("Ü", { code: "BracketLeft", shiftKey: true }),
       c2,
     )?.run(c2, makeKeyEvent("Ü", { code: "BracketLeft", shiftKey: true }));
-    expect(c2.ps.nudgeCueStart).toHaveBeenCalledWith("cue-1", c2.frame * 10);
+    expect(c2.ps.nudgeCueStart).toHaveBeenCalledWith("cue-1", -(c2.frame * 10));
 
     const c3 = ctx();
-    resolveShortcut(
-      makeKeyEvent("+", { code: "BracketRight" }),
+    resolveShortcut(makeKeyEvent("+", { code: "BracketRight" }), c3)?.run(
       c3,
-    )?.run(c3, makeKeyEvent("+", { code: "BracketRight" }));
-    expect(c3.ps.nudgeCueEnd).toHaveBeenCalledWith("cue-1", c3.frame);
+      makeKeyEvent("+", { code: "BracketRight" }),
+    );
+    expect(c3.ps.nudgeCueStart).toHaveBeenCalledWith("cue-1", c3.frame);
+
+    const c4 = ctx();
+    resolveShortcut(makeKeyEvent("'", { code: "Quote" }), c4)?.run(
+      c4,
+      makeKeyEvent("'", { code: "Quote" }),
+    );
+    expect(c4.ps.nudgeCueEnd).toHaveBeenCalledWith("cue-1", -c4.frame);
+
+    const c5 = ctx();
+    resolveShortcut(makeKeyEvent("\\", { code: "Backslash" }), c5)?.run(
+      c5,
+      makeKeyEvent("\\", { code: "Backslash" }),
+    );
+    expect(c5.ps.nudgeCueEnd).toHaveBeenCalledWith("cue-1", c5.frame);
+
+    const c6 = ctx();
+    resolveShortcut(
+      makeKeyEvent("\\", { code: "Backslash", shiftKey: true }),
+      c6,
+    )?.run(c6, makeKeyEvent("\\", { code: "Backslash", shiftKey: true }));
+    expect(c6.ps.nudgeCueEnd).toHaveBeenCalledWith("cue-1", c6.frame * 10);
   });
 
   it("ignores navigation shortcuts while editing text", () => {
@@ -267,9 +291,9 @@ describe("resolveShortcut", () => {
   });
 
   it("opens find and replace on mod+shift+f", () => {
-    expect(
-      resolveShortcut(modKey("f", { shiftKey: true }), ctx())?.id,
-    ).toBe("find-replace");
+    expect(resolveShortcut(modKey("f", { shiftKey: true }), ctx())?.id).toBe(
+      "find-replace",
+    );
   });
 
   it("ignores shortcuts while the help overlay is open", () => {
@@ -281,9 +305,9 @@ describe("resolveShortcut", () => {
 
   it("toggles find and replace on mod+shift+f even while the panel is open", () => {
     setFindReplaceOpen(true);
-    expect(
-      resolveShortcut(modKey("f", { shiftKey: true }), ctx())?.id,
-    ).toBe("find-replace");
+    expect(resolveShortcut(modKey("f", { shiftKey: true }), ctx())?.id).toBe(
+      "find-replace",
+    );
     setFindReplaceOpen(false);
   });
 
@@ -311,24 +335,22 @@ describe("resolveShortcut", () => {
       pb: { ...ctx().pb, currentTime: 5, duration: 100 },
     });
 
-    expect(
-      resolveShortcut(makeKeyEvent("0", { code: "Digit0" }), c)?.id,
-    ).toBe("seek-program-start");
+    expect(resolveShortcut(makeKeyEvent("0", { code: "Digit0" }), c)?.id).toBe(
+      "seek-program-start",
+    );
     resolveShortcut(makeKeyEvent("0", { code: "Digit0" }), c)?.run(
       c,
       makeKeyEvent("0", { code: "Digit0" }),
     );
     expect(c.pb.seek).toHaveBeenCalledWith(12);
 
-    expect(
-      resolveShortcut(makeKeyEvent("Home"), c)?.id,
-    ).toBe("seek-program-start");
+    expect(resolveShortcut(makeKeyEvent("Home"), c)?.id).toBe(
+      "seek-program-start",
+    );
 
     expect(
-      resolveShortcut(
-        makeKeyEvent("0", { code: "Digit0", shiftKey: true }),
-        c,
-      )?.id,
+      resolveShortcut(makeKeyEvent("0", { code: "Digit0", shiftKey: true }), c)
+        ?.id,
     ).toBe("set-program-start");
     resolveShortcut(
       makeKeyEvent("0", { code: "Digit0", shiftKey: true }),
@@ -341,10 +363,8 @@ describe("resolveShortcut", () => {
     ).toBe("set-program-start");
 
     expect(
-      resolveShortcut(
-        makeKeyEvent("0", { code: "Digit0", altKey: true }),
-        c,
-      )?.id,
+      resolveShortcut(makeKeyEvent("0", { code: "Digit0", altKey: true }), c)
+        ?.id,
     ).toBe("clear-program-start");
     resolveShortcut(
       makeKeyEvent("0", { code: "Digit0", altKey: true }),

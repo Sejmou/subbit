@@ -46,7 +46,9 @@ export function ProgramStartPanel({ project, ready }: Props) {
   const setTimeReference = useTimeReference((s) => s.setReference);
 
   const contentStart = contentStartSeconds(project);
-  const [startDraft, setStartDraft] = useState(() => programStartTimecode(project));
+  const [startDraft, setStartDraft] = useState(() =>
+    programStartTimecode(project),
+  );
   const [playheadDraft, setPlayheadDraft] = useState(() =>
     playheadDisplayClock(currentTime, contentStart, timeReference),
   );
@@ -108,13 +110,7 @@ export function ProgramStartPanel({ project, ready }: Props) {
     } catch {
       setPlayheadError("Use HH:MM:SS.mmm");
     }
-  }, [
-    playheadDraft,
-    timeReference,
-    contentStart,
-    duration,
-    seek,
-  ]);
+  }, [playheadDraft, timeReference, contentStart, duration, seek]);
 
   const setFromPlayhead = useCallback(() => {
     const seconds = clampProgramStart(currentTime, duration);

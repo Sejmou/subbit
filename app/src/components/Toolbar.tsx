@@ -209,9 +209,7 @@ export function Toolbar({
         </button>
         <button
           type="button"
-          className={
-            findReplaceOpen ? "find-btn find-btn--on" : "find-btn"
-          }
+          className={findReplaceOpen ? "find-btn find-btn--on" : "find-btn"}
           aria-pressed={findReplaceOpen}
           onClick={onToggleFindReplace}
           title={`${findReplaceOpen ? "Close" : "Open"} find & replace (${findReplaceLabel})`}

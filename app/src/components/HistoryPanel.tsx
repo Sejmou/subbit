@@ -110,65 +110,65 @@ export function HistoryPanel({ open, onClose, project, onRestore }: Props) {
         </div>
         <div className="help-modal-body">
           <p className="hint">
-          Snapshots are saved automatically on each save and stored in this
-          browser. Restoring loads an earlier state into the editor (which you
-          can still undo).
-        </p>
-
-        <div className="history-snapshot">
-          <input
-            placeholder="Optional label for a snapshot…"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void onSnapshot();
-            }}
-          />
-          <button className="primary" onClick={() => void onSnapshot()}>
-            Snapshot now
-          </button>
-        </div>
-
-        {loading ? (
-          <p className="hint">Loading…</p>
-        ) : versions.length === 0 ? (
-          <p className="hint">
-            No versions yet. Save the project or take a snapshot.
+            Snapshots are saved automatically on each save and stored in this
+            browser. Restoring loads an earlier state into the editor (which you
+            can still undo).
           </p>
-        ) : (
-          <ul className="history-list">
-            {versions.map((v) => (
-              <li key={v.id} className="history-item">
-                <div className="history-main">
-                  <span className="history-when">
-                    {v.label ? (
-                      <strong className="history-label">{v.label}</strong>
-                    ) : null}
-                    {formatWhen(v.createdAt)}
-                  </span>
-                  <span className="history-meta">
-                    {v.reviewedCount}/{v.cueCount} reviewed ·{" "}
-                    {formatSize(v.size)}
-                    {v.auto ? " · auto" : ""}
-                  </span>
-                </div>
-                <div className="history-actions">
-                  <button onClick={() => void onRestoreVersion(v.id)}>
-                    Restore
-                  </button>
-                  <button
-                    className="danger"
-                    onClick={() => void onDelete(v.id)}
-                    title="Delete this version"
-                    aria-label="Delete this version"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+
+          <div className="history-snapshot">
+            <input
+              placeholder="Optional label for a snapshot…"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void onSnapshot();
+              }}
+            />
+            <button className="primary" onClick={() => void onSnapshot()}>
+              Snapshot now
+            </button>
+          </div>
+
+          {loading ? (
+            <p className="hint">Loading…</p>
+          ) : versions.length === 0 ? (
+            <p className="hint">
+              No versions yet. Save the project or take a snapshot.
+            </p>
+          ) : (
+            <ul className="history-list">
+              {versions.map((v) => (
+                <li key={v.id} className="history-item">
+                  <div className="history-main">
+                    <span className="history-when">
+                      {v.label ? (
+                        <strong className="history-label">{v.label}</strong>
+                      ) : null}
+                      {formatWhen(v.createdAt)}
+                    </span>
+                    <span className="history-meta">
+                      {v.reviewedCount}/{v.cueCount} reviewed ·{" "}
+                      {formatSize(v.size)}
+                      {v.auto ? " · auto" : ""}
+                    </span>
+                  </div>
+                  <div className="history-actions">
+                    <button onClick={() => void onRestoreVersion(v.id)}>
+                      Restore
+                    </button>
+                    <button
+                      className="danger"
+                      onClick={() => void onDelete(v.id)}
+                      title="Delete this version"
+                      aria-label="Delete this version"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>

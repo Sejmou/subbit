@@ -64,8 +64,9 @@ export function parseProjectBundleZip(data: Uint8Array): ParsedProjectBundle {
     Object.entries(files).find(([name]) =>
       name.toLowerCase().endsWith(".subbit.json"),
     )?.[1] ??
-    Object.entries(files).find(([name]) => name.toLowerCase().endsWith(".json"))
-      ?.[1];
+    Object.entries(files).find(([name]) =>
+      name.toLowerCase().endsWith(".json"),
+    )?.[1];
 
   if (!projectBytes) {
     throw new Error(

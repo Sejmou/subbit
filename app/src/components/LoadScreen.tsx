@@ -62,7 +62,9 @@ export function LoadScreen(props: Props) {
       <div className="load-layout">
         <header className="load-header">
           <h1>Subbit</h1>
-          <p className="sub">Subtitle editor with speaker &amp; shot metadata.</p>
+          <p className="sub">
+            Subtitle editor with speaker &amp; shot metadata.
+          </p>
         </header>
 
         <ProjectsTable

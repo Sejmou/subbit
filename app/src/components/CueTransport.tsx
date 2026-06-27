@@ -133,9 +133,7 @@ export function CueTransport({ project }: { project: Project }) {
       <div className="cue-transport-boundary">
         <span className="cue-transport-boundary-label">In</span>
         <span className="cue-transport-tc">
-          {hasCue
-            ? cueDisplayTimecode(cue.start, project, timeReference)
-            : "—"}
+          {hasCue ? cueDisplayTimecode(cue.start, project, timeReference) : "—"}
         </span>
         <button
           type="button"
@@ -161,9 +159,7 @@ export function CueTransport({ project }: { project: Project }) {
       <div className="cue-transport-boundary">
         <span className="cue-transport-boundary-label">Out</span>
         <span className="cue-transport-tc">
-          {hasCue
-            ? cueDisplayTimecode(cue.end, project, timeReference)
-            : "—"}
+          {hasCue ? cueDisplayTimecode(cue.end, project, timeReference) : "—"}
         </span>
         <button
           type="button"

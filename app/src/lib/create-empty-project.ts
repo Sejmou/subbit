@@ -8,10 +8,7 @@ import {
 import { newProjectId, resolveProjectName } from "./project-meta";
 
 /** Blank project for manual subtitle authoring (video loaded, no whisperx import). */
-export function createEmptyProject(
-  videoName: string,
-  name?: string,
-): Project {
+export function createEmptyProject(videoName: string, name?: string): Project {
   return {
     version: PROJECT_VERSION,
     id: newProjectId(),

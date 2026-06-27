@@ -1,9 +1,6 @@
 import { useEffect, useState } from "react";
 import { formatFrameRate, probeMp4FrameRate } from "../lib/mp4-probe";
-import {
-  formatFileSize,
-  formatMediaDuration,
-} from "../lib/video-meta-format";
+import { formatFileSize, formatMediaDuration } from "../lib/video-meta-format";
 import { usePlayback } from "../store/playback";
 
 export interface VideoFileMetadata {

@@ -1,9 +1,10 @@
 import type { Project } from "../types";
+import { contentStartSeconds, fileTimeToProgramTime } from "./program-start";
 import {
-  contentStartSeconds,
-  fileTimeToProgramTime,
-} from "./program-start";
-import { secondsToClock, secondsToTimecode, timecodeToSeconds } from "./timecode";
+  secondsToClock,
+  secondsToTimecode,
+  timecodeToSeconds,
+} from "./timecode";
 import type { TimeReference } from "../store/time-reference";
 
 /** File seconds for the active time reference (editor display / playhead field). */

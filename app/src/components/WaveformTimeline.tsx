@@ -146,7 +146,8 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
       end = Math.min(end, d);
       start = Math.max(0, Math.min(start, end));
     }
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return;
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start)
+      return;
     setViewRange({ start, end });
   }, []);
 
@@ -200,45 +201,45 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
     updateLeaderOverlay();
   }, [updateLeaderOverlay]);
 
-  const zoomViewByFactor = useCallback(
-    (factor: number, anchorX?: number) => {
-      const zoomview = peaksRef.current?.views.getView("zoomview");
-      const container = zoomRef.current;
-      if (!zoomview || !container) return;
+  const zoomViewByFactor = useCallback((factor: number, anchorX?: number) => {
+    const zoomview = peaksRef.current?.views.getView("zoomview");
+    const container = zoomRef.current;
+    if (!zoomview || !container) return;
 
-      const startTime = zoomview.getStartTime();
-      const endTime = zoomview.getEndTime();
-      const span = endTime - startTime;
-      if (span <= 0) return;
+    const startTime = zoomview.getStartTime();
+    const endTime = zoomview.getEndTime();
+    const span = endTime - startTime;
+    if (span <= 0) return;
 
-      const width = container.clientWidth;
-      if (width <= 0) return;
+    const width = container.clientWidth;
+    if (width <= 0) return;
 
-      const ratio =
-        anchorX !== undefined ? Math.min(1, Math.max(0, anchorX / width)) : 0.5;
-      const anchorTime = startTime + ratio * span;
-      const requestedSpan = Math.max(0.5, span * factor);
-      const cappedSpan = clampTimelineVisibleSpan(
-        requestedSpan,
-        span,
-        durationRef.current,
-        { zoomOut: factor >= 1 },
-      );
-      if (cappedSpan === null) return;
+    const ratio =
+      anchorX !== undefined ? Math.min(1, Math.max(0, anchorX / width)) : 0.5;
+    const anchorTime = startTime + ratio * span;
+    const requestedSpan = Math.max(0.5, span * factor);
+    const cappedSpan = clampTimelineVisibleSpan(
+      requestedSpan,
+      span,
+      durationRef.current,
+      { zoomOut: factor >= 1 },
+    );
+    if (cappedSpan === null) return;
 
-      zoomview.setZoom({ seconds: cappedSpan });
+    zoomview.setZoom({ seconds: cappedSpan });
 
-      const actualSpan = zoomview.getEndTime() - zoomview.getStartTime();
-      const d = durationRef.current;
-      const maxStart = Math.max(0, (Number.isFinite(d) && d > 0 ? d : actualSpan) - actualSpan);
-      const newStart = Math.min(
-        Math.max(0, anchorTime - ratio * actualSpan),
-        maxStart,
-      );
-      zoomview.setStartTime(newStart);
-    },
-    [],
-  );
+    const actualSpan = zoomview.getEndTime() - zoomview.getStartTime();
+    const d = durationRef.current;
+    const maxStart = Math.max(
+      0,
+      (Number.isFinite(d) && d > 0 ? d : actualSpan) - actualSpan,
+    );
+    const newStart = Math.min(
+      Math.max(0, anchorTime - ratio * actualSpan),
+      maxStart,
+    );
+    zoomview.setStartTime(newStart);
+  }, []);
 
   const syncHighlight = useCallback((time: number) => {
     const peaks = peaksRef.current;
@@ -676,7 +677,9 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
           <span className="waveform-hint-wrap">
             {!hasRealPeaks && (
               <>
-                <span className="waveform-hint">No waveform data available</span>
+                <span className="waveform-hint">
+                  No waveform data available
+                </span>
                 <button
                   type="button"
                   className="waveform-import-btn"

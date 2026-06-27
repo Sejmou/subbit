@@ -95,7 +95,9 @@ export function ProjectsTable({
           No saved projects yet. Choose a video below to start one.
         </p>
       ) : rows.length === 0 ? (
-        <p className="hint projects-table-empty">No projects match your search.</p>
+        <p className="hint projects-table-empty">
+          No projects match your search.
+        </p>
       ) : (
         <div className="projects-table-wrap">
           <table className="projects-table">
@@ -106,7 +108,10 @@ export function ProjectsTable({
                 {th("cueCount", "Cues")}
                 {th("reviewedCount", "Reviewed")}
                 {th("savedAt", "Saved")}
-                <th className="projects-table-actions-col" aria-label="Actions" />
+                <th
+                  className="projects-table-actions-col"
+                  aria-label="Actions"
+                />
               </tr>
             </thead>
             <tbody>
@@ -115,12 +120,16 @@ export function ProjectsTable({
                 return (
                   <tr
                     key={p.id}
-                    className={isActive ? "projects-table-row--active" : undefined}
+                    className={
+                      isActive ? "projects-table-row--active" : undefined
+                    }
                   >
                     <td className="projects-table-name">
                       {p.name}
                       {isActive && (
-                        <span className="projects-table-badge">Last opened</span>
+                        <span className="projects-table-badge">
+                          Last opened
+                        </span>
                       )}
                     </td>
                     <td className="projects-table-video">{p.videoName}</td>
@@ -129,9 +138,7 @@ export function ProjectsTable({
                       {p.reviewedCount}/{p.cueCount}
                     </td>
                     <td className="projects-table-saved">
-                      {p.savedAt > 0
-                        ? formatRelativeTime(p.savedAt)
-                        : "—"}
+                      {p.savedAt > 0 ? formatRelativeTime(p.savedAt) : "—"}
                     </td>
                     <td className="projects-table-actions-col">
                       <div className="projects-table-row-actions">

@@ -34,13 +34,25 @@ function isZeroKey(e: KeyEvent): boolean {
   return e.code === "Digit0" || e.code === "Numpad0";
 }
 
-/** Keys beside P on US layout (ü / + on German — use code, not "["/"]" character). */
+/** Physical keys — use code, not printed character (e.g. ü / + on German). */
 function isBracketLeftKey(e: KeyEvent): boolean {
   return e.code === "BracketLeft" || e.key === "[";
 }
 
 function isBracketRightKey(e: KeyEvent): boolean {
   return e.code === "BracketRight" || e.key === "]";
+}
+
+function isQuoteKey(e: KeyEvent): boolean {
+  return e.code === "Quote" || e.key === "'" || e.key === '"';
+}
+
+function isBackslashKey(e: KeyEvent): boolean {
+  return e.code === "Backslash" || e.key === "\\";
+}
+
+function nudgeStep(ctx: ShortcutContext, e: KeyEvent): number {
+  return e.shiftKey ? ctx.frame * JOG_FRAMES : ctx.frame;
 }
 
 /** Cmd/Ctrl-free keys; allows Alt for Option/Alt combos. */
@@ -117,10 +129,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     label: (m, k) => k.join([m, "Shift", k.code("KeyF")]),
     description: "Toggle find and replace",
     match: (e, ctx) =>
-      !!ctx.project &&
-      mod(e) &&
-      e.shiftKey &&
-      (e.key === "f" || e.key === "F"),
+      !!ctx.project && mod(e) && e.shiftKey && (e.key === "f" || e.key === "F"),
     run: () =>
       window.dispatchEvent(new CustomEvent("subbit:find-replace-toggle")),
     preventDefault: true,
@@ -327,28 +336,42 @@ export const SHORTCUTS: ShortcutDef[] = [
       ),
   },
   {
-    id: "nudge-in",
+    id: "nudge-in-earlier",
     group: "Timing",
-    label: (_, k) => k.code("BracketLeft"),
-    description: "Nudge In 1 frame (Shift = 10 frames, other direction)",
+    label: (_, k) => `${k.code("BracketLeft")} / ${k.code("BracketRight")}`,
+    description: "Nudge In earlier / later (Shift = 10 frames)",
     match: (e, ctx) =>
       plainKey(e) && !ctx.editing && !!ctx.cue && isBracketLeftKey(e),
-    run: (ctx, e) => {
-      const step = e.shiftKey ? ctx.frame * JOG_FRAMES : ctx.frame;
-      ctx.ps.nudgeCueStart(ctx.cue!.id, e.shiftKey ? step : -step);
-    },
+    run: (ctx, e) => ctx.ps.nudgeCueStart(ctx.cue!.id, -nudgeStep(ctx, e)),
   },
   {
-    id: "nudge-out",
+    id: "nudge-in-later",
     group: "Timing",
-    label: (_, k) => k.code("BracketRight"),
-    description: "Nudge Out 1 frame (Shift = 10 frames, other direction)",
+    label: (_, k) => `${k.code("BracketLeft")} / ${k.code("BracketRight")}`,
+    description: "Nudge In earlier / later (Shift = 10 frames)",
+    showInHelp: false,
     match: (e, ctx) =>
       plainKey(e) && !ctx.editing && !!ctx.cue && isBracketRightKey(e),
-    run: (ctx, e) => {
-      const step = e.shiftKey ? ctx.frame * JOG_FRAMES : ctx.frame;
-      ctx.ps.nudgeCueEnd(ctx.cue!.id, e.shiftKey ? -step : step);
-    },
+    run: (ctx, e) => ctx.ps.nudgeCueStart(ctx.cue!.id, nudgeStep(ctx, e)),
+  },
+  {
+    id: "nudge-out-earlier",
+    group: "Timing",
+    label: (_, k) => `${k.code("Quote")} / ${k.code("Backslash")}`,
+    description: "Nudge Out earlier / later (Shift = 10 frames)",
+    match: (e, ctx) =>
+      plainKey(e) && !ctx.editing && !!ctx.cue && isQuoteKey(e),
+    run: (ctx, e) => ctx.ps.nudgeCueEnd(ctx.cue!.id, -nudgeStep(ctx, e)),
+  },
+  {
+    id: "nudge-out-later",
+    group: "Timing",
+    label: (_, k) => `${k.code("Quote")} / ${k.code("Backslash")}`,
+    description: "Nudge Out earlier / later (Shift = 10 frames)",
+    showInHelp: false,
+    match: (e, ctx) =>
+      plainKey(e) && !ctx.editing && !!ctx.cue && isBackslashKey(e),
+    run: (ctx, e) => ctx.ps.nudgeCueEnd(ctx.cue!.id, nudgeStep(ctx, e)),
   },
   {
     id: "seek-program-start",
@@ -490,8 +513,7 @@ export const SHORTCUTS: ShortcutDef[] = [
       !!ctx.cue &&
       !!ctx.project &&
       (e.key === "s" || e.key === "S"),
-    run: (ctx) =>
-      ctx.ps.cycleSegmentShot(ctx.cue!.id, ctx.ps.selectedSegment),
+    run: (ctx) => ctx.ps.cycleSegmentShot(ctx.cue!.id, ctx.ps.selectedSegment),
     preventDefault: true,
   },
 ];

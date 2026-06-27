@@ -119,7 +119,9 @@ export async function clearVersions(project: Project): Promise<void> {
 }
 
 /** Remove version history for a project id (no full Project required). */
-export async function clearProjectHistoryById(projectId: string): Promise<void> {
+export async function clearProjectHistoryById(
+  projectId: string,
+): Promise<void> {
   const pk = `subbit:history:${projectId}`;
   const all = await keys();
   await Promise.all(

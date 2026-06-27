@@ -3,10 +3,7 @@ import {
   parseWaveformDat,
   type ParsedWaveformPeaks,
 } from "../lib/waveform-peaks";
-import {
-  loadStoredWaveform,
-  saveStoredWaveform,
-} from "../lib/project-storage";
+import { loadStoredWaveform, saveStoredWaveform } from "../lib/project-storage";
 import type { CachedWaveformPeaks } from "../lib/waveform-cache";
 
 interface WaveformState {

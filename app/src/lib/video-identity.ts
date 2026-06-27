@@ -21,9 +21,7 @@ function gcd(a: number, b: number): number {
   return x || 1;
 }
 
-function hasFrameRate(
-  video: VideoIdentity,
-): video is VideoIdentity & {
+function hasFrameRate(video: VideoIdentity): video is VideoIdentity & {
   frameRateNumerator: number;
   frameRateDenominator: number;
 } {

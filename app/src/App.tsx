@@ -2,7 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
 import { useProject } from "./store/project";
 import { buildExport, type ExportRequest } from "./lib/export-format";
-import { parseSubtitleJsonText, projectFromWhisperxData } from "./lib/load-subtitles";
+import {
+  parseSubtitleJsonText,
+  projectFromWhisperxData,
+} from "./lib/load-subtitles";
 import {
   buildProjectBundleZip,
   parseProjectBundleZip,
@@ -184,11 +187,7 @@ export default function App() {
       if (bundle.waveform) {
         const videoDuration = usePlayback.getState().duration;
         const parsed = await parseWaveformFromBundle(bundle.waveform);
-        if (
-          videoFile &&
-          Number.isFinite(videoDuration) &&
-          videoDuration > 0
-        ) {
+        if (videoFile && Number.isFinite(videoDuration) && videoDuration > 0) {
           const mismatch = formatWaveformDurationMismatch(
             parsed.meta.duration,
             videoDuration,
@@ -316,11 +315,7 @@ export default function App() {
     } finally {
       setBusy(null);
     }
-  }, [
-    deleteTarget,
-    activeProjectIdForList,
-    refreshStoredProjects,
-  ]);
+  }, [deleteTarget, activeProjectIdForList, refreshStoredProjects]);
 
   const doRestore = useCallback(
     async (silent: boolean): Promise<boolean> => {
@@ -409,9 +404,7 @@ export default function App() {
     if (!current) return;
     const text = serializeProject(current);
     const peaks = useWaveform.getState().peaks;
-    const waveform = peaks
-      ? waveformInputToBundleFile(peaks.input)
-      : undefined;
+    const waveform = peaks ? waveformInputToBundleFile(peaks.input) : undefined;
     const zip = buildProjectBundleZip(text, waveform);
     downloadBlob(
       suggestedProjectBundleFilename(current),
@@ -475,9 +468,7 @@ export default function App() {
     if (!current) return false;
     const videoDuration = usePlayback.getState().duration;
     if (!videoFile || !Number.isFinite(videoDuration) || videoDuration <= 0) {
-      alert(
-        "Load a video first so waveform peaks can be matched to it.",
-      );
+      alert("Load a video first so waveform peaks can be matched to it.");
       return false;
     }
 
@@ -507,9 +498,9 @@ export default function App() {
   const onSetupManual = useCallback(
     async (projectName: string) => {
       const video = videoFileName ?? "video";
-      useProject.getState().setProjectName(
-        resolveProjectName(projectName, video),
-      );
+      useProject
+        .getState()
+        .setProjectName(resolveProjectName(projectName, video));
       await save({ auto: true });
       closeSetup();
     },
@@ -676,8 +667,7 @@ export default function App() {
   useShortcuts();
 
   const videoDuration = usePlayback((s) => s.duration);
-  const showTimeline =
-    Number.isFinite(videoDuration) && videoDuration > 0;
+  const showTimeline = Number.isFinite(videoDuration) && videoDuration > 0;
 
   const { status: videoIdentityStatus, message: videoMismatchMessage } =
     useVideoIdentity(videoFile);

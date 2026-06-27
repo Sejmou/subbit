@@ -23,10 +23,13 @@ function HelpTutorial() {
       <section>
         <h3>Getting started</h3>
         <ol className="help-steps">
-          <li>Open your <strong>video</strong>.</li>
           <li>
-            Load existing subtitles (from a saved project or a speech-recognition
-            import) or start with a blank list and add lines yourself.
+            Open your <strong>video</strong>.
+          </li>
+          <li>
+            Load existing subtitles (from a saved project or a
+            speech-recognition import) or start with a blank list and add lines
+            yourself.
           </li>
           <li>
             Use <strong>Save project</strong> when you want to save explicitly.
@@ -40,7 +43,8 @@ function HelpTutorial() {
       <section>
         <h3>The screen</h3>
         <p>
-          On the left: the <strong>video</strong> and a list of <strong>roles</strong>
+          On the left: the <strong>video</strong> and a list of{" "}
+          <strong>roles</strong>
           (who speaks). On the right: the <strong>cue list</strong> — every
           subtitle line. Along the bottom: the <strong>timeline</strong>, where
           you line up text with the audio. Move anywhere in the video and the
@@ -51,25 +55,23 @@ function HelpTutorial() {
       <section>
         <h3>Subtitle lines (cues)</h3>
         <p>
-          Each row is one line that will appear on screen. It has a start time
-          (<strong>In</strong>), an end time (<strong>Out</strong>), the{" "}
+          Each row is one line that will appear on screen. It has a start time (
+          <strong>In</strong>), an end time (<strong>Out</strong>), the{" "}
           <strong>text</strong>, who is speaking (<strong>role</strong>), and
           the camera shot (<strong>Info</strong>: on camera, off camera, or
           contre). Click the In or Out time to jump the video to that moment.
         </p>
         <p>
           Sometimes one line covers two shots — you will see two text boxes and
-          two shot dropdowns in the same row. Tick <strong>reviewed</strong> when
-          you are happy with a line. Roles are edited in the panel under the
-          video; pick a role on each cue with the role button.
+          two shot dropdowns in the same row. Tick <strong>reviewed</strong>{" "}
+          when you are happy with a line. Roles are edited in the panel under
+          the video; pick a role on each cue with the role button.
         </p>
       </section>
 
       <section>
         <h3>Which line is “selected”?</h3>
-        <p>
-          Two highlights can show at once, and they mean different things:
-        </p>
+        <p>Two highlights can show at once, and they mean different things:</p>
         <ul className="help-steps help-steps--bullets">
           <li>
             <strong>Selected</strong> (lighter background) — the line you are
@@ -84,8 +86,8 @@ function HelpTutorial() {
         <p>
           They often match, but not if you have jumped somewhere else in the
           video. The bar above the timeline shows the <strong>selected</strong>
-          line number; the <strong>In</strong> button (or <kbd>G</kbd>) jumps the
-          video to the start of that line without playing. The button turns
+          line number; the <strong>In</strong> button (or <kbd>G</kbd>) jumps
+          the video to the start of that line without playing. The button turns
           orange when you are not at the start of the selected line.
         </p>
       </section>
@@ -128,7 +130,8 @@ function HelpTutorial() {
         <h4 className="help-tutorial-subhead">What you see</h4>
         <ul className="help-steps help-steps--bullets">
           <li>
-            Subtitle lines as coloured bars, often with the text written on them.
+            Subtitle lines as coloured bars, often with the text written on
+            them.
           </li>
           <li>
             A bright <strong>playhead</strong> line — where you are in the video
@@ -136,9 +139,9 @@ function HelpTutorial() {
             scrolls.
           </li>
           <li>
-            An <strong>audio waveform</strong> if one has been imported (makes it
-            much easier to spot words and pauses). Without it, the timeline still
-            works — you just see a plain track.
+            An <strong>audio waveform</strong> if one has been imported (makes
+            it much easier to spot words and pauses). Without it, the timeline
+            still works — you just see a plain track.
           </li>
           <li>
             An orange <strong>Program start</strong> marker when your video has
@@ -158,15 +161,16 @@ function HelpTutorial() {
           </li>
           <li>
             <strong>Drag</strong> the left or right edge of a bar to change when
-            the line starts or ends. <strong>Drag</strong> the middle to move the
-            whole line.
+            the line starts or ends. <strong>Drag</strong> the middle to move
+            the whole line.
           </li>
           <li>
             <strong>Drag</strong> the orange Program start marker to move where
             “time zero” should be for export.
           </li>
           <li>
-            Click the narrow overview strip to jump to another part of the video.
+            Click the narrow overview strip to jump to another part of the
+            video.
           </li>
         </ul>
 
@@ -181,8 +185,9 @@ function HelpTutorial() {
             on the right — Fit shows the entire video.
           </li>
           <li>
-            The time readout shows which slice of the programme you are looking at.
-            If text on the bars is hard to read, zoom in until the labels appear.
+            The time readout shows which slice of the programme you are looking
+            at. If text on the bars is hard to read, zoom in until the labels
+            appear.
           </li>
         </ul>
 
@@ -199,12 +204,13 @@ function HelpTutorial() {
           <li>
             <strong>Program start</strong> — set where the “real” programme
             begins if there is leader at the head. Use <strong>Set</strong> at
-            the playhead, or drag the orange marker. The <strong>?</strong> button
-            explains how this affects export.
+            the playhead, or drag the orange marker. The <strong>?</strong>{" "}
+            button explains how this affects export.
           </li>
           <li>
             <strong>Playhead</strong> — the current time. Type a time and press
-            Enter to jump there. <strong>File</strong> vs <strong>Program</strong>
+            Enter to jump there. <strong>File</strong> vs{" "}
+            <strong>Program</strong>
             only changes how times are shown, not the subtitles themselves.
           </li>
           <li>
@@ -268,7 +274,9 @@ export function HelpOverlay({
 }) {
   const [tab, setTab] = useState<HelpTab>("overview");
   const modalRef = useModalFocusTrap(open, onClose);
-  const tabRefs = useRef<Partial<Record<HelpTab, HTMLButtonElement | null>>>({});
+  const tabRefs = useRef<Partial<Record<HelpTab, HTMLButtonElement | null>>>(
+    {},
+  );
 
   useEffect(() => {
     setHelpOverlayOpen(open);

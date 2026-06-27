@@ -1639,7 +1639,8 @@ kbd {
   font-size: 13px;
   font-weight: 500;
 }
-.load-new-dropzone:hover:not(.load-new-dropzone--disabled) .load-new-dropzone-cta {
+.load-new-dropzone:hover:not(.load-new-dropzone--disabled)
+  .load-new-dropzone-cta {
   background: var(--accent);
 }
 .load-reopen-row {

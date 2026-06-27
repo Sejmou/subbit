@@ -6,9 +6,11 @@ describe("isFilePickerAbortError", () => {
     expect(isFilePickerAbortError(new DOMException("nope", "AbortError"))).toBe(
       true,
     );
-    expect(isFilePickerAbortError(Object.assign(new Error("nope"), { name: "AbortError" }))).toBe(
-      true,
-    );
+    expect(
+      isFilePickerAbortError(
+        Object.assign(new Error("nope"), { name: "AbortError" }),
+      ),
+    ).toBe(true);
   });
 
   it("detects the browser cancel message", () => {

@@ -122,7 +122,10 @@ class ProgramStartPointMarker implements PointMarker {
 
   update(
     options: Partial<
-      Pick<CreatePointMarkerOptions["point"], "time" | "labelText" | "color"> & {
+      Pick<
+        CreatePointMarkerOptions["point"],
+        "time" | "labelText" | "color"
+      > & {
         editable?: boolean;
       }
     >,

@@ -142,7 +142,9 @@ describe("clampTimelineVisibleSpan", () => {
   });
 
   it("returns null when already fully zoomed out", () => {
-    expect(clampTimelineVisibleSpan(150, 120, 120, { zoomOut: true })).toBeNull();
+    expect(
+      clampTimelineVisibleSpan(150, 120, 120, { zoomOut: true }),
+    ).toBeNull();
   });
 
   it("allows zoom-in below duration", () => {

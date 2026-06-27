@@ -69,8 +69,7 @@ function SegmentTextarea({
   const wrapRef = useRef<HTMLDivElement>(null);
   const ref = inputRef ?? localRef;
 
-  const showHighlights =
-    findHighlight.active && segmentMatches.length > 0;
+  const showHighlights = findHighlight.active && segmentMatches.length > 0;
 
   const currentMatch =
     findHighlight.currentMatch?.cueId === cueId &&

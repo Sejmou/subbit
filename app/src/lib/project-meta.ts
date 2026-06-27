@@ -25,10 +25,7 @@ export function suggestedProjectFilename(project: Project): string {
   return `${sanitizeFilename(resolveProjectName(project.name, project.videoName))}.subbit.json`;
 }
 
-export function suggestedExportFilename(
-  project: Project,
-  ext: string,
-): string {
+export function suggestedExportFilename(project: Project, ext: string): string {
   return `${sanitizeFilename(resolveProjectName(project.name, project.videoName))}.${ext}`;
 }
 

@@ -110,8 +110,7 @@ export function FindReplaceDialog({
     onHighlightChange({
       active: true,
       matches,
-      currentMatch:
-        matchIndex >= 0 ? (matches[matchIndex] ?? null) : null,
+      currentMatch: matchIndex >= 0 ? (matches[matchIndex] ?? null) : null,
     });
   }, [open, findText, matches, matchIndex, onHighlightChange]);
 
@@ -184,8 +183,7 @@ export function FindReplaceDialog({
       if (e.isComposing) return;
       if (matches.length === 0) return;
 
-      const fromPanel =
-        panelRef.current?.contains(e.target as Node) ?? false;
+      const fromPanel = panelRef.current?.contains(e.target as Node) ?? false;
 
       if (e.metaKey || e.ctrlKey) {
         e.preventDefault();
@@ -305,13 +303,21 @@ export function FindReplaceDialog({
           )}
         </div>
         <div className="find-replace-actions">
-          <button type="button" disabled={!canAct} onClick={() => goRelative(-1, false)}>
+          <button
+            type="button"
+            disabled={!canAct}
+            onClick={() => goRelative(-1, false)}
+          >
             Previous
           </button>
           <button type="button" disabled={!canAct} onClick={goCurrent}>
             Go to
           </button>
-          <button type="button" disabled={!canAct} onClick={() => goRelative(1, false)}>
+          <button
+            type="button"
+            disabled={!canAct}
+            onClick={() => goRelative(1, false)}
+          >
             Next
           </button>
           <button type="button" disabled={!canAct} onClick={replaceCurrent}>

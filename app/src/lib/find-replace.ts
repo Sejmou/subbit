@@ -60,7 +60,9 @@ export function replaceMatchesInText(
   replacement: string,
 ): string {
   let result = text;
-  for (const { start, end } of [...matchRanges].sort((a, b) => b.start - a.start)) {
+  for (const { start, end } of [...matchRanges].sort(
+    (a, b) => b.start - a.start,
+  )) {
     result = result.slice(0, start) + replacement + result.slice(end);
   }
   return result;

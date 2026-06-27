@@ -45,7 +45,10 @@ describe("cueTimecodeToFileSeconds", () => {
 
   it("round-trips program mode cue timecodes", () => {
     const tc = cueDisplayTimecode(101, project, "program");
-    expect(cueTimecodeToFileSeconds(tc, 25, 100, "program")).toBeCloseTo(101, 4);
+    expect(cueTimecodeToFileSeconds(tc, 25, 100, "program")).toBeCloseTo(
+      101,
+      4,
+    );
   });
 });
 

@@ -169,8 +169,8 @@ export function RolePicker({ open, cueId, project, onClose }: Props) {
         </div>
         <p className="role-picker-hint">
           <kbd>↑</kbd> <kbd>↓</kbd> navigate · <kbd>Enter</kbd> assign ·{" "}
-          <kbd>Esc</kbd> close ·{" "}
-          <kbd>{assignRoleLabel || "A"}</kbd> opens this picker
+          <kbd>Esc</kbd> close · <kbd>{assignRoleLabel || "A"}</kbd> opens this
+          picker
         </p>
       </div>
     </div>

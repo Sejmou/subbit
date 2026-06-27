@@ -37,7 +37,9 @@ describe("project meta", () => {
       ...base,
       name: "My Show: S01E02",
     };
-    expect(suggestedProjectFilename(project)).toBe("My Show- S01E02.subbit.json");
+    expect(suggestedProjectFilename(project)).toBe(
+      "My Show- S01E02.subbit.json",
+    );
     expect(suggestedExportFilename(project, "srt")).toBe("My Show- S01E02.srt");
   });
 });
