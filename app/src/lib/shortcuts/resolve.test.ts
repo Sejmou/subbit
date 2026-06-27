@@ -66,6 +66,7 @@ function ctx(overrides: Partial<ShortcutContext> = {}): ShortcutContext {
     setSegmentShot: vi.fn(),
     splitCueAtCaret: vi.fn(),
     insertShotSplit: vi.fn(),
+    deleteCue: vi.fn(),
     setContentStartSeconds: vi.fn(),
     selectedSegment: 0,
   };
@@ -236,6 +237,14 @@ describe("resolveShortcut", () => {
     expect(resolveShortcut(makeKeyEvent("r"), ctx())?.id).toBe(
       "toggle-reviewed",
     );
+  });
+
+  it("deletes the selected cue on mod+backspace", () => {
+    const c = ctx();
+    expect(resolveShortcut(makeKeyEvent("Backspace"), c)).toBeNull();
+    expect(resolveShortcut(modKey("Backspace"), c)?.id).toBe("delete-cue");
+    resolveShortcut(modKey("Backspace"), c)?.run(c, modKey("Backspace"));
+    expect(c.ps.deleteCue).toHaveBeenCalledWith("cue-1");
   });
 
   it("opens the role picker on A", () => {

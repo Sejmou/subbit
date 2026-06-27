@@ -392,13 +392,15 @@ export const SHORTCUTS: ShortcutDef[] = [
   {
     id: "delete-cue",
     group: "Text & structure",
-    label: "Delete / Backspace",
+    label: (m) => `${m} + Backspace`,
     description: "Delete the selected cue",
     match: (e, ctx) =>
-      plainKey(e) &&
+      !!ctx.project &&
+      mod(e) &&
+      !e.shiftKey &&
       !ctx.editing &&
       !!ctx.cue &&
-      (e.key === "Delete" || e.key === "Backspace"),
+      e.key === "Backspace",
     run: (ctx) => ctx.ps.deleteCue(ctx.cue!.id),
     preventDefault: true,
   },
