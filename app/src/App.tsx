@@ -658,7 +658,12 @@ export default function App() {
           statusFilter={statusFilter}
         />
       </div>
-      {showTimeline && <WaveformTimeline project={project} />}
+      {showTimeline && (
+        <WaveformTimeline
+          project={project}
+          onImportWaveform={() => void doImportWaveform()}
+        />
+      )}
     </div>
   );
 }

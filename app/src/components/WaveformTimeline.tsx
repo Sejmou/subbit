@@ -22,6 +22,7 @@ import {
   peaksZoomLevels,
   peaksInitialZoomSeconds,
 } from "../lib/waveform-peaks";
+import { WaveformPeaksHelpDialog } from "./WaveformPeaksHelpDialog";
 import {
   findCuesOverlappingRange,
   padViewRange,
@@ -39,6 +40,7 @@ const MAX_VISIBLE_SEGMENTS = 200;
 
 interface Props {
   project: Project;
+  onImportWaveform: () => void;
 }
 
 function peaksWaveformData(input: WaveformPeaksInput) {
@@ -65,7 +67,7 @@ function segmentNeedsUpdate(
 const ZOOM_IN_FACTOR = 0.75;
 const ZOOM_OUT_FACTOR = 1 / ZOOM_IN_FACTOR;
 
-export function WaveformTimeline({ project }: Props) {
+export function WaveformTimeline({ project, onImportWaveform }: Props) {
   const zoomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const peaksRef = useRef<PeaksInstance | null>(null);
@@ -126,6 +128,7 @@ export function WaveformTimeline({ project }: Props) {
   const [initError, setInitError] = useState<string | null>(null);
   const [subtitlesHidden, setSubtitlesHidden] = useState(false);
   const [leaderWidthPx, setLeaderWidthPx] = useState(0);
+  const [peaksHelpOpen, setPeaksHelpOpen] = useState(false);
 
   const updateLeaderOverlay = useCallback(() => {
     const start = contentStartRef.current;
@@ -631,8 +634,19 @@ export function WaveformTimeline({ project }: Props) {
           </span>
         )}
         {ready && !hasRealPeaks && (
-          <span className="waveform-hint">
-            No waveform peaks — use File → Import waveform… for audio detail
+          <span className="waveform-hint-wrap">
+            <span className="waveform-hint">
+              No waveform peaks — use File → Import waveform… for audio detail
+            </span>
+            <button
+              type="button"
+              className="waveform-help-btn"
+              onClick={() => setPeaksHelpOpen(true)}
+              title="About waveform peaks"
+              aria-label="About waveform peaks"
+            >
+              ?
+            </button>
           </span>
         )}
         {ready && hasRealPeaks && subtitlesHidden && (
@@ -659,6 +673,11 @@ export function WaveformTimeline({ project }: Props) {
           title="Scroll to zoom; Shift+scroll to pan"
         />
       </div>
+      <WaveformPeaksHelpDialog
+        open={peaksHelpOpen}
+        onClose={() => setPeaksHelpOpen(false)}
+        onImport={onImportWaveform}
+      />
     </div>
   );
 }

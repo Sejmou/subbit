@@ -386,6 +386,65 @@
 .waveform-status--error {
   color: #ff8a80;
 }
+.waveform-hint-wrap {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.waveform-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.waveform-help-btn {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1;
+}
+.waveform-peaks-help {
+  width: min(520px, 92vw);
+}
+.waveform-peaks-help h3 {
+  margin: 16px 0 8px;
+  font-size: 13px;
+  color: var(--accent);
+}
+.waveform-peaks-help p {
+  margin: 0 0 10px;
+  color: var(--text-dim);
+}
+.waveform-peaks-help-steps {
+  margin: 0 0 10px;
+  padding-left: 20px;
+  color: var(--text-dim);
+}
+.waveform-peaks-help-steps li + li {
+  margin-top: 10px;
+}
+.waveform-peaks-help-steps pre {
+  margin: 8px 0;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow-x: auto;
+}
+.waveform-peaks-help-steps code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+}
+.waveform-peaks-help-import {
+  margin-top: 10px;
+}
 .waveform-scroll {
   flex-shrink: 0;
   height: 12px;
