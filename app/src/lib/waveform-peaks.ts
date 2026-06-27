@@ -36,6 +36,53 @@ export interface ParsedWaveformPeaks {
 
 const PEAKS_JS_BITS = 8;
 
+/** Defaults from `waveform/generate.sh` (mono 44.1 kHz, 80 px/s, 8-bit). */
+export const WAVEFORM_GEN_SAMPLE_RATE = 44100;
+export const WAVEFORM_GEN_PIXELS_PER_SECOND = 80;
+
+/** Native zoom resolution for peaks produced by the repo waveform script. */
+export function waveformGenSamplesPerPixel(
+  sampleRate = WAVEFORM_GEN_SAMPLE_RATE,
+  pixelsPerSecond = WAVEFORM_GEN_PIXELS_PER_SECOND,
+): number {
+  return Math.round(sampleRate / pixelsPerSecond);
+}
+
+/**
+ * Flat audiowaveform-shaped peaks for timeline-only mode (no imported .dat).
+ * Uses the same sample rate, samples_per_pixel, and zoom ladder as real files.
+ */
+export function buildPlaceholderWaveformPeaks(
+  durationSeconds: number,
+): ParsedWaveformPeaks {
+  const sampleRate = WAVEFORM_GEN_SAMPLE_RATE;
+  const samplesPerPixel = waveformGenSamplesPerPixel();
+  const safeDuration = Math.max(0.001, durationSeconds);
+  const length = Math.max(
+    1,
+    Math.ceil((safeDuration * sampleRate) / samplesPerPixel),
+  );
+  const data = new Array<number>(length * 2).fill(0);
+  const json: AudiowaveformJson = {
+    version: 2,
+    channels: 1,
+    sample_rate: sampleRate,
+    samples_per_pixel: samplesPerPixel,
+    bits: PEAKS_JS_BITS,
+    length,
+    data,
+  };
+  const meta: WaveformPeaksMeta = {
+    sampleRate,
+    samplesPerPixel,
+    length,
+    bits: PEAKS_JS_BITS,
+    channels: 1,
+    duration: peaksDuration({ length, samplesPerPixel, sampleRate }),
+  };
+  return { input: { kind: "json", json }, meta };
+}
+
 export function peaksDuration(
   meta: Pick<WaveformPeaksMeta, "length" | "samplesPerPixel" | "sampleRate">,
 ): number {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Peaks, {
   type JsonWaveformData,
   type PeaksInstance,
@@ -18,6 +18,7 @@ import {
 } from "../lib/waveform-segments";
 import type { WaveformPeaksInput } from "../lib/waveform-peaks";
 import {
+  buildPlaceholderWaveformPeaks,
   peaksZoomLevels,
   peaksInitialZoomSeconds,
 } from "../lib/waveform-peaks";
@@ -73,13 +74,20 @@ export function WaveformTimeline({ project }: Props) {
   const lastHighlightKey = useRef("");
   projectRef.current = project;
 
-  const peaksInput = useWaveform((s) => s.peaks?.input ?? null);
-  const samplesPerPixel = useWaveform(
-    (s) => s.peaks?.meta.samplesPerPixel ?? null,
-  );
-  const sampleRate = useWaveform((s) => s.peaks?.meta.sampleRate ?? null);
+  const storedPeaks = useWaveform((s) => s.peaks);
+  const hasRealPeaks = storedPeaks !== null;
   const videoEl = usePlayback((s) => s.videoEl);
   const duration = usePlayback((s) => s.duration);
+
+  const effectivePeaks = useMemo(() => {
+    if (storedPeaks) return storedPeaks;
+    if (!Number.isFinite(duration) || duration <= 0) return null;
+    return buildPlaceholderWaveformPeaks(duration);
+  }, [storedPeaks, duration]);
+
+  const peaksInput = effectivePeaks?.input ?? null;
+  const samplesPerPixel = effectivePeaks?.meta.samplesPerPixel ?? null;
+  const sampleRate = effectivePeaks?.meta.sampleRate ?? null;
 
   const selectedCueId = useProject((s) => s.selectedCueId);
   const setCueStart = useProject((s) => s.setCueStart);
@@ -325,8 +333,8 @@ export function WaveformTimeline({ project }: Props) {
       zoomview: {
         container: zoomRef.current,
         wheelMode: "none",
-        waveformColor: "#3a3f4b",
-        playedWaveformColor: "#00e180",
+        waveformColor: hasRealPeaks ? "#3a3f4b" : "#2a2e36",
+        playedWaveformColor: hasRealPeaks ? "#00e180" : "#3a3f4b",
         playheadColor: "#ffffff",
         showPlayheadTime: true,
         playheadTextColor: "#ccc",
@@ -478,6 +486,7 @@ export function WaveformTimeline({ project }: Props) {
     samplesPerPixel,
     sampleRate,
     duration,
+    hasRealPeaks,
     syncProgramStartPoint,
     updateLeaderOverlay,
   ]);
@@ -581,7 +590,9 @@ export function WaveformTimeline({ project }: Props) {
   };
 
   return (
-    <div className="waveform-pane">
+    <div
+      className={`waveform-pane${hasRealPeaks ? "" : " waveform-pane--timeline-only"}`}
+    >
       <div className="waveform-toolbar">
         <span className="waveform-toolbar-label">Timeline</span>
         <ProgramStartPanel project={project} ready={ready} />
@@ -612,17 +623,22 @@ export function WaveformTimeline({ project }: Props) {
           </button>
         </span>
         {!ready && !initError && (
-          <span className="waveform-status">Loading waveform…</span>
+          <span className="waveform-status">Loading timeline…</span>
         )}
         {initError && (
           <span className="waveform-status waveform-status--error">
             {initError}
           </span>
         )}
-        {ready && subtitlesHidden && (
+        {ready && !hasRealPeaks && (
+          <span className="waveform-hint">
+            No waveform peaks — use File → Import waveform… for audio detail
+          </span>
+        )}
+        {ready && hasRealPeaks && subtitlesHidden && (
           <span className="waveform-hint">Zoom in to see subtitles</span>
         )}
-        {ready && !subtitlesHidden && !initError && (
+        {ready && hasRealPeaks && !subtitlesHidden && !initError && (
           <span className="waveform-hint">
             Drag the orange marker to skip leader · Shift+Home sets from
             playhead

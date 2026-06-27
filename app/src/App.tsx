@@ -542,7 +542,9 @@ export default function App() {
 
   useShortcuts();
 
-  const waveformLoaded = useWaveform((s) => s.peaks !== null);
+  const videoDuration = usePlayback((s) => s.duration);
+  const showTimeline =
+    Number.isFinite(videoDuration) && videoDuration > 0;
 
   const { status: videoIdentityStatus, message: videoMismatchMessage } =
     useVideoIdentity(videoFile);
@@ -656,7 +658,7 @@ export default function App() {
           statusFilter={statusFilter}
         />
       </div>
-      {waveformLoaded && <WaveformTimeline project={project} />}
+      {showTimeline && <WaveformTimeline project={project} />}
     </div>
   );
 }

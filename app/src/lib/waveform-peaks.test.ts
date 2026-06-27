@@ -3,6 +3,7 @@ import {
   formatWaveformDurationMismatch,
   parseWaveformDat,
   parseWaveformJsonText,
+  buildPlaceholderWaveformPeaks,
   peaksDuration,
   peaksMaxZoomVisibleSeconds,
   peaksInitialZoomSeconds,
@@ -73,6 +74,20 @@ describe("parseWaveformJsonText", () => {
     expect(parsed.meta.channels).toBe(1);
     expect(parsed.meta.duration).toBeCloseTo((2 * 256) / 48000);
     expect(parsed.input.kind).toBe("json");
+  });
+});
+
+describe("buildPlaceholderWaveformPeaks", () => {
+  it("matches generate.sh zoom defaults (44100 Hz, 80 px/s)", () => {
+    const parsed = buildPlaceholderWaveformPeaks(120);
+    expect(parsed.meta.sampleRate).toBe(44100);
+    expect(parsed.meta.samplesPerPixel).toBe(551);
+    expect(parsed.meta.bits).toBe(8);
+    expect(parsed.input.kind).toBe("json");
+    expect(peaksZoomLevels(parsed.meta.samplesPerPixel)).toEqual(
+      peaksZoomLevels(551),
+    );
+    expect(parsed.meta.duration).toBeGreaterThanOrEqual(120);
   });
 });
 
