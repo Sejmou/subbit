@@ -4,8 +4,6 @@ interface Props {
   onImportProjectBundle: () => void;
   onExportProjectBundle: () => void;
   onNewBlankProject: () => void;
-  onImportWhisperx: () => void;
-  onImportWaveform: () => void;
   onCloseProject: () => void;
 }
 
@@ -13,8 +11,6 @@ export function FileMenu({
   onImportProjectBundle,
   onExportProjectBundle,
   onNewBlankProject,
-  onImportWhisperx,
-  onImportWaveform,
   onCloseProject,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -38,10 +34,12 @@ export function FileMenu({
     <div className="file-menu" ref={rootRef}>
       <button
         type="button"
-        className="file-menu-trigger"
+        className="file-menu-trigger file-menu-trigger--brand"
         onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
       >
-        File ▾
+        Subbit <span aria-hidden>▾</span>
       </button>
       {open && (
         <div className="file-menu-dropdown" role="menu">
@@ -65,20 +63,6 @@ export function FileMenu({
             onClick={() => run(onNewBlankProject)}
           >
             New blank project…
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => run(onImportWhisperx)}
-          >
-            Import whisperx…
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => run(onImportWaveform)}
-          >
-            Import waveform…
           </button>
           <hr />
           <button

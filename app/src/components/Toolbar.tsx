@@ -23,8 +23,6 @@ interface Props {
   onImportProjectBundle: () => void;
   onExportProjectBundle: () => void;
   onNewBlankProject: () => void;
-  onImportWhisperx: () => void;
-  onImportWaveform: () => void;
   onCloseProject: () => void;
   previewEnabled: boolean;
   onTogglePreview: () => void;
@@ -108,8 +106,6 @@ export function Toolbar({
   onImportProjectBundle,
   onExportProjectBundle,
   onNewBlankProject,
-  onImportWhisperx,
-  onImportWaveform,
   onCloseProject,
   previewEnabled,
   onTogglePreview,
@@ -139,13 +135,10 @@ export function Toolbar({
 
   return (
     <div className="toolbar">
-      <strong className="brand">Subbit</strong>
       <FileMenu
         onImportProjectBundle={onImportProjectBundle}
         onExportProjectBundle={onExportProjectBundle}
         onNewBlankProject={onNewBlankProject}
-        onImportWhisperx={onImportWhisperx}
-        onImportWaveform={onImportWaveform}
         onCloseProject={onCloseProject}
       />
       <ProjectNameField

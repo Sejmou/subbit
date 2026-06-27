@@ -339,21 +339,6 @@ export default function App() {
     }
   }, [guardUnsaved, pickProjectBundle, loadProjectBundleBytes]);
 
-  const doImportWhisperx = useCallback(async () => {
-    if (!(await guardUnsaved())) return;
-    const handle = await pickFile(JSON_ACCEPT, "whisperx JSON");
-    if (!handle) return;
-    try {
-      const text = await (await readHandleAsFile(handle)).text();
-      const data = parseSubtitleJsonText(text);
-      await activateProject(
-        projectFromWhisperxData(data, videoFileName ?? "video"),
-      );
-    } catch (err) {
-      alert((err as Error).message);
-    }
-  }, [guardUnsaved, activateProject, videoFileName]);
-
   const importWaveformFile = useCallback(async (): Promise<boolean> => {
     const current = useProject.getState().project;
     if (!current) return false;
@@ -387,10 +372,6 @@ export default function App() {
       return false;
     }
   }, [videoFile]);
-
-  const doImportWaveform = useCallback(async () => {
-    await importWaveformFile();
-  }, [importWaveformFile]);
 
   const onSetupManual = useCallback(() => {
     closeSetup();
@@ -596,8 +577,6 @@ export default function App() {
         onImportProjectBundle={() => void doImportProjectBundle()}
         onExportProjectBundle={doExportProjectBundle}
         onNewBlankProject={() => void doNewBlankProject()}
-        onImportWhisperx={() => void doImportWhisperx()}
-        onImportWaveform={() => void doImportWaveform()}
         onCloseProject={() => void doCloseProject()}
         previewEnabled={previewEnabled}
         onTogglePreview={togglePreview}
@@ -661,7 +640,7 @@ export default function App() {
       {showTimeline && (
         <WaveformTimeline
           project={project}
-          onImportWaveform={() => void doImportWaveform()}
+          onImportWaveform={() => void importWaveformFile()}
         />
       )}
     </div>

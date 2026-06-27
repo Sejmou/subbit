@@ -98,7 +98,7 @@ export function CueList({
         <p>No subtitles yet.</p>
         <p className="hint">
           Press <kbd>{shortcutLabel("insert-cue")}</kbd> to add a cue at the
-          playhead, or use <strong>File → Import whisperx…</strong>
+          playhead.
         </p>
         <button
           type="button"

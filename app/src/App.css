@@ -36,10 +36,6 @@
   background: var(--bg-2);
   border-bottom: 1px solid var(--border);
 }
-.toolbar .brand {
-  font-size: 15px;
-  color: var(--accent);
-}
 .toolbar .field {
   display: flex;
   align-items: center;
@@ -144,6 +140,23 @@
 .file-menu-trigger,
 .toolbar-dropdown-trigger {
   font-size: 13px;
+}
+.file-menu-trigger--brand {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  background: transparent;
+  border: none;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.file-menu-trigger--brand:hover:not(:disabled) {
+  background: var(--bg);
+  border-color: transparent;
+}
+.file-menu-trigger--brand span {
+  font-size: 11px;
+  opacity: 0.85;
 }
 .file-menu-dropdown,
 .toolbar-dropdown-panel {
