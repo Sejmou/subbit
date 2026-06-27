@@ -329,7 +329,7 @@ export const useProject = create<ProjectState>((set, getState) => {
     },
 
     setCueSpeaker: (cueId, speakerId) =>
-      update((p) => mapCue(p, cueId, (c) => ({ ...c, speakerId, multiSpeaker: false }))),
+      update((p) => mapCue(p, cueId, (c) => ({ ...c, speakerId }))),
     setSegmentShot: (cueId, segIndex, shot) =>
       update((p) =>
         mapCue(p, cueId, (c) => ({
@@ -400,7 +400,6 @@ export const useProject = create<ProjectState>((set, getState) => {
           ],
           words: a.words || b.words ? [...(a.words ?? []), ...(b.words ?? [])] : undefined,
           reviewed: false,
-          multiSpeaker: a.multiSpeaker || b.multiSpeaker,
         }
         const cues = [...p.cues.slice(0, idx), merged, ...p.cues.slice(idx + 2)]
         return { ...p, cues }

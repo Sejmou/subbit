@@ -47,7 +47,6 @@ function CueRowImpl({ cue, index, project, selected, active }: Props) {
     >
       <div className="cue-gutter">
         <span className="cue-no">{index + 1}</span>
-        {cue.multiSpeaker && <span className="flag" title="whisperx detected multiple speakers">M</span>}
         <input
           type="checkbox"
           checked={!!cue.reviewed}

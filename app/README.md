@@ -60,6 +60,32 @@ autosaves in place.
 - The project keeps whisperx word-level timing so cues can be split/merged
   losslessly.
 
+### Speaker inference (whisperx import)
+
+WhisperX assigns a diarization label to each segment and (when available) to
+each word. Those labels come from overlap between ASR segments and a separate
+diarization pass — they are not a calibrated probability. The per-word `score`
+field is alignment confidence (how well the word fits the audio), not speaker
+confidence, so Subbit ignores it for role assignment.
+
+On import, Subbit picks a speaker using **duration-weighted plurality**: for
+each labeled word, add `(end − start)` to that speaker's tally; the winner's
+share of total labeled time becomes `inferredSpeaker.confidence`. Example: if
+speaker A holds 3s and B holds 1s, A wins with confidence 0.75.
+
+- **`inferredSpeaker`** is stored on every cue where inference is possible
+  (`{ speakerId, confidence }`). It is a snapshot from import and is kept even
+  after you assign a role manually.
+- **`speakerId`** is set automatically only when confidence ≥ **0.75**. Below
+  that threshold the cue is left unassigned (`— Role —`); pick one with `A`.
+- If words lack speaker labels, Subbit falls back to the segment-level
+  `speaker` with confidence 1.
+
+The 0.75 cutoff avoids auto-assigning ambiguous cues (e.g. two speakers with
+similar talk time) while still filling in clear single-speaker lines. After
+timing edits, word arrays can drift from cue boundaries; inference is
+intentionally frozen at import — assign roles manually where the field is empty.
+
 ### Delivery format
 
 Columns: `No, Timecode In, Timecode Out, Rolle, Info, Subtitle`.

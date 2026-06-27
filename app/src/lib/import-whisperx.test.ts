@@ -22,6 +22,50 @@ describe('parseWhisperxData', () => {
   })
 })
 
+describe('importWhisperx', () => {
+  it('auto-assigns speaker when word duration share is high enough', () => {
+    const project = importWhisperx(
+      {
+        segments: [
+          {
+            start: 0,
+            end: 4,
+            text: 'hello',
+            words: [
+              { word: 'hel', start: 0, end: 3, speaker: 'A' },
+              { word: 'lo', start: 3, end: 4, speaker: 'B' },
+            ],
+          },
+        ],
+      },
+      'movie.mp4',
+    )
+    expect(project.cues[0].inferredSpeaker).toEqual({ speakerId: 'A', confidence: 0.75 })
+    expect(project.cues[0].speakerId).toBe('A')
+  })
+
+  it('leaves speakerId empty when confidence is below threshold', () => {
+    const project = importWhisperx(
+      {
+        segments: [
+          {
+            start: 0,
+            end: 10,
+            text: 'hello',
+            words: [
+              { word: 'hel', start: 0, end: 6, speaker: 'A' },
+              { word: 'lo', start: 6, end: 10, speaker: 'B' },
+            ],
+          },
+        ],
+      },
+      'movie.mp4',
+    )
+    expect(project.cues[0].inferredSpeaker).toEqual({ speakerId: 'A', confidence: 0.6 })
+    expect(project.cues[0].speakerId).toBeNull()
+  })
+})
+
 describe('real whisperx file', () => {
   it('validates data/subs/audio.json', () => {
     const root = join(dirname(fileURLToPath(import.meta.url)), '../../..')

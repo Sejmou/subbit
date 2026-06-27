@@ -1,5 +1,9 @@
 import { z } from 'zod'
 import {
+  inferSpeakerFromWords,
+  resolveSpeakerFromInference,
+} from './infer-speaker'
+import {
   DEFAULT_FPS,
   DEFAULT_SHOTS,
   DEFAULT_TIMECODE_OFFSET,
@@ -59,17 +63,10 @@ function newId(): string {
     : Math.random().toString(36).slice(2)
 }
 
-/** True if the segment's words were attributed to more than one speaker. */
-function isMultiSpeaker(words: WhisperxWord[] | undefined): boolean {
-  if (!words) return false
-  const speakers = new Set(words.map((w) => w.speaker).filter(Boolean))
-  return speakers.size > 1
-}
-
 /**
  * Build a fresh Project from whisperx JSON.
- * Each segment becomes one cue with a single (default-shot) segment; the
- * diarization speaker is carried over and word timing is preserved.
+ * Each segment becomes one cue with a single (default-shot) segment; word timing
+ * is preserved and roles are inferred from diarization labels on words.
  */
 export function importWhisperx(json: WhisperxJson, videoName: string): Project {
   const segments = json.segments ?? []
@@ -84,14 +81,18 @@ export function importWhisperx(json: WhisperxJson, videoName: string): Project {
       score: w.score,
     }))
 
+    const { speakerId, inferredSpeaker } = resolveSpeakerFromInference(
+      inferSpeakerFromWords(words, seg.speaker ?? null),
+    )
+
     return {
       id: newId(),
       start: seg.start,
       end: seg.end,
-      speakerId: seg.speaker ?? null,
+      speakerId,
+      inferredSpeaker,
       segments: [{ text: seg.text.trim(), shot: defaultShot }],
       reviewed: false,
-      multiSpeaker: isMultiSpeaker(seg.words),
       words,
     }
   })

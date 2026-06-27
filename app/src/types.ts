@@ -27,6 +27,13 @@ export interface Word {
   score?: number
 }
 
+/** Diarization guess from whisperx import; kept even after manual role assignment. */
+export interface InferredSpeaker {
+  speakerId: string
+  /** Winner's share of labeled word duration in [0, 1]. */
+  confidence: number
+}
+
 /**
  * One editable subtitle. Maps 1:1 to a row in the delivery CSV.
  * A cue with multiple segments represents a shot change mid-subtitle; on export
@@ -41,8 +48,8 @@ export interface Cue {
   segments: Segment[]
   /** Manually confirmed by the user (helps track editing progress). */
   reviewed?: boolean
-  /** whisperx assigned >1 speaker to this segment's words; needs attention. */
-  multiSpeaker?: boolean
+  /** Import-time diarization guess; confidence drives auto-assign at import. */
+  inferredSpeaker?: InferredSpeaker | null
   words?: Word[]
 }
 

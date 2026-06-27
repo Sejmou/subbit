@@ -16,6 +16,11 @@ const segmentSchema = z.object({
   mergedSpeakerId: z.string().nullable().optional(),
 })
 
+const inferredSpeakerSchema = z.object({
+  speakerId: z.string(),
+  confidence: z.number().min(0).max(1),
+})
+
 const cueSchema = z.object({
   id: z.string(),
   start: z.number(),
@@ -23,7 +28,7 @@ const cueSchema = z.object({
   speakerId: z.string().nullable(),
   segments: z.array(segmentSchema).min(1),
   reviewed: z.boolean().optional(),
-  multiSpeaker: z.boolean().optional(),
+  inferredSpeaker: inferredSpeakerSchema.nullable().optional(),
   words: z.array(wordSchema).optional(),
 })
 
