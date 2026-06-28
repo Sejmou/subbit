@@ -97,6 +97,7 @@ Press **`?`** in the app anytime for the full keyboard shortcut list.
 ### Timeline & timecode (planned redesign)
 
 The editor will move to a single **subtitle SMPTE** timeline (reference frame +
-start timecode), frame-accurate cue storage, and fps from the linked video. See
+start timecode), frame-accurate cue storage, and fps from the linked video. This
+is a **breaking** project-format change (no migration from older saves). See
 [`docs/timeline-timecode.md`](docs/timeline-timecode.md) for the design, caveats
 (NDF vs drop-frame, seek precision, WhisperX import), and implementation plan.

@@ -6,6 +6,10 @@ configuration.
 
 Status: **planned** (not yet implemented).
 
+**Breaking change:** project JSON schema changes in one shot. No migration from
+older saved projects — existing `.subbit.json` files from before this redesign
+will not load.
+
 ---
 
 ## Mental model
@@ -19,20 +23,23 @@ subtitleTC = startTimecode + (mediaFrame − referenceFrame)   // SMPTE, nominal
 fileSeconds = mediaFrame × fpsDenominator / fpsNumerator     // for playback & Peaks
 ```
 
-| Concept               | Project field (current → target)                       | Meaning                                                              |
-| --------------------- | ------------------------------------------------------ | -------------------------------------------------------------------- |
-| **Start timecode**    | `timecodeOffset` → keep name or rename `startTimecode` | SMPTE at the reference frame (`00:00:00:00` EU, `01:00:00:00` US, …) |
-| **Reference frame**   | `contentStartSeconds` → `referenceFrame` (integer)     | First frame of subtitle timing (skips leader/black)                  |
-| **Media frame rate**  | `fps` (number) → `fpsNumerator` / `fpsDenominator`     | Exact container rate (e.g. `24000/1001`)                             |
-| **Nominal SMPTE fps** | (new, derived)                                         | Integer for `:FF` field — `24`, `25`, `30`                           |
-| **Cue position**      | `start` / `end` (seconds) → `startFrame` / `endFrame`  | Integer frame index from file start                                  |
+| Concept               | Project field                     | Meaning                                                              |
+| --------------------- | --------------------------------- | -------------------------------------------------------------------- |
+| **Start timecode**    | `startTimecode`                   | SMPTE at the reference frame (`00:00:00:00` EU, `01:00:00:00` US, …) |
+| **Reference frame**   | `referenceFrame` (integer)        | First frame of subtitle timing (skips leader/black)                  |
+| **Media frame rate**  | `fpsNumerator` / `fpsDenominator` | Exact container rate (e.g. `24000/1001`)                             |
+| **Nominal SMPTE fps** | (derived, not stored)             | Integer for `:FF` field — `round(num/den)` → `24`, `25`, `30`        |
+| **Cue position**      | `startFrame` / `endFrame`         | Integer frame index from file start                                  |
 
-### Removed
+### Removed (old schema)
 
-- **`timeReference`** (`file` \| `program`) — was a **localStorage UI toggle**, not
-  stored in the project. It switched playhead/cue display between file time and
-  program time. Replaced by a single subtitle timeline derived from project
-  settings.
+| Old field / feature                                     | Replacement                                    |
+| ------------------------------------------------------- | ---------------------------------------------- |
+| `timecodeOffset`                                        | `startTimecode`                                |
+| `contentStartSeconds`                                   | `referenceFrame`                               |
+| `fps` (number)                                          | `fpsNumerator` / `fpsDenominator`              |
+| Cue `start` / `end` (seconds)                           | `startFrame` / `endFrame`                      |
+| **`timeReference`** (`file` \| `program`, localStorage) | Single subtitle timeline from project settings |
 
 ---
 
@@ -65,8 +72,8 @@ agree.
    playhead rounds to nearest frame’s SMPTE (standard NLE behaviour).
 5. **Peaks timeline:** scroll/zoom stays in file seconds; **axis labels, playhead
    label, marker tooltip, view-range text** use subtitle SMPTE formatters.
-6. **Export:** same formula as the UI (no separate “broadcast offset” step in
-   the export dialog).
+6. **Export:** same formula as the UI (no separate offset step in the export
+   dialog).
 
 ### WhisperX import
 
@@ -75,8 +82,7 @@ sub-frame). On import:
 
 - Convert each boundary: `frame = round(seconds × num / den)`.
 - Store `startFrame` / `endFrame`.
-- Word-level `start`/`end` can stay as seconds until edited, or snap on import
-  (decide in implementation; document chosen behaviour in this file).
+- Snap word-level `start`/`end` to frames on import as well.
 
 No reference frame or start timecode in the import file — new projects default
 to reference frame `0` and start timecode `00:00:00:00`.
@@ -85,17 +91,16 @@ to reference frame `0` and start timecode `00:00:00:00`.
 
 ## Defaults for new projects
 
-| Field                              | Default                   | Set when           |
-| ---------------------------------- | ------------------------- | ------------------ |
-| `startTimecode` (`timecodeOffset`) | `00:00:00:00`             | Project creation   |
-| `referenceFrame`                   | `0`                       | Project creation   |
-| `fpsNumerator` / `fpsDenominator`  | `25/1`                    | Until video linked |
-| Nominal SMPTE fps                  | `round(num/den)`          | Derived            |
-| Cues                               | `startFrame` / `endFrame` | Import or manual   |
+| Field                             | Default                   | Set when           |
+| --------------------------------- | ------------------------- | ------------------ |
+| `startTimecode`                   | `00:00:00:00`             | Project creation   |
+| `referenceFrame`                  | `0`                       | Project creation   |
+| `fpsNumerator` / `fpsDenominator` | `25/1`                    | Until video linked |
+| Nominal SMPTE fps                 | `round(num/den)`          | Derived            |
+| Cues                              | `startFrame` / `endFrame` | Import or manual   |
 
 When a video is linked, copy probed `frameRateNumerator/Denominator` from
-`VideoIdentity` onto the project (option 2 from design discussion). Fallback
-`25/1` if probe fails.
+`VideoIdentity` onto the project. Fallback `25/1` if probe fails.
 
 ---
 
@@ -123,26 +128,13 @@ codecs/browsers.
 ### Peaks.js axis
 
 Timeline geometry remains file-time-based. Subtitle SMPTE on the ruler requires
-custom formatters (axis ticks, playhead label, program-start marker via
+custom formatters (axis ticks, playhead label, reference marker via
 `layer.formatTime`). Expect Peaks integration work, not just CSS.
-
-### Legacy projects
-
-- Existing `project.json` uses seconds for cues and `timecodeOffset` default
-  `10:00:00:00`. Migration on load: convert `start`/`end` → frames; optionally
-  leave `10:00:00:00` unchanged for old projects (user’s saved intent).
-- Bump `PROJECT_VERSION` when schema changes.
-
-### `timeReference` localStorage
-
-Delete `subbit:timeReference` usage. No migration needed — it was display-only.
 
 ### Export formats
 
-- **SRT/VTT/ASS:** subtitle time from `(frame − ref) + startTC`; typically no
-  delivery offset beyond start timecode.
-- **Delivery CSV:** same SMPTE formula; `startTimecode` replaces the old
-  export-only “broadcast offset” field.
+- **SRT/VTT/ASS:** subtitle time from `(frame − ref) + startTC`.
+- **Delivery CSV:** same SMPTE formula; `startTimecode` is the only offset.
 
 ### fps before video is linked
 
@@ -161,8 +153,8 @@ Timeline │ Start TC [00:00:00:00 ▾] │ Ref frame [00:00:00:00] [Set] [Clear
 
 - **Start TC:** presets EU (`00:00:00:00`), US (`01:00:00:00`), custom; stored
   on project.
-- **Ref frame:** SMPTE at file position (or frame index internally); Set from
-  playhead; draggable orange marker; pre-roll shading before reference.
+- **Ref frame:** subtitle SMPTE in the field; frame index internally; Set from
+  playhead; draggable marker; pre-roll shading before reference.
 - **Playhead + cue In/Out:** subtitle SMPTE only.
 
 Export dialog: remove duplicate offset editor; show read-only summary of start
@@ -172,36 +164,41 @@ TC + reference frame + preview.
 
 ## Implementation plan
 
-### Phase 1 — Core time model
+### Phase 1 — Core time model & schema break
 
-**Goal:** Rational frame math and project fields; no UI change yet.
+**Goal:** New project shape and frame math; replace old fields everywhere in
+code and tests. No load-time migration.
 
-- [ ] Add `fpsNumerator`, `fpsDenominator` to `Project` (keep or deprecate `fps`).
-- [ ] Add `referenceFrame` (or migrate from `contentStartSeconds`).
-- [ ] Change `DEFAULT_TIMECODE_OFFSET` to `00:00:00:00`.
+- [ ] Replace `Project` fields: `startTimecode`, `referenceFrame`,
+      `fpsNumerator`, `fpsDenominator`; remove `timecodeOffset`, `contentStartSeconds`,
+      `fps`.
+- [ ] Replace cue `start`/`end` with `startFrame`/`endFrame`; update `Word` timing
+      to frames if word arrays remain in schema.
+- [ ] Bump `PROJECT_VERSION`; rewrite `project-schema.ts` (strict — old shape
+      fails validation).
 - [ ] Implement `lib/frame-time.ts` (or extend `timecode.ts`):
   - `secondsToFrame`, `frameToSeconds`, `frameToSubtitleTc`, `subtitleTcToFrame`
-  - nominal fps derivation: `round(num/den)`
-- [ ] Migrate cue model: `startFrame` / `endFrame` (+ load migration from seconds).
-- [ ] Bump `PROJECT_VERSION`; update `project-schema.ts` and tests.
+  - `nominalTimecodeFps(num, den)` → `round(num/den)`
+- [ ] Update `create-empty-project.ts`, `import-whisperx.ts` defaults.
 - [ ] On video link: copy probed rate to project fps fields.
+- [ ] Fix all unit tests to use new schema (no dual-format fixtures).
 
 ### Phase 2 — Single subtitle display layer
 
 **Goal:** Remove File/Program toggle; all fields show subtitle SMPTE.
 
-- [ ] Rewrite `display-time.ts` (drop `TimeReference`).
+- [ ] Rewrite `display-time.ts` around frame index + project timing settings.
 - [ ] Delete `store/time-reference.ts`, `lib/time-reference-settings.ts`.
 - [ ] Update `CueTimeField`, `CueTransport`, shortcuts (nudge uses rational frame).
-- [ ] Snap set In/Out, seek-from-TC, program-start set to frame grid.
-- [ ] Update `import-whisperx.ts` to store frames.
+- [ ] Snap set In/Out, seek-from-TC, reference-frame set to frame grid.
+- [ ] Rewrite `program-start.ts` → reference-frame helpers (frame-based).
 
 ### Phase 3 — Timeline toolbar & marker
 
 **Goal:** New time-mapping UI; remove parallel timelines.
 
 - [ ] Replace `ProgramStartPanel` with time-mapping toolbar (start TC + ref frame).
-- [ ] Update `ProgramStartHelpDialog` → time-mapping help.
+- [ ] Update help dialog → time-mapping help.
 - [ ] Reference marker label/tooltip in subtitle SMPTE.
 - [ ] `formatTimelineViewRange` → subtitle SMPTE.
 
@@ -210,23 +207,24 @@ TC + reference frame + preview.
 **Goal:** Ruler and playhead show subtitle time.
 
 - [ ] Custom Peaks formatters for axis + `showPlayheadTime`.
-- [ ] Wire `layer.formatTime` on program-start marker to subtitle SMPTE.
+- [ ] Wire `layer.formatTime` on reference marker to subtitle SMPTE.
 - [ ] Verify zoom/scroll still correct (internal file seconds unchanged).
 
 ### Phase 5 — Export & docs
 
 **Goal:** Consistent export; user-facing docs updated.
 
-- [ ] Unify export paths (`export-srt`, `export-vtt`, `export-ass`, `export-csv`).
-- [ ] Simplify `ExportDialog` (no separate broadcast offset; preview uses subtitle TC).
-- [ ] Update `app/README.md` delivery section.
+- [ ] Rewrite export paths (`export-srt`, `export-vtt`, `export-ass`, `export-csv`)
+      for frame-based cues.
+- [ ] Simplify `ExportDialog` (no separate offset editor; preview uses subtitle TC).
+- [ ] Update `app/README.md` delivery section (remove `10:00:00:00` default).
 - [ ] Update in-app help (`HelpOverlay`, shortcuts descriptions).
 
-### Phase 6 — Tests & edge cases
+### Phase 6 — Tests & QA
 
 - [ ] Unit tests: `24000/1001`, `25/1`, start TC `01:00:00:00`, reference frame > 0.
 - [ ] Round-trip: type TC → frame → TC, nudge, export preview.
-- [ ] Legacy project load migration test.
+- [ ] Schema rejection test: old project JSON fails parse with clear error.
 - [ ] Manual QA: link 23.976 video, set US start TC, export CSV.
 
 ---
@@ -241,24 +239,14 @@ TC + reference frame + preview.
 | UI             | `ProgramStartPanel.tsx`, `WaveformTimeline.tsx`, `CueTimeField.tsx`, `CueTransport.tsx`, `ExportDialog.tsx`, help dialogs |
 | Timeline       | `useWaveformPeaksTimeline.ts`, `program-start-point-marker.ts`                                                            |
 | Export         | `export-*.ts`, `export-hints.ts`                                                                                          |
-| Store          | `project.ts` (setters, migration)                                                                                         |
+| Store          | `project.ts` (setters only — no migration layer)                                                                          |
 | Video          | video link flow (copy fps to project)                                                                                     |
-| Tests          | `timecode.test.ts`, `display-time.test.ts`, `program-start.test.ts`, export tests, schema tests                           |
-
----
-
-## Open decisions (resolve during Phase 1)
-
-1. **Rename `timecodeOffset` → `startTimecode` in JSON?** Compatible alias on load
-   recommended if renamed.
-2. **Snap WhisperX word timings on import?** Recommended for consistency.
-3. **Keep deprecated `fps: number` in JSON for one version?** Or migrate atomically
-   with `PROJECT_VERSION` 2.
+| Tests          | all fixtures and tests using old field names                                                                              |
 
 ---
 
 ## References
 
-- Current program start: `lib/program-start.ts`, `components/ProgramStartPanel.tsx`
+- Current program start (to be replaced): `lib/program-start.ts`, `components/ProgramStartPanel.tsx`
 - Video probe: `lib/mp4-probe.ts`, `lib/video-identity.ts`
 - SMPTE (NDF): `lib/timecode.ts` — header notes non-drop-frame
