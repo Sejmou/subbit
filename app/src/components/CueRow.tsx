@@ -6,6 +6,7 @@ import { useAutosizeTextarea } from "../hooks/useAutosizeTextarea";
 import { openRolePicker, NO_ROLE_LABEL } from "../lib/role-picker";
 import { isReviewedCueLocked } from "../lib/cue-lock";
 import { cueEndSeconds, cueStartSeconds } from "../lib/cue-timing";
+import { isCueBeforeReferenceStart } from "../lib/program-start";
 import { useShortcutLabel } from "../hooks/useShortcutLabel";
 import { CueTimeField } from "./CueTimeField";
 import { useTip } from "./Tooltip";
@@ -185,12 +186,14 @@ function CueRowImpl({
   }, [cue.id, locked]);
 
   const speaker = project.speakers.find((s) => s.id === cue.speakerId);
+  const invalid = isCueBeforeReferenceStart(cue, project);
   const cls = [
     "cue-row",
     selected && "selected",
     active && "active",
     cue.reviewed && "reviewed",
     locked && "reviewed-locked",
+    invalid && "cue-invalid",
   ]
     .filter(Boolean)
     .join(" ");
@@ -203,14 +206,28 @@ function CueRowImpl({
     >
       <div className="cue-gutter">
         <span className="cue-no">{index + 1}</span>
+        {invalid && (
+          <span
+            className="cue-invalid-badge"
+            aria-label="Invalid: In is before subtitle start"
+            {...tip(
+              "In is before subtitle start — move In to subtitle start or later",
+            )}
+          >
+            !
+          </span>
+        )}
         <input
           type="checkbox"
           checked={!!cue.reviewed}
+          disabled={invalid}
           onChange={() => toggleReviewed(cue.id)}
           {...tip(
-            locked
-              ? "Reviewed (locked) — uncheck to edit"
-              : `Reviewed (${toggleReviewedLabel})`,
+            invalid
+              ? "Fix In time before marking reviewed"
+              : locked
+                ? "Reviewed (locked) — uncheck to edit"
+                : `Reviewed (${toggleReviewedLabel})`,
           )}
         />
       </div>

@@ -4,6 +4,7 @@ import type { Cue, Project } from "../types";
 import { findActiveCueId } from "./active-cue";
 import { cueEndSeconds, cueStartSeconds } from "./cue-timing";
 import { cueLabelTextShort } from "./cue-label";
+import { isCueBeforeReferenceStart } from "./program-start";
 import {
   findCuesOverlappingRange,
   padViewRange,
@@ -41,11 +42,27 @@ function speakerColor(project: Project, cue: Cue): string {
   );
 }
 
+const INVALID_CUE_COLOR = "#ffb74d";
+
 function segmentVisuals(
   project: Project,
   cue: Cue,
   opts: { active: boolean; selected: boolean },
 ): Pick<SegmentOptions, "color" | "borderColor" | "labelText"> {
+  const invalid = isCueBeforeReferenceStart(cue, project);
+  if (invalid) {
+    const overlayOpacity = opts.active
+      ? BASE_OVERLAY + ACTIVE_BOOST
+      : opts.selected
+        ? BASE_OVERLAY + SELECTED_BOOST
+        : BASE_OVERLAY + 0.08;
+    return {
+      color: rgba(INVALID_CUE_COLOR, overlayOpacity),
+      borderColor: opts.selected ? "#ffffff" : INVALID_CUE_COLOR,
+      labelText: cueLabelTextShort(cue),
+    };
+  }
+
   const base = speakerColor(project, cue);
   const overlayOpacity = opts.active
     ? BASE_OVERLAY + ACTIVE_BOOST

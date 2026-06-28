@@ -168,10 +168,6 @@ function HelpTutorial() {
             the whole line.
           </li>
           <li>
-            <strong>Drag</strong> the orange Subtitle start marker to move where
-            subtitle zero should be for export.
-          </li>
-          <li>
             Click the narrow overview strip to jump to another part of the
             video.
           </li>
@@ -210,8 +206,9 @@ function HelpTutorial() {
           </li>
           <li>
             <strong>Subtitle start</strong> — where in the file that label
-            applies. Use <strong>Set</strong> at the playhead, or drag the
-            orange marker. The <strong>?</strong> button explains time mapping.
+            applies. Use <strong>Set</strong> at the playhead or{" "}
+            <kbd>Shift+0</kbd>. The orange line on the timeline marks the
+            position. The <strong>?</strong> button explains time mapping.
           </li>
           <li>
             <strong>Playhead</strong> — current subtitle SMPTE. Type a timecode

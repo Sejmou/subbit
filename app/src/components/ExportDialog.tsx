@@ -111,9 +111,9 @@ export function ExportDialog({ open, onExport, onClose }: Props) {
           </p>
           {beforeReference.length > 0 && (
             <p className="export-warn">
-              {beforeReference.length} cue
-              {beforeReference.length === 1 ? "" : "s"} start before the
-              reference frame — export In times clamp to 00:00:00:00.
+              {beforeReference.length} invalid cue
+              {beforeReference.length === 1 ? "" : "s"} start before subtitle
+              start — export In times clamp to 00:00:00:00.
             </p>
           )}
         </div>

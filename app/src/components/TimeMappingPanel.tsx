@@ -66,6 +66,7 @@ export function TimeMappingPanel({ project, ready }: Props) {
       const trimmed = startTcDraft.trim();
       const tcFps = nominalTimecodeFps(projectFrameRate(project));
       timecodeToSeconds(trimmed, tcFps);
+      if (trimmed === project.startTimecode) return;
       setStartTimecode(trimmed);
       setStartTcDraft(trimmed);
       setStartTcError(null);
@@ -214,10 +215,11 @@ export function TimeMappingPanel({ project, ready }: Props) {
         <span
           className="time-mapping-warn"
           {...tip(
-            "These cues start before subtitle start; export In times clamp to subtitle zero",
+            "These cues start before subtitle start and are marked invalid",
           )}
         >
-          {beforeCount} cue{beforeCount === 1 ? "" : "s"} before subtitle start
+          {beforeCount} invalid cue{beforeCount === 1 ? "" : "s"} before
+          subtitle start
         </span>
       )}
       {startTcError && (

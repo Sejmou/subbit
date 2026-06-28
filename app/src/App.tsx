@@ -50,6 +50,7 @@ import {
 import { useShortcuts } from "./hooks/useShortcuts";
 import { useKeyboardLayoutStore } from "./store/keyboard-layout";
 import { useLockReviewedStore } from "./store/lock-reviewed";
+import { useReferenceStartNoticeStore } from "./store/reference-start-notice";
 import { LoadScreen } from "./components/LoadScreen";
 import { LinkVideoDialog } from "./components/LinkVideoDialog";
 import { ProjectSetupDialog } from "./components/ProjectSetupDialog";
@@ -68,6 +69,7 @@ import {
 } from "./lib/find-highlight";
 import { UnsavedDialog } from "./components/UnsavedDialog";
 import { ConfirmDialog } from "./components/ConfirmDialog";
+import { NoticeDialog } from "./components/NoticeDialog";
 import { VideoMismatchBanner } from "./components/VideoMismatchBanner";
 import { WaveformTimeline } from "./components/WaveformTimeline";
 import { WaveformPeaksHelpDialog } from "./components/WaveformPeaksHelpDialog";
@@ -126,6 +128,12 @@ export default function App() {
   const [previewEnabled, setPreviewEnabled] = useState(readPreviewEnabled);
   const lockReviewedCues = useLockReviewedStore((s) => s.enabled);
   const toggleLockReviewed = useLockReviewedStore((s) => s.toggle);
+  const invalidCueCount = useReferenceStartNoticeStore(
+    (s) => s.invalidCueCount,
+  );
+  const dismissReferenceStartNotice = useReferenceStartNoticeStore(
+    (s) => s.dismiss,
+  );
   const [speakerFilter, setSpeakerFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<ReviewStatusFilter[]>([]);
   const [rolePickerCueId, setRolePickerCueId] = useState<string | null>(null);
@@ -911,6 +919,16 @@ export default function App() {
         onSave={() => void resolveUnsaved("save")}
         onDiscard={() => void resolveUnsaved("discard")}
         onCancel={() => void resolveUnsaved("cancel")}
+      />
+      <NoticeDialog
+        open={invalidCueCount !== null}
+        title="Cues before subtitle start"
+        message={
+          invalidCueCount !== null
+            ? `${invalidCueCount} cue${invalidCueCount === 1 ? "" : "s"} start before the new subtitle start position and ${invalidCueCount === 1 ? "is" : "are"} marked invalid. Move their In times to subtitle start or later, or clear subtitle start.`
+            : ""
+        }
+        onClose={dismissReferenceStartNotice}
       />
       <HelpOverlay open={helpOpen} onClose={() => setHelpOpen(false)} />
       <RolePicker

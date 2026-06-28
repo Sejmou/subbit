@@ -30,13 +30,9 @@ import {
   type TimelinePeaksMeta,
 } from "../lib/timeline-zoom";
 import {
-  clampReferenceStart,
-  maxReferenceStartSeconds,
-  REFERENCE_START_POINT_ID,
   referenceLeaderWidthPx,
   syncReferenceStartPeaksPoint,
 } from "../lib/program-start";
-import { snapToFrame } from "../lib/cue-timing";
 import { fileSecondsToSubtitleTimecode } from "../lib/frame-time";
 
 interface Options {
@@ -135,10 +131,6 @@ export function useWaveformPeaksTimeline({
   const setCueTimes = useProject((s) => s.setCueTimes);
   const selectCue = useProject((s) => s.selectCue);
   const insertCueAtPlayhead = useProject((s) => s.insertCueAtPlayhead);
-  const setReferenceStartSeconds = useProject(
-    (s) => s.setReferenceStartSeconds,
-  );
-
   const referenceStartSeconds = project.referenceStartSeconds;
 
   const selectedCueIdRef = useRef(selectedCueId);
@@ -148,13 +140,11 @@ export function useWaveformPeaksTimeline({
   const setCueTimesRef = useRef(setCueTimes);
   const selectCueRef = useRef(selectCue);
   const insertCueAtPlayheadRef = useRef(insertCueAtPlayhead);
-  const setReferenceStartSecondsRef = useRef(setReferenceStartSeconds);
   setCueStartRef.current = setCueStart;
   setCueEndRef.current = setCueEnd;
   setCueTimesRef.current = setCueTimes;
   selectCueRef.current = selectCue;
   insertCueAtPlayheadRef.current = insertCueAtPlayhead;
-  setReferenceStartSecondsRef.current = setReferenceStartSeconds;
 
   const referenceStartSecondsRef = useRef(referenceStartSeconds);
   referenceStartSecondsRef.current = referenceStartSeconds;
@@ -407,20 +397,6 @@ export function useWaveformPeaksTimeline({
             event.segment.startTime,
             event.segment.endTime,
           );
-        }
-      });
-
-      peaks.on("points.dragend", (event) => {
-        if (event.point.id !== REFERENCE_START_POINT_ID) return;
-        const proj = projectRef.current;
-        const maxSeconds = maxReferenceStartSeconds(proj, durationRef.current);
-        const seconds = clampReferenceStart(
-          snapToFrame(event.point.time, proj),
-          maxSeconds,
-        );
-        setReferenceStartSecondsRef.current(seconds);
-        if (Math.abs(seconds - event.point.time) > 0.0001) {
-          event.point.update({ time: seconds });
         }
       });
 

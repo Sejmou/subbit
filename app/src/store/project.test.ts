@@ -177,6 +177,71 @@ describe("cue boundary clamping", () => {
     expect(cue.start).toBe(2);
     expect(cue.end).toBe(4);
   });
+
+  it("does not let In move before subtitle start", () => {
+    store().setReferenceStartSeconds(1);
+    store().setCueStart("c1", 0);
+    expect(store().project!.cues[0].start).toBe(1);
+  });
+});
+
+describe("setReferenceStartSeconds", () => {
+  it("does not move cues when subtitle start is set", () => {
+    store().setReferenceStartSeconds(1);
+    expect(store().project!.referenceStartSeconds).toBe(1);
+    expect(store().project!.cues[0].start).toBe(0);
+    expect(store().project!.cues[0].end).toBe(2);
+    expect(store().project!.cues[1].start).toBe(2);
+    expect(store().project!.cues[1].end).toBe(4);
+  });
+
+  it("is undoable without moving cues", () => {
+    store().setReferenceStartSeconds(1);
+    expect(store().past).toHaveLength(1);
+
+    store().undo();
+    expect(store().project!.referenceStartSeconds).toBe(0);
+    expect(store().project!.cues[0].start).toBe(0);
+    expect(store().project!.cues[1].start).toBe(2);
+  });
+
+  it("does not record a no-op when subtitle start is unchanged", () => {
+    store().setReferenceStartSeconds(1);
+    expect(store().past).toHaveLength(1);
+    store().setReferenceStartSeconds(1);
+    expect(store().past).toHaveLength(1);
+  });
+
+  it("clears reviewed on cues that become invalid", () => {
+    store().toggleReviewed("c1");
+    store().setReferenceStartSeconds(1);
+    expect(store().project!.cues[0].reviewed).toBeFalsy();
+  });
+});
+
+describe("toggleReviewed on invalid cues", () => {
+  it("does not allow marking invalid cues as reviewed", () => {
+    store().setReferenceStartSeconds(1);
+    store().toggleReviewed("c1");
+    expect(store().project!.cues[0].reviewed).toBeFalsy();
+    expect(store().past).toHaveLength(1);
+  });
+});
+
+describe("setStartTimecode", () => {
+  it("is undoable", () => {
+    store().setStartTimecode("01:00:00:00");
+    expect(store().project!.startTimecode).toBe("01:00:00:00");
+    expect(store().past).toHaveLength(1);
+
+    store().undo();
+    expect(store().project!.startTimecode).toBe("00:00:00:00");
+  });
+
+  it("does not record a no-op when the timecode is unchanged", () => {
+    store().setStartTimecode("00:00:00:00");
+    expect(store().past).toHaveLength(0);
+  });
 });
 
 describe("restoreProject", () => {

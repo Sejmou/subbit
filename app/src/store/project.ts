@@ -11,8 +11,13 @@ import type {
 import { computeInsertCueRange, findInsertCueIndex } from "../lib/cue-insert";
 import { isReviewedCueLocked } from "../lib/cue-lock";
 import { frameStep, snapToFrame } from "../lib/cue-timing";
+import {
+  isCueBeforeReferenceStart,
+  minCueStartSeconds,
+} from "../lib/program-start";
 import { isSpeakerReferenced } from "../lib/speaker-refs";
 import { resolveProjectName } from "../lib/project-meta";
+import { useReferenceStartNoticeStore } from "./reference-start-notice";
 
 const DEFAULT_CUE_DURATION = 2;
 
@@ -160,6 +165,22 @@ function cueIsLocked(project: Project, cueId: string): boolean {
   return cue !== undefined && isReviewedCueLocked(cue);
 }
 
+function invalidCueCount(cues: Cue[], referenceStartSeconds: number): number {
+  if (referenceStartSeconds <= 0) return 0;
+  return cues.filter((c) => c.start < referenceStartSeconds).length;
+}
+
+function clearReviewedOnInvalidCues(project: Project): Project {
+  if (project.referenceStartSeconds <= 0) return project;
+  let changed = false;
+  const cues = project.cues.map((cue) => {
+    if (!isCueBeforeReferenceStart(cue, project) || !cue.reviewed) return cue;
+    changed = true;
+    return { ...cue, reviewed: false };
+  });
+  return changed ? { ...project, cues } : project;
+}
+
 function clampCueStart(
   cue: Cue,
   start: number,
@@ -167,7 +188,7 @@ function clampCueStart(
   project: Project,
 ): number {
   const gap = frameStep(project);
-  const min = prev ? prev.end : 0;
+  const min = minCueStartSeconds(project, prev?.end);
   const max = cue.end - gap;
   if (min > max) return cue.start;
   return Math.min(Math.max(min, start), max);
@@ -199,7 +220,7 @@ function clampCueMove(
   const duration = end - start;
   if (duration < gap) return { start: cue.start, end: cue.end };
 
-  const minStart = prev ? prev.end : 0;
+  const minStart = minCueStartSeconds(project, prev?.end);
   const maxEnd = next ? next.start : Infinity;
 
   let newStart = start;
@@ -218,7 +239,7 @@ function clampCueMove(
     newEnd = Math.min(newStart + duration, maxEnd);
   }
 
-  newStart = Math.max(0, newStart);
+  newStart = Math.max(minCueStartSeconds(project), newStart);
   if (newEnd - newStart < gap) return { start: cue.start, end: cue.end };
   return { start: newStart, end: newEnd };
 }
@@ -494,7 +515,11 @@ export const useProject = create<ProjectState>((set, getState) => {
       });
     },
     toggleReviewed: (cueId) =>
-      update((p) => mapCue(p, cueId, (c) => ({ ...c, reviewed: !c.reviewed }))),
+      update((p) => {
+        const cue = findCue(p, cueId);
+        if (!cue || isCueBeforeReferenceStart(cue, p)) return p;
+        return mapCue(p, cueId, (c) => ({ ...c, reviewed: !c.reviewed }));
+      }),
 
     splitCueAtCaret: (cueId, segIndex, charOffset, time) => {
       const p = getState().project;
@@ -588,11 +613,13 @@ export const useProject = create<ProjectState>((set, getState) => {
       set((state) => {
         if (!state.project) return state;
         const p = state.project;
+        const minStart = minCueStartSeconds(p);
         const range = computeInsertCueRange(
           p.cues,
-          Math.max(0, time),
+          Math.max(minStart, time),
           duration,
           maxTime,
+          minStart,
         );
         if (!range) return state;
 
@@ -704,15 +731,28 @@ export const useProject = create<ProjectState>((set, getState) => {
       ),
 
     setStartTimecode: (timecode) =>
-      update((p) => ({ ...p, startTimecode: timecode }), "start-timecode"),
-    setReferenceStartSeconds: (seconds) =>
-      update(
-        (p) => ({
+      update((p) => {
+        if (p.startTimecode === timecode) return p;
+        return { ...p, startTimecode: timecode };
+      }, "start-timecode"),
+    setReferenceStartSeconds: (seconds) => {
+      const referenceStartSeconds = Math.max(0, seconds);
+      let invalidCount = 0;
+
+      update((p) => {
+        if (p.referenceStartSeconds === referenceStartSeconds) return p;
+        invalidCount = invalidCueCount(p.cues, referenceStartSeconds);
+        const next = clearReviewedOnInvalidCues({
           ...p,
-          referenceStartSeconds: Math.max(0, seconds),
-        }),
-        "reference-start",
-      ),
+          referenceStartSeconds,
+        });
+        return next;
+      }, "reference-start");
+
+      if (invalidCount > 0) {
+        useReferenceStartNoticeStore.getState().notifyInvalidCues(invalidCount);
+      }
+    },
     syncVideoNameFromFile: (fileName) =>
       set((state) => {
         if (!state.project || state.project.videoName === fileName)

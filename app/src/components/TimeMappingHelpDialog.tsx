@@ -54,14 +54,15 @@ export function TimeMappingHelpDialog({ open, onClose }: Props) {
           <h3>How to set subtitle start</h3>
           <ul className="time-mapping-help-steps">
             <li>
-              Drag the orange <strong>Subtitle start</strong> marker on the
-              timeline
-            </li>
-            <li>
               Seek with the playhead field, then click <strong>Set</strong>
             </li>
             <li>
               Press <kbd>{setReference}</kbd> to set from the current playhead
+            </li>
+            <li>
+              The orange <strong>Subtitle start</strong> line on the timeline
+              shows the position but cannot be dragged — use Set or the shortcut
+              to move it.
             </li>
           </ul>
           <p className="hint">

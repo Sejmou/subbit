@@ -10,11 +10,30 @@ import {
 
 export const REFERENCE_START_POINT_ID = "reference-start";
 
+/** Subtitle start is positioned via the toolbar / shortcuts, not timeline drag. */
+export const REFERENCE_START_POINT_EDITABLE = false;
+
+/** Earliest allowed cue In when editing (subtitle start or file start). */
+export function minCueStartSeconds(
+  project: Project,
+  previousCueEnd?: number,
+  referenceStartSeconds = project.referenceStartSeconds,
+): number {
+  const floor = referenceStartSeconds > 0 ? referenceStartSeconds : 0;
+  if (previousCueEnd === undefined) return floor;
+  return Math.max(floor, previousCueEnd);
+}
+
+/** Cue In is before subtitle start — invalid until timing is fixed. */
+export function isCueBeforeReferenceStart(cue: Cue, project: Project): boolean {
+  const ref = project.referenceStartSeconds;
+  return ref > 0 && cue.start < ref;
+}
+
 /** Cues starting before the reference point (export clamps to subtitle zero). */
 export function cuesBeforeReferenceStart(project: Project): Cue[] {
-  const ref = project.referenceStartSeconds;
-  if (ref <= 0) return [];
-  return project.cues.filter((c) => c.start < ref);
+  if (project.referenceStartSeconds <= 0) return [];
+  return project.cues.filter((c) => isCueBeforeReferenceStart(c, project));
 }
 
 /** @deprecated Use cuesBeforeReferenceStart */
@@ -90,16 +109,18 @@ export function syncReferenceStartPeaksPoint(
   const existing = peaks.points.getPoint(REFERENCE_START_POINT_ID);
 
   if (existing) {
-    if (Math.abs(existing.time - time) > 0.0001) {
-      existing.update({ time, labelText: "Subtitle start" });
-    }
+    existing.update({
+      time,
+      labelText: "Subtitle start",
+      editable: REFERENCE_START_POINT_EDITABLE,
+    });
     return;
   }
 
   peaks.points.add({
     id: REFERENCE_START_POINT_ID,
     time,
-    editable: true,
+    editable: REFERENCE_START_POINT_EDITABLE,
     color: "#ffb74d",
     labelText: "Subtitle start",
   });

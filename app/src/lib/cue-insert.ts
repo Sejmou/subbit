@@ -11,8 +11,9 @@ export function computeInsertCueRange(
   start: number,
   duration: number,
   maxTime = Infinity,
+  minStart = 0,
 ): { start: number; end: number } | null {
-  if (!Number.isFinite(start) || start < 0 || duration <= 0) return null;
+  if (!Number.isFinite(start) || start < minStart || duration <= 0) return null;
   if (findActiveCueIndex(cues, start) >= 0) return null;
 
   const nextCue = cues.find((c) => c.start > start);

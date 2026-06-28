@@ -3,6 +3,7 @@ import type { Project } from "../types";
 import {
   cuesBeforeReferenceStart,
   cueExportFrame,
+  isCueBeforeReferenceStart,
   parseReferenceStartTimecode,
   referenceStartTimecode,
 } from "./program-start";
@@ -49,6 +50,12 @@ describe("reference start helpers", () => {
   it("finds cues before reference frame", () => {
     const project = { ...base, referenceStartSeconds: 60 };
     expect(cuesBeforeReferenceStart(project).map((c) => c.id)).toEqual(["c2"]);
+  });
+
+  it("marks a single cue invalid when In is before subtitle start", () => {
+    const project = { ...base, referenceStartSeconds: 60 };
+    expect(isCueBeforeReferenceStart(project.cues[1], project)).toBe(true);
+    expect(isCueBeforeReferenceStart(project.cues[0], project)).toBe(false);
   });
 
   it("parses zero timecode as frame zero", () => {
