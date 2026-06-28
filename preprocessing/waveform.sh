@@ -2,12 +2,12 @@
 # Generate audiowaveform peak data (.dat or .json) from a video file for peaks.js.
 #
 # Usage:
-#   ./waveform/generate.sh <video.mp4> [output] [--json] [--pixels-per-second N]
+#   ./preprocessing/waveform.sh <video.mp4> [output] [--json] [--pixels-per-second N]
 #
 # Examples:
-#   ./waveform/generate.sh video.mp4
-#   ./waveform/generate.sh video.mp4 ./data/video-waveforms.dat
-#   ./waveform/generate.sh video.mp4 ./data/video.waveform.json --json
+#   ./preprocessing/waveform.sh video.mp4
+#   ./preprocessing/waveform.sh video.mp4 ./data/video-waveforms.dat
+#   ./preprocessing/waveform.sh video.mp4 ./data/video.waveform.json --json
 
 set -euo pipefail
 

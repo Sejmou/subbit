@@ -1,7 +1,7 @@
 [project]
-name = "diarize"
+name = "subbit-preprocessing"
 version = "0.1.0"
-description = "Video-to-whisperx pipeline for subtitles (transcription, alignment, diarization)"
+description = "Local preprocessing for Subbit (whisperx transcription and optional waveform peaks)"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

@@ -36,7 +36,7 @@ export interface ParsedWaveformPeaks {
 
 const PEAKS_JS_BITS = 8;
 
-/** Defaults from `waveform/generate.sh` (mono 44.1 kHz, 80 px/s, 8-bit). */
+/** Defaults from `preprocessing/waveform.sh` (mono 44.1 kHz, 80 px/s, 8-bit). */
 export const WAVEFORM_GEN_SAMPLE_RATE = 44100;
 export const WAVEFORM_GEN_PIXELS_PER_SECOND = 80;
 

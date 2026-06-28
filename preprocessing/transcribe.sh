@@ -2,12 +2,12 @@
 # Transcribe + diarize a video file with whisperx, producing Subbit-ready JSON.
 #
 # Usage:
-#   ./diarize/transcribe.sh <video> [output.json] [options]
+#   ./preprocessing/transcribe.sh <video> [output.json] [options]
 #
 # Examples:
-#   ./diarize/transcribe.sh video.mp4
-#   ./diarize/transcribe.sh video.mp4 ./data/audio.json
-#   HF_TOKEN=hf_… ./diarize/transcribe.sh video.mp4 --language en --device cuda
+#   ./preprocessing/transcribe.sh video.mp4
+#   ./preprocessing/transcribe.sh video.mp4 ./data/audio.json
+#   HF_TOKEN=hf_… ./preprocessing/transcribe.sh video.mp4 --language en --device cuda
 
 set -euo pipefail
 
@@ -45,7 +45,7 @@ Options:
   --compute-type TYPE   float16, float32, int8, or auto (default: auto)
   --batch-size N        Inference batch size (default: 16)
   --no-diarize          Skip speaker diarization
-  --hf-token TOKEN      Hugging Face token (or HF_TOKEN / diarize/.env)
+  --hf-token TOKEN      Hugging Face token (or HF_TOKEN / preprocessing/.env)
   --keep-wav            Keep extracted mono 16 kHz WAV next to the JSON
   --help, -h            Show this help
 EOF
@@ -178,12 +178,12 @@ if [[ "$DIARIZE" -eq 1 && -z "$HF_TOKEN" ]]; then
   echo "error: diarization requires a Hugging Face token." >&2
   echo "Create one at https://huggingface.co/settings/tokens (read access)," >&2
   echo "accept the pyannote model terms, then run:" >&2
-  echo "  put HF_TOKEN=hf_… in diarize/.env," >&2
+  echo "  put HF_TOKEN=hf_… in preprocessing/.env," >&2
   echo "  export HF_TOKEN=hf_…, or pass --hf-token hf_…" >&2
   exit 1
 fi
 
-WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/subbit-diarize.XXXXXX")"
+WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/subbit-preprocessing.XXXXXX")"
 WAV_PATH="$WORK_DIR/${BASENAME}.wav"
 WHISPERX_JSON="$WORK_DIR/${BASENAME}.json"
 
