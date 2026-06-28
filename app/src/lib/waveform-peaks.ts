@@ -113,25 +113,50 @@ export function peaksMaxZoomVisibleSeconds(
   return (viewWidthPx * samplesPerPixel) / sampleRate;
 }
 
-/** Default zoomview span on load: max zoom allowed by the imported peaks file. */
+/** Default zoomview span on load: most zoomed-in view allowed by the peaks file. */
 export function peaksInitialZoomSeconds(
   meta: Pick<WaveformPeaksMeta, "samplesPerPixel" | "sampleRate">,
   viewWidthPx: number,
-  duration: number,
-): number {
-  const maxZoomSpan = peaksMaxZoomVisibleSeconds(
+): number | null {
+  if (viewWidthPx <= 0) return null;
+  return peaksMaxZoomVisibleSeconds(
     meta.samplesPerPixel,
     meta.sampleRate,
     viewWidthPx,
   );
-  return Math.min(Math.max(maxZoomSpan, 0.5), duration);
 }
 
-const DEFAULT_MIN_VISIBLE_SPAN_S = 0.5;
+/** peaks.js: scale = Math.floor(seconds × sampleRate / viewWidthPx). */
+export function peaksScaleForVisibleSpanSeconds(
+  spanSeconds: number,
+  sampleRate: number,
+  viewWidthPx: number,
+): number {
+  return Math.floor((spanSeconds * sampleRate) / viewWidthPx);
+}
+
+/** Shortest visible span peaks.js allows at the current view width. */
+export function peaksMinVisibleSpanSeconds(
+  meta: Pick<WaveformPeaksMeta, "samplesPerPixel" | "sampleRate">,
+  viewWidthPx: number,
+): number | null {
+  if (viewWidthPx <= 0) return null;
+  const { samplesPerPixel, sampleRate } = meta;
+  let span = (samplesPerPixel * viewWidthPx) / sampleRate;
+  while (
+    peaksScaleForVisibleSpanSeconds(span, sampleRate, viewWidthPx) <
+    samplesPerPixel
+  ) {
+    span += 1 / sampleRate;
+  }
+  return span;
+}
 
 /**
  * Clamp a requested zoom-view span to [minSpan, duration].
  * Returns null when already fully zoomed out and requesting wider.
+ *
+ * `minSpan` must be at least `peaksMinVisibleSpanSeconds` when using peaks.js.
  */
 export function clampTimelineVisibleSpan(
   requestedSpan: number,
@@ -139,14 +164,15 @@ export function clampTimelineVisibleSpan(
   duration: number,
   opts?: { minSpan?: number; zoomOut?: boolean },
 ): number | null {
-  const minSpan = opts?.minSpan ?? DEFAULT_MIN_VISIBLE_SPAN_S;
+  const minSpan = opts?.minSpan ?? 0;
   const zoomOut = opts?.zoomOut ?? requestedSpan > currentSpan;
   if (!Number.isFinite(requestedSpan)) return null;
 
-  const span = Math.max(minSpan, requestedSpan);
+  const span = minSpan > 0 ? Math.max(minSpan, requestedSpan) : requestedSpan;
   if (!Number.isFinite(duration) || duration <= 0) return span;
   if (zoomOut && currentSpan >= duration - 0.001) return null;
-  return Math.min(span, duration);
+  const maxSpan = Math.max(minSpan, duration);
+  return Math.min(span, maxSpan);
 }
 
 /** Target `--pixels-per-second` when regenerating peaks (~targetSeconds at max zoom). */

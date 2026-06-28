@@ -20,8 +20,10 @@ import type { WaveformPeaksInput } from "../lib/waveform-peaks";
 import {
   buildPlaceholderWaveformPeaks,
   clampTimelineVisibleSpan,
-  peaksZoomLevels,
   peaksInitialZoomSeconds,
+  peaksMinVisibleSpanSeconds,
+  peaksScaleForVisibleSpanSeconds,
+  peaksZoomLevels,
 } from "../lib/waveform-peaks";
 import { formatTimelineViewRange } from "../lib/timecode";
 import { createProgramStartPointMarker } from "../lib/program-start-point-marker";
@@ -77,6 +79,7 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
   const zoomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const peaksRef = useRef<PeaksInstance | null>(null);
+  const initialZoomAppliedRef = useRef(false);
   const projectRef = useRef(project);
   const lastActiveId = useRef<string | null>(null);
   const lastHighlightKey = useRef("");
@@ -203,45 +206,69 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
     updateLeaderOverlay();
   }, [updateLeaderOverlay]);
 
-  const zoomViewByFactor = useCallback((factor: number, anchorX?: number) => {
-    const zoomview = peaksRef.current?.views.getView("zoomview");
-    const container = zoomRef.current;
-    if (!zoomview || !container) return;
+  const zoomViewByFactor = useCallback(
+    (factor: number, anchorX?: number) => {
+      const zoomview = peaksRef.current?.views.getView("zoomview");
+      const container = zoomRef.current;
+      if (!zoomview || !container || !samplesPerPixel || !sampleRate) return;
 
-    const startTime = zoomview.getStartTime();
-    const endTime = zoomview.getEndTime();
-    const span = endTime - startTime;
-    if (span <= 0) return;
+      const startTime = zoomview.getStartTime();
+      const endTime = zoomview.getEndTime();
+      const span = endTime - startTime;
+      if (span <= 0) return;
 
-    const width = container.clientWidth;
-    if (width <= 0) return;
+      const width = zoomview.getWidth();
+      if (width <= 0) return;
 
-    const ratio =
-      anchorX !== undefined ? Math.min(1, Math.max(0, anchorX / width)) : 0.5;
-    const anchorTime = startTime + ratio * span;
-    const requestedSpan = Math.max(0.5, span * factor);
-    const cappedSpan = clampTimelineVisibleSpan(
-      requestedSpan,
-      span,
-      durationRef.current,
-      { zoomOut: factor >= 1 },
-    );
-    if (cappedSpan === null) return;
+      const minSpan =
+        peaksMinVisibleSpanSeconds({ samplesPerPixel, sampleRate }, width) ?? 0;
+      if (minSpan <= 0) return;
 
-    zoomview.setZoom({ seconds: cappedSpan });
+      if (factor < 1) {
+        const currentScale = peaksScaleForVisibleSpanSeconds(
+          span,
+          sampleRate,
+          width,
+        );
+        if (currentScale <= samplesPerPixel) return;
+      }
 
-    const actualSpan = zoomview.getEndTime() - zoomview.getStartTime();
-    const d = durationRef.current;
-    const maxStart = Math.max(
-      0,
-      (Number.isFinite(d) && d > 0 ? d : actualSpan) - actualSpan,
-    );
-    const newStart = Math.min(
-      Math.max(0, anchorTime - ratio * actualSpan),
-      maxStart,
-    );
-    zoomview.setStartTime(newStart);
-  }, []);
+      const ratio =
+        anchorX !== undefined ? Math.min(1, Math.max(0, anchorX / width)) : 0.5;
+      const anchorTime = startTime + ratio * span;
+      const requestedSpan = span * factor;
+      const cappedSpan = clampTimelineVisibleSpan(
+        requestedSpan,
+        span,
+        durationRef.current,
+        { zoomOut: factor >= 1, minSpan },
+      );
+      if (cappedSpan === null || Math.abs(cappedSpan - span) < 0.001) return;
+
+      if (
+        factor < 1 &&
+        peaksScaleForVisibleSpanSeconds(cappedSpan, sampleRate, width) <
+          samplesPerPixel
+      ) {
+        zoomview.setZoom({ scale: samplesPerPixel });
+      } else {
+        zoomview.setZoom({ seconds: cappedSpan });
+      }
+
+      const actualSpan = zoomview.getEndTime() - zoomview.getStartTime();
+      const d = durationRef.current;
+      const maxStart = Math.max(
+        0,
+        (Number.isFinite(d) && d > 0 ? d : actualSpan) - actualSpan,
+      );
+      const newStart = Math.min(
+        Math.max(0, anchorTime - ratio * actualSpan),
+        maxStart,
+      );
+      zoomview.setStartTime(newStart);
+    },
+    [samplesPerPixel, sampleRate],
+  );
 
   const syncHighlight = useCallback((time: number) => {
     const peaks = peaksRef.current;
@@ -341,6 +368,36 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
     updateViewRange(startTime, endTime);
   }, [updateViewRange]);
 
+  const applyInitialZoom = useCallback(() => {
+    const zoomview = peaksRef.current?.views.getView("zoomview");
+    const container = zoomRef.current;
+    const video = usePlayback.getState().videoEl;
+    if (!zoomview || !container || !video || !samplesPerPixel || !sampleRate)
+      return false;
+
+    const width = zoomview.getWidth() || container.clientWidth;
+    const initialSpan = peaksInitialZoomSeconds(
+      { samplesPerPixel, sampleRate },
+      width,
+    );
+    if (initialSpan === null) return false;
+
+    zoomview.setZoom({ scale: samplesPerPixel });
+    const d = durationRef.current;
+    const playhead = video.currentTime;
+    zoomview.setStartTime(
+      Math.max(
+        0,
+        Math.min(
+          playhead - initialSpan / 2,
+          Number.isFinite(d) && d > 0 ? d - initialSpan : playhead,
+        ),
+      ),
+    );
+    initialZoomAppliedRef.current = true;
+    return true;
+  }, [samplesPerPixel, sampleRate]);
+
   useEffect(() => {
     if (
       !videoEl ||
@@ -354,6 +411,7 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
     if (!Number.isFinite(duration) || duration <= 0) return;
 
     let cancelled = false;
+    initialZoomAppliedRef.current = false;
     setReady(false);
     setInitError(null);
 
@@ -482,21 +540,9 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
 
       if (zoomview && duration > 0) {
         zoomview.fitToContainer();
-        const width = zoomRef.current?.clientWidth ?? 0;
-        const initialSpan = peaksInitialZoomSeconds(
-          { samplesPerPixel, sampleRate },
-          width,
-          duration,
-        );
-        zoomview.setZoom({ seconds: initialSpan });
-        const playhead = videoEl.currentTime;
-        zoomview.setStartTime(
-          Math.max(
-            0,
-            Math.min(playhead - initialSpan / 2, duration - initialSpan),
-          ),
-        );
-        scheduleViewSync(zoomview.getStartTime(), zoomview.getEndTime());
+        if (applyInitialZoom()) {
+          scheduleViewSync(zoomview.getStartTime(), zoomview.getEndTime());
+        }
       }
       peaks.views.getScrollbar()?.fitToContainer();
       syncProgramStartPoint();
@@ -520,6 +566,7 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
     syncProgramStartPoint,
     updateLeaderOverlay,
     updateViewRange,
+    applyInitialZoom,
   ]);
 
   useEffect(() => {
@@ -550,6 +597,9 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
       timer = window.setTimeout(() => {
         peaks.views.getView("zoomview")?.fitToContainer();
         peaks.views.getScrollbar()?.fitToContainer();
+        if (!initialZoomAppliedRef.current) {
+          applyInitialZoom();
+        }
         syncCurrentView();
       }, 100);
     });
@@ -559,7 +609,7 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
       ro.disconnect();
       window.clearTimeout(timer);
     };
-  }, [ready, syncCurrentView]);
+  }, [ready, syncCurrentView, applyInitialZoom]);
 
   useEffect(() => {
     if (!ready || !zoomRef.current) return;
@@ -611,8 +661,15 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
   const fitWidth = () => {
     const peaks = peaksRef.current;
     const zoomview = peaks?.views.getView("zoomview");
-    if (!zoomview || !duration) return;
-    zoomview.setZoom({ seconds: duration });
+    const container = zoomRef.current;
+    if (!zoomview || !container || !duration || !samplesPerPixel || !sampleRate)
+      return;
+    const minSpan = peaksMinVisibleSpanSeconds(
+      { samplesPerPixel, sampleRate },
+      zoomview.getWidth() || container.clientWidth,
+    );
+    if (!minSpan) return;
+    zoomview.setZoom({ seconds: Math.max(minSpan, duration) });
     zoomview.fitToContainer();
     syncVisibleSegmentsRef.current(
       zoomview.getStartTime(),

@@ -7,6 +7,8 @@ import {
   peaksDuration,
   peaksMaxZoomVisibleSeconds,
   peaksInitialZoomSeconds,
+  peaksMinVisibleSpanSeconds,
+  peaksScaleForVisibleSpanSeconds,
   peaksZoomLevels,
   clampTimelineVisibleSpan,
 } from "./waveform-peaks";
@@ -107,22 +109,31 @@ describe("peaksMaxZoomVisibleSeconds", () => {
   });
 });
 
+describe("peaksMinVisibleSpanSeconds", () => {
+  it("satisfies peaks.js floor scale at awkward view widths", () => {
+    const meta = { samplesPerPixel: 551, sampleRate: 44100 };
+    const span = peaksMinVisibleSpanSeconds(meta, 800);
+    expect(span).not.toBeNull();
+    expect(
+      peaksScaleForVisibleSpanSeconds(span!, meta.sampleRate, 800),
+    ).toBeGreaterThanOrEqual(551);
+  });
+});
+
 describe("peaksInitialZoomSeconds", () => {
-  it("uses max zoom span capped by video duration", () => {
+  it("uses max zoom span from view width", () => {
     expect(
       peaksInitialZoomSeconds(
         { samplesPerPixel: 2205, sampleRate: 44100 },
         800,
-        7200,
       ),
     ).toBeCloseTo(40);
+  });
+
+  it("returns null when view width is unknown", () => {
     expect(
-      peaksInitialZoomSeconds(
-        { samplesPerPixel: 2205, sampleRate: 44100 },
-        800,
-        30,
-      ),
-    ).toBe(30);
+      peaksInitialZoomSeconds({ samplesPerPixel: 2205, sampleRate: 44100 }, 0),
+    ).toBeNull();
   });
 });
 
@@ -147,8 +158,10 @@ describe("clampTimelineVisibleSpan", () => {
     ).toBeNull();
   });
 
-  it("allows zoom-in below duration", () => {
-    expect(clampTimelineVisibleSpan(30, 120, 120, { zoomOut: false })).toBe(30);
+  it("allows zoom-in down to minSpan", () => {
+    expect(
+      clampTimelineVisibleSpan(30, 120, 120, { zoomOut: false, minSpan: 40 }),
+    ).toBe(40);
   });
 });
 
