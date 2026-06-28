@@ -191,6 +191,35 @@
   border-top: 1px solid var(--border);
   margin: 4px 0;
 }
+.file-menu-submenu {
+  position: relative;
+}
+.file-menu-submenu-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.file-menu-submenu-trigger span {
+  font-size: 11px;
+  opacity: 0.75;
+}
+.file-menu-submenu-panel {
+  position: absolute;
+  left: calc(100% + 4px);
+  top: 0;
+  min-width: 200px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  z-index: 51;
+}
+.file-menu-submenu-panel button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .toolbar-dropdown {
   position: relative;
 }
@@ -618,12 +647,153 @@
   text-overflow: ellipsis;
 }
 .waveform-peaks-help {
-  width: min(520px, 92vw);
+  width: min(560px, 92vw);
+}
+.waveform-peaks-help-status {
+  margin: 0 0 10px;
+  color: var(--text);
+  font-size: 12px;
+}
+.waveform-peaks-help-setup {
+  margin: 6px 0 6px;
+  padding: 6px 12px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.waveform-peaks-help-setup .hint {
+  margin: 4px 0 6px;
+}
+.waveform-peaks-help-setup .waveform-peaks-help-fields {
+  margin: 6px 0 4px;
+}
+.waveform-peaks-help-setup .waveform-peaks-help-derived {
+  margin-top: 6px;
+}
+.waveform-peaks-help-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 10px 0;
+}
+.waveform-peaks-help-target-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.waveform-peaks-help-target-row select,
+.waveform-peaks-help-field input {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-2);
+  color: var(--text);
+  font-size: 12px;
+}
+.waveform-peaks-help-target-row select {
+  flex: 1;
+  min-width: 0;
+}
+.waveform-peaks-help-target-custom {
+  width: 4.5em;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.waveform-peaks-help-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.waveform-peaks-help-derived {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text);
+}
+.waveform-peaks-help-derived-pre {
+  display: inline-block;
+  margin: 0;
+  padding: 2px 8px;
+  vertical-align: baseline;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.waveform-peaks-help-paths {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 10px 0;
+}
+.waveform-peaks-help-paths input {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-2);
+  color: var(--text);
+  font-size: 12px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+.waveform-peaks-help-paths input::placeholder {
+  color: var(--text-dim);
+  opacity: 0.85;
+}
+.waveform-peaks-help-use-loaded {
+  margin: 0 0 10px;
+}
+.waveform-peaks-help-use-loaded-btn {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.waveform-peaks-help-use-loaded-btn:hover {
+  color: var(--text);
+}
+.waveform-peaks-help-command-label {
+  margin: 10px 0 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.waveform-peaks-help-command {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+.waveform-peaks-help-command pre {
+  margin: 0;
+  min-width: 0;
+}
+.waveform-peaks-help-copy-btn {
+  flex-shrink: 0;
+  height: 28px;
+  min-width: 52px;
+  padding: 0 10px;
+  font-size: 11px;
+  align-self: center;
+}
+.waveform-peaks-help-copy-hint {
+  margin: 0 0 10px;
+  font-size: 11px;
+  color: var(--accent);
 }
 .waveform-peaks-help h3 {
   margin: 16px 0 8px;
   font-size: 13px;
   color: var(--accent);
+}
+.waveform-peaks-help-setup h3 {
+  margin: 6px 0 6px;
 }
 .waveform-peaks-help p {
   margin: 0 0 10px;
@@ -645,12 +815,34 @@
   border-radius: 6px;
   overflow-x: auto;
 }
-.waveform-peaks-help-steps code {
+.waveform-peaks-help-steps code,
+.waveform-peaks-help-derived-pre code {
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   font-size: 11px;
 }
 .waveform-peaks-help-import {
   margin-top: 10px;
+}
+.waveform-peaks-help-notes {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.waveform-peaks-help-notes ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+.waveform-peaks-help-notes li + li {
+  margin-top: 6px;
+}
+.waveform-peaks-help-notes strong {
+  color: var(--text);
+  font-weight: 600;
 }
 .waveform-scroll {
   flex-shrink: 0;

@@ -5,6 +5,8 @@ interface Props {
   onExportProjectBundle: () => void;
   onNewBlankProject: () => void;
   onCloseProject: () => void;
+  hasWaveformPeaks: boolean;
+  onShowWaveformPeaks: () => void;
 }
 
 export function FileMenu({
@@ -12,8 +14,11 @@ export function FileMenu({
   onExportProjectBundle,
   onNewBlankProject,
   onCloseProject,
+  hasWaveformPeaks,
+  onShowWaveformPeaks,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,8 +30,13 @@ export function FileMenu({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
+  useEffect(() => {
+    if (!open) setAdvancedOpen(false);
+  }, [open]);
+
   const run = (fn: () => void) => {
     setOpen(false);
+    setAdvancedOpen(false);
     fn();
   };
 
@@ -64,6 +74,36 @@ export function FileMenu({
           >
             New blank project…
           </button>
+          <hr />
+          <div
+            className="file-menu-submenu"
+            onMouseEnter={() => setAdvancedOpen(true)}
+            onMouseLeave={() => setAdvancedOpen(false)}
+          >
+            <button
+              type="button"
+              role="menuitem"
+              className="file-menu-submenu-trigger"
+              aria-haspopup="menu"
+              aria-expanded={advancedOpen}
+              onClick={() => setAdvancedOpen((v) => !v)}
+            >
+              Advanced…
+            </button>
+            {advancedOpen && (
+              <div className="file-menu-submenu-panel" role="menu">
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => run(onShowWaveformPeaks)}
+                >
+                  {hasWaveformPeaks
+                    ? "Replace waveform data…"
+                    : "Import waveform data…"}
+                </button>
+              </div>
+            )}
+          </div>
           <hr />
           <button
             type="button"

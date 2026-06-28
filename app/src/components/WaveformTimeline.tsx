@@ -28,7 +28,6 @@ import {
 import { formatTimelineViewRange } from "../lib/timecode";
 import { createProgramStartPointMarker } from "../lib/program-start-point-marker";
 import { CueTransport } from "./CueTransport";
-import { WaveformPeaksHelpDialog } from "./WaveformPeaksHelpDialog";
 import {
   findCuesOverlappingRange,
   padViewRange,
@@ -47,7 +46,8 @@ const MAX_VISIBLE_SEGMENTS = 200;
 
 interface Props {
   project: Project;
-  onImportWaveform: () => void;
+  onShowWaveformPeaks: () => void;
+  onTimelineWidthChange: (widthPx: number) => void;
 }
 
 function peaksWaveformData(input: WaveformPeaksInput) {
@@ -74,7 +74,11 @@ function segmentNeedsUpdate(
 const ZOOM_IN_FACTOR = 0.75;
 const ZOOM_OUT_FACTOR = 1 / ZOOM_IN_FACTOR;
 
-export function WaveformTimeline({ project, onImportWaveform }: Props) {
+export function WaveformTimeline({
+  project,
+  onShowWaveformPeaks,
+  onTimelineWidthChange,
+}: Props) {
   const tip = useTip();
   const zoomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -137,7 +141,6 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
   const [initError, setInitError] = useState<string | null>(null);
   const [subtitlesHidden, setSubtitlesHidden] = useState(false);
   const [leaderWidthPx, setLeaderWidthPx] = useState(0);
-  const [peaksHelpOpen, setPeaksHelpOpen] = useState(false);
   const [viewRange, setViewRange] = useState<{
     start: number;
     end: number;
@@ -586,6 +589,11 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
     });
   }, [ready, syncHighlight]);
 
+  const reportTimelineWidth = useCallback(() => {
+    const width = zoomRef.current?.clientWidth ?? 0;
+    if (width > 0) onTimelineWidthChange(width);
+  }, [onTimelineWidthChange]);
+
   useEffect(() => {
     if (!ready || !zoomRef.current) return;
     const peaks = peaksRef.current;
@@ -601,15 +609,17 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
           applyInitialZoom();
         }
         syncCurrentView();
+        reportTimelineWidth();
       }, 100);
     });
     ro.observe(zoomRef.current);
     if (scrollRef.current) ro.observe(scrollRef.current);
+    reportTimelineWidth();
     return () => {
       ro.disconnect();
       window.clearTimeout(timer);
     };
-  }, [ready, syncCurrentView, applyInitialZoom]);
+  }, [ready, syncCurrentView, applyInitialZoom, reportTimelineWidth]);
 
   useEffect(() => {
     if (!ready || !zoomRef.current) return;
@@ -733,7 +743,7 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
                 <button
                   type="button"
                   className="waveform-import-btn"
-                  onClick={() => setPeaksHelpOpen(true)}
+                  onClick={onShowWaveformPeaks}
                   aria-label="Import waveform peaks"
                   {...tip("Import waveform peaks")}
                 >
@@ -764,11 +774,6 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
           })}
         />
       </div>
-      <WaveformPeaksHelpDialog
-        open={peaksHelpOpen}
-        onClose={() => setPeaksHelpOpen(false)}
-        onImport={onImportWaveform}
-      />
     </div>
   );
 }

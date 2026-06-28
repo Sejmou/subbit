@@ -1,6 +1,6 @@
 # Waveform peak generation
 
-Pre-compute compact waveform data for [peaks.js](https://github.com/bbc/peaks.js) from a local movie file.
+Pre-compute compact waveform data for [peaks.js](https://github.com/bbc/peaks.js) from a local video file.
 
 Peaks.js does **not** read raw MP4 audio efficiently for long files. Instead it expects a small sidecar file produced by [audiowaveform](https://github.com/bbc/audiowaveform) — the same tool BBC uses for broadcast waveforms.
 
@@ -23,25 +23,25 @@ brew install audiowaveform
 From the repo root:
 
 ```bash
-./waveform/generate.sh path/to/movie.mp4
+./waveform/generate.sh path/to/video.mp4
 ```
 
-This writes `path/to/movie.dat` next to the video.
+This writes `path/to/video-waveforms.dat` next to the video.
 
 Options:
 
 ```bash
 # Custom output path
-./waveform/generate.sh movie.mp4 ./data/movie.dat
+./waveform/generate.sh video.mp4 ./data/video-waveforms.dat
 
 # JSON instead of binary (larger, easier to inspect; peaks.js accepts both)
-./waveform/generate.sh movie.mp4 ./data/movie.waveform.json --json
+./waveform/generate.sh video.mp4 ./data/video.waveform.json --json
 
 # Lower resolution (smaller file)
-./waveform/generate.sh movie.mp4 --pixels-per-second 20
+./waveform/generate.sh video.mp4 --pixels-per-second 20
 
 # More detail in the waveform (larger file)
-./waveform/generate.sh movie.mp4 --pixels-per-second 100
+./waveform/generate.sh video.mp4 --pixels-per-second 100
 ```
 
 ## What the script does
@@ -52,8 +52,8 @@ Options:
 Equivalent manual commands:
 
 ```bash
-ffmpeg -i movie.mp4 -vn -ac 1 -ar 44100 -f wav -  \
-  | audiowaveform -i - -o movie.dat -b 8 --pixels-per-second 80
+ffmpeg -i video.mp4 -vn -ac 1 -ar 44100 -f wav -  \
+  | audiowaveform -i - -o video-waveforms.dat -b 8 --pixels-per-second 80
 ```
 
 ### Why not ffmpeg alone?
@@ -73,15 +73,15 @@ ffmpeg can render a PNG waveform image, but peaks.js needs **structured peak dat
 1. Generate peaks alongside your whisperx run:
 
    ```bash
-   ./waveform/generate.sh movie.mp4 ./data/movie.dat
+   ./waveform/generate.sh video.mp4 ./data/video-waveforms.dat
    uv run whisperx ./data/audio.wav ...   # existing diarize flow
    ```
 
-2. In Subbit, open the movie and project as usual.
+2. In Subbit, open the video and project as usual.
 
-3. **File → Import waveform…** and pick the `.dat` or `.json` file.
+3. **Subbit → Advanced… → Import waveform data…** and pick the `.dat` or `.json` file.
 
-   The app validates the file, checks duration against the loaded movie, and caches peaks in IndexedDB keyed by video identity so you only import once per movie.
+   The app validates the file, checks duration against the loaded video, and caches peaks in IndexedDB keyed by video identity so you only import once per video.
 
 4. When the timeline UI is wired up, peaks.js receives the cached data as:
 
@@ -101,11 +101,11 @@ Place peaks next to other pipeline artifacts:
 
 ```
 data/
-  movie.mp4
-  movie.dat              ← waveform peaks (binary, preferred)
-  movie.waveform.json    ← optional JSON variant
+  video.mp4
+  video-waveforms.dat    ← waveform peaks (binary, preferred)
+  video.waveform.json    ← optional JSON variant
   audio.json             ← whisperx output
-  movie.mp4.subbit.json  ← saved Subbit project
+  My Show.subbit.json    ← saved Subbit project
 ```
 
 ## File size reference
@@ -133,8 +133,8 @@ resolution. Roughly, the narrowest time window you can fill the timeline with
 After changing `--pixels-per-second`, regenerate and re-import:
 
 ```bash
-./waveform/generate.sh movie.mp4 ./data/movie.dat --pixels-per-second 80
+./waveform/generate.sh video.mp4 ./data/video-waveforms.dat --pixels-per-second 80
 ```
 
-Then **File → Import waveform…** again (or delete the IndexedDB cache by
+Then **Subbit → Advanced… → Replace waveform data…** (or delete the IndexedDB cache by
 changing videos / clearing site data).

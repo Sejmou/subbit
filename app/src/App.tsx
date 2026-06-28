@@ -70,6 +70,7 @@ import { UnsavedDialog } from "./components/UnsavedDialog";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { VideoMismatchBanner } from "./components/VideoMismatchBanner";
 import { WaveformTimeline } from "./components/WaveformTimeline";
+import { WaveformPeaksHelpDialog } from "./components/WaveformPeaksHelpDialog";
 import { useVideoIdentity } from "./hooks/useVideoIdentity";
 import { useWaveform } from "./store/waveform";
 import {
@@ -144,6 +145,10 @@ export default function App() {
     videoName: string;
     video?: VideoIdentity;
   } | null>(null);
+  const [waveformHelpOpen, setWaveformHelpOpen] = useState(false);
+  const [timelineWidthPx, setTimelineWidthPx] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth : 1920,
+  );
 
   const videoHandle = useRef<FsFileHandle | null>(null);
   const pendingOpenProjectId = useRef<string | null>(null);
@@ -746,6 +751,10 @@ export default function App() {
 
   const videoDuration = usePlayback((s) => s.duration);
   const showTimeline = Number.isFinite(videoDuration) && videoDuration > 0;
+  const hasWaveformPeaks = useWaveform((s) => s.peaks !== null);
+  const waveformSourceName = useWaveform((s) => s.sourceName);
+  const waveformImportEnabled =
+    !!videoFile && Number.isFinite(videoDuration) && videoDuration > 0;
 
   const { status: videoIdentityStatus, message: videoMismatchMessage } =
     useVideoIdentity(videoFile);
@@ -828,6 +837,8 @@ export default function App() {
         onExportProjectBundle={doExportProjectBundle}
         onNewBlankProject={() => void doNewBlankProject()}
         onCloseProject={() => void doCloseProject()}
+        hasWaveformPeaks={hasWaveformPeaks}
+        onShowWaveformPeaks={() => setWaveformHelpOpen(true)}
         previewEnabled={previewEnabled}
         onTogglePreview={togglePreview}
         lockReviewedCues={lockReviewedCues}
@@ -903,9 +914,21 @@ export default function App() {
       {showTimeline && (
         <WaveformTimeline
           project={project}
-          onImportWaveform={() => void importWaveformFile()}
+          onShowWaveformPeaks={() => setWaveformHelpOpen(true)}
+          onTimelineWidthChange={setTimelineWidthPx}
         />
       )}
+      <WaveformPeaksHelpDialog
+        open={waveformHelpOpen}
+        onClose={() => setWaveformHelpOpen(false)}
+        onImport={() => void importWaveformFile()}
+        importEnabled={waveformImportEnabled}
+        timelineWidthPx={timelineWidthPx}
+        videoDurationSeconds={videoDuration}
+        sourceName={waveformSourceName}
+        hasRealPeaks={hasWaveformPeaks}
+        videoName={project.videoName ?? videoFileName}
+      />
     </div>
   );
 }

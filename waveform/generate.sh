@@ -5,9 +5,9 @@
 #   ./waveform/generate.sh <video.mp4> [output] [--json] [--pixels-per-second N]
 #
 # Examples:
-#   ./waveform/generate.sh movie.mp4
-#   ./waveform/generate.sh movie.mp4 ./data/movie.dat
-#   ./waveform/generate.sh movie.mp4 ./data/movie.waveform.json --json
+#   ./waveform/generate.sh video.mp4
+#   ./waveform/generate.sh video.mp4 ./data/video-waveforms.dat
+#   ./waveform/generate.sh video.mp4 ./data/video.waveform.json --json
 
 set -euo pipefail
 
@@ -78,7 +78,7 @@ if [[ -z "$OUTPUT" ]]; then
   if [[ "$FORMAT" == json ]]; then
     OUTPUT="${BASE}.waveform.json"
   else
-    OUTPUT="${BASE}.dat"
+    OUTPUT="${BASE}-waveforms.dat"
   fi
 fi
 

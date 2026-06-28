@@ -27,6 +27,8 @@ interface Props {
   onExportProjectBundle: () => void;
   onNewBlankProject: () => void;
   onCloseProject: () => void;
+  hasWaveformPeaks: boolean;
+  onShowWaveformPeaks: () => void;
   previewEnabled: boolean;
   onTogglePreview: () => void;
   lockReviewedCues: boolean;
@@ -115,6 +117,8 @@ export function Toolbar({
   onExportProjectBundle,
   onNewBlankProject,
   onCloseProject,
+  hasWaveformPeaks,
+  onShowWaveformPeaks,
   previewEnabled,
   onTogglePreview,
   lockReviewedCues,
@@ -156,6 +160,8 @@ export function Toolbar({
         onExportProjectBundle={onExportProjectBundle}
         onNewBlankProject={onNewBlankProject}
         onCloseProject={onCloseProject}
+        hasWaveformPeaks={hasWaveformPeaks}
+        onShowWaveformPeaks={onShowWaveformPeaks}
       />
       <ProjectNameField
         name={project.name}
