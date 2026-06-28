@@ -1,7 +1,7 @@
 [project]
 name = "diarize"
 version = "0.1.0"
-description = "Add your description here"
+description = "Video-to-whisperx pipeline for subtitles (transcription, alignment, diarization)"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
