@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
 import { storedVideoMeta } from "../lib/stored-video-meta";
 import type { VideoIdentity } from "../types";
+import { useTip } from "./Tooltip";
 
 interface Props {
   open: boolean;
@@ -23,6 +24,7 @@ export function LinkVideoDialog({
   onVideoFile,
   onCancel,
 }: Props) {
+  const tip = useTip();
   const videoInput = useRef<HTMLInputElement>(null);
   const modalRef = useModalFocusTrap(open, onCancel);
   const disabled = !!busy;
@@ -58,7 +60,7 @@ export function LinkVideoDialog({
         <div className="setup-name-field setup-video-field">
           Expected video
           <div className="setup-video-card">
-            <p className="setup-video-file" title={meta.fileName}>
+            <p className="setup-video-file" {...tip(meta.fileName)}>
               {meta.fileName}
             </p>
             <dl className="setup-video-meta">

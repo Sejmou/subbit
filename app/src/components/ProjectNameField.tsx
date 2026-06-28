@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { fallbackProjectName, resolveProjectName } from "../lib/project-meta";
+import { useTip } from "./Tooltip";
 
 interface Props {
   name: string;
@@ -9,6 +10,7 @@ interface Props {
 
 /** Click the title to rename; commits on blur/Enter, Escape cancels. */
 export function ProjectNameField({ name, videoName, onCommit }: Props) {
+  const tip = useTip();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -65,7 +67,7 @@ export function ProjectNameField({ name, videoName, onCommit }: Props) {
       type="button"
       className="project-name-display"
       onClick={() => setEditing(true)}
-      title="Click to rename project"
+      {...tip("Click to rename project")}
     >
       {name}
     </button>

@@ -13,6 +13,7 @@ import {
   replaceMatchInText,
   type TextMatch,
 } from "../lib/find-replace";
+import { useTip } from "./Tooltip";
 import { isReviewedCueLocked } from "../lib/cue-lock";
 import {
   INACTIVE_FIND_HIGHLIGHT,
@@ -52,6 +53,7 @@ export function FindReplaceDialog({
   speakerFilter,
   statusFilter,
 }: Props) {
+  const tip = useTip();
   const replaceSegmentTexts = useProject((s) => s.replaceSegmentTexts);
   const panelRef = useRef<HTMLDivElement>(null);
   const findRef = useRef<HTMLInputElement>(null);
@@ -269,8 +271,8 @@ export function FindReplaceDialog({
           type="button"
           className="find-replace-close"
           onClick={onClose}
-          title="Close"
           aria-label="Close find and replace"
+          {...tip("Close")}
         >
           Close
         </button>

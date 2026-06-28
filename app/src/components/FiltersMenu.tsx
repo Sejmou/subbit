@@ -6,6 +6,7 @@ import {
   REVIEW_STATUS_OPTIONS,
   type ReviewStatusFilter,
 } from "../lib/cue-filters";
+import { useTip } from "./Tooltip";
 
 interface Props {
   project: Project;
@@ -24,6 +25,7 @@ export function FiltersMenu({
   onToggleStatusFilter,
   onClearFilters,
 }: Props) {
+  const tip = useTip();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const filterActive = hasActiveFilters(speakerFilter, statusFilter);
@@ -125,7 +127,7 @@ export function FiltersMenu({
           type="button"
           className="filters-reset-btn"
           onClick={onClearFilters}
-          title="Reset filters"
+          {...tip("Reset filters")}
         >
           Reset
         </button>

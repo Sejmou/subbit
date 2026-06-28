@@ -25,6 +25,11 @@ describe("keyboard-layout", () => {
     expect(k.code("BracketLeft")).toBe("ü");
     expect(k.code("BracketRight")).toBe("+");
     expect(k.shift("BracketLeft")).toBe("Shift + ü");
-    expect(k.code("KeyY")).toBe("z");
+    expect(k.code("KeyY")).toBe("Z");
+  });
+
+  it("uppercases letter keys from the layout map", () => {
+    setKeyboardLayoutMapForTests({ KeyA: "a" });
+    expect(keyLabelForCode("KeyA")).toBe("A");
   });
 });

@@ -7,6 +7,7 @@ import { FileMenu } from "./FileMenu";
 import { ProjectNameField } from "./ProjectNameField";
 import { FiltersMenu } from "./FiltersMenu";
 import type { ReviewStatusFilter } from "../lib/cue-filters";
+import { useTip } from "./Tooltip";
 
 type SaveStateVariant = "saving" | "edited" | "unsaved" | "saved";
 
@@ -70,6 +71,7 @@ function ReviewProgress({
   reviewed: number;
   total: number;
 }) {
+  const tip = useTip();
   const radius = 8;
   const circumference = 2 * Math.PI * radius;
   const ratio = total > 0 ? reviewed / total : 0;
@@ -78,7 +80,7 @@ function ReviewProgress({
   const summary = `${reviewed} of ${total} cues reviewed (${percent}%)`;
 
   return (
-    <span className="review-progress" title={summary} aria-label={summary}>
+    <span className="review-progress" aria-label={summary} {...tip(summary)}>
       <svg className="review-progress-ring" viewBox="0 0 22 22" aria-hidden>
         <circle className="review-progress-track" cx="11" cy="11" r={radius} />
         <circle
@@ -123,6 +125,7 @@ export function Toolbar({
   onToggleStatusFilter,
   onClearFilters,
 }: Props) {
+  const tip = useTip();
   const undo = useProject((s) => s.undo);
   const redo = useProject((s) => s.redo);
   const setProjectName = useProject((s) => s.setProjectName);
@@ -170,20 +173,16 @@ export function Toolbar({
       <ReviewProgress reviewed={reviewed} total={total} />
 
       <span className="btn-group">
-        <button
-          onClick={undo}
-          disabled={!canUndo}
-          title={`Undo (${undoLabel})`}
-        >
-          Undo
-        </button>
-        <button
-          onClick={redo}
-          disabled={!canRedo}
-          title={`Redo (${redoLabel})`}
-        >
-          Redo
-        </button>
+        <span className="tooltip-wrap" {...tip(`Undo (${undoLabel})`)}>
+          <button onClick={undo} disabled={!canUndo}>
+            Undo
+          </button>
+        </span>
+        <span className="tooltip-wrap" {...tip(`Redo (${redoLabel})`)}>
+          <button onClick={redo} disabled={!canRedo}>
+            Redo
+          </button>
+        </span>
       </span>
 
       <span className="spacer" />
@@ -195,7 +194,7 @@ export function Toolbar({
               ? `save-state save-state--${saveState.variant}`
               : "save-state"
           }
-          title={saveState.title}
+          {...tip(saveState.title)}
         >
           {saveState.label}
         </span>
@@ -204,7 +203,9 @@ export function Toolbar({
             previewEnabled ? "preview-btn preview-btn--on" : "preview-btn"
           }
           onClick={onTogglePreview}
-          title={`${previewEnabled ? "Hide" : "Show"} subtitle preview on video (${previewToggleLabel})`}
+          {...tip(
+            `${previewEnabled ? "Hide" : "Show"} subtitle preview on video (${previewToggleLabel})`,
+          )}
         >
           Preview
         </button>
@@ -216,15 +217,15 @@ export function Toolbar({
           }
           aria-pressed={lockReviewedCues}
           onClick={onToggleLockReviewed}
-          title={
+          {...tip(
             lockReviewedCues
               ? "Reviewed cues are locked — click to allow editing reviewed cues"
-              : "Reviewed cues can be edited — click to lock reviewed cues"
-          }
+              : "Reviewed cues can be edited — click to lock reviewed cues",
+          )}
         >
           Lock reviewed
         </button>
-        <button onClick={onHistory} title="Version history">
+        <button onClick={onHistory} {...tip("Version history")}>
           History
         </button>
         <button
@@ -232,24 +233,27 @@ export function Toolbar({
           className={findReplaceOpen ? "find-btn find-btn--on" : "find-btn"}
           aria-pressed={findReplaceOpen}
           onClick={onToggleFindReplace}
-          title={`${findReplaceOpen ? "Close" : "Open"} find & replace (${findReplaceLabel})`}
+          {...tip(
+            `${findReplaceOpen ? "Close" : "Open"} find & replace (${findReplaceLabel})`,
+          )}
         >
           Find…
         </button>
-        <button
-          className={dirty ? "primary save-btn" : "save-btn"}
-          onClick={onSave}
-          disabled={saving}
-          title={`Save project (${saveLabel})`}
-        >
-          Save
-        </button>
+        <span className="tooltip-wrap" {...tip(`Save project (${saveLabel})`)}>
+          <button
+            className={dirty ? "primary save-btn" : "save-btn"}
+            onClick={onSave}
+            disabled={saving}
+          >
+            Save
+          </button>
+        </span>
         <button onClick={onExport}>Export…</button>
         <button
           className="help-btn"
           onClick={onHelp}
-          title="Keyboard shortcuts"
           aria-label="Keyboard shortcuts"
+          {...tip("Keyboard shortcuts")}
         >
           ?
         </button>

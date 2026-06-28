@@ -27,6 +27,7 @@ import {
   secondsToTimecode,
 } from "../lib/timecode";
 import { ProgramStartHelpDialog } from "./ProgramStartHelpDialog";
+import { useTip } from "./Tooltip";
 
 interface Props {
   project: Project;
@@ -38,6 +39,7 @@ interface Props {
  * so it sits next to the timeline marker (Flow 1).
  */
 export function ProgramStartPanel({ project, ready }: Props) {
+  const tip = useTip();
   const setContentStartSeconds = useProject((s) => s.setContentStartSeconds);
   const currentTime = usePlayback((s) => s.currentTime);
   const duration = usePlayback((s) => s.duration);
@@ -140,8 +142,8 @@ export function ProgramStartPanel({ project, ready }: Props) {
           type="button"
           className="program-start-help-btn"
           onClick={() => setHelpOpen(true)}
-          title="About program start"
           aria-label="About program start"
+          {...tip("About program start")}
         >
           ?
         </button>
@@ -169,23 +171,23 @@ export function ProgramStartPanel({ project, ready }: Props) {
           aria-label="Program start timecode"
         />
       </span>
-      <button
-        type="button"
-        disabled={!ready}
-        onClick={setFromPlayhead}
-        title="Use the current playhead position as program start"
+      <span
+        className="tooltip-wrap"
+        {...tip("Use the current playhead position as program start")}
       >
-        Set
-      </button>
-      {contentStart > 0 && (
-        <button
-          type="button"
-          disabled={!ready}
-          onClick={clearStart}
-          title="Clear program start (export from file 00:00:00)"
-        >
-          Clear
+        <button type="button" disabled={!ready} onClick={setFromPlayhead}>
+          Set
         </button>
+      </span>
+      {contentStart > 0 && (
+        <span
+          className="tooltip-wrap"
+          {...tip("Clear program start (export from file 00:00:00)")}
+        >
+          <button type="button" disabled={!ready} onClick={clearStart}>
+            Clear
+          </button>
+        </span>
       )}
       <span className="program-start-sep" aria-hidden />
       <span className="program-start-playhead-fields">
@@ -200,49 +202,55 @@ export function ProgramStartPanel({ project, ready }: Props) {
           <option value="file">File</option>
           <option value="program">Program</option>
         </select>
-        <input
-          className={
-            playheadError
-              ? "program-start-clock-input program-start-input--error"
-              : "program-start-clock-input"
-          }
-          value={playheadDraft}
-          onChange={(e) => {
-            setPlayheadDraft(e.target.value);
-            setPlayheadError(null);
-          }}
-          onFocus={() => {
-            playheadFocused.current = true;
-          }}
-          onBlur={() => {
-            playheadFocused.current = false;
-            applyPlayheadDraft();
-          }}
-          onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              applyPlayheadDraft();
-            }
-          }}
-          size={12}
-          spellCheck={false}
-          disabled={!ready}
-          aria-label={
-            timeReference === "file"
-              ? "Playhead file time"
-              : "Playhead program time"
-          }
-          title={
+        <span
+          className="tooltip-wrap"
+          {...tip(
             timeReference === "file"
               ? "Seek by file time (HH:MM:SS.mmm)"
-              : "Seek by program time (HH:MM:SS.mmm)"
-          }
-        />
+              : "Seek by program time (HH:MM:SS.mmm)",
+          )}
+        >
+          <input
+            className={
+              playheadError
+                ? "program-start-clock-input program-start-input--error"
+                : "program-start-clock-input"
+            }
+            value={playheadDraft}
+            onChange={(e) => {
+              setPlayheadDraft(e.target.value);
+              setPlayheadError(null);
+            }}
+            onFocus={() => {
+              playheadFocused.current = true;
+            }}
+            onBlur={() => {
+              playheadFocused.current = false;
+              applyPlayheadDraft();
+            }}
+            onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                applyPlayheadDraft();
+              }
+            }}
+            size={12}
+            spellCheck={false}
+            disabled={!ready}
+            aria-label={
+              timeReference === "file"
+                ? "Playhead file time"
+                : "Playhead program time"
+            }
+          />
+        </span>
       </span>
       {beforeCount > 0 && (
         <span
           className="program-start-warn"
-          title="These cues start before program start; export times clamp to 00:00:00"
+          {...tip(
+            "These cues start before program start; export times clamp to 00:00:00",
+          )}
         >
           {beforeCount} cue{beforeCount === 1 ? "" : "s"} before program start
         </span>

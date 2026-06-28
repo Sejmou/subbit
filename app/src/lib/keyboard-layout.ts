@@ -35,12 +35,19 @@ function letterFromCode(code: string): string | null {
 /** Human-readable label for one physical key (unmodified). */
 export function keyLabelForCode(code: string): string {
   const fromMap = layoutMap?.get(code);
-  if (fromMap && fromMap.length > 0) return fromMap;
+  let label: string;
+  if (fromMap && fromMap.length > 0) {
+    label = fromMap;
+  } else {
+    const letter = letterFromCode(code);
+    if (letter) label = letter;
+    else label = US_FALLBACK[code] ?? code;
+  }
 
-  const letter = letterFromCode(code);
-  if (letter) return letter;
-
-  return US_FALLBACK[code] ?? code;
+  if (code.startsWith("Key") && label.length === 1 && /[a-z]/i.test(label)) {
+    return label.toUpperCase();
+  }
+  return label;
 }
 
 export interface KeyLabeler {

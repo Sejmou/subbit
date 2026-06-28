@@ -38,6 +38,7 @@ import {
   contentStartSeconds,
 } from "../lib/program-start";
 import { ProgramStartPanel } from "./ProgramStartPanel";
+import { useTip } from "./Tooltip";
 
 /** Peaks.js + Konva struggle with hundreds of segment overlays at once. */
 const MAX_VISIBLE_SEGMENTS = 200;
@@ -72,6 +73,7 @@ const ZOOM_IN_FACTOR = 0.75;
 const ZOOM_OUT_FACTOR = 1 / ZOOM_IN_FACTOR;
 
 export function WaveformTimeline({ project, onImportWaveform }: Props) {
+  const tip = useTip();
   const zoomRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const peaksRef = useRef<PeaksInstance | null>(null);
@@ -630,7 +632,7 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
         <span className="waveform-toolbar-actions">
           <span
             className="waveform-view-range"
-            title="Visible file-time range / total duration"
+            {...tip("Visible file-time range / total duration")}
           >
             {ready && viewRange
               ? formatTimelineViewRange(
@@ -640,30 +642,21 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
                 )
               : "—"}
           </span>
-          <button
-            type="button"
-            onClick={zoomOut}
-            disabled={!ready}
-            title="Zoom out"
-          >
-            −
-          </button>
-          <button
-            type="button"
-            onClick={zoomIn}
-            disabled={!ready}
-            title="Zoom in"
-          >
-            +
-          </button>
-          <button
-            type="button"
-            onClick={fitWidth}
-            disabled={!ready}
-            title="Fit entire video"
-          >
-            Fit
-          </button>
+          <span className="tooltip-wrap" {...tip("Zoom out")}>
+            <button type="button" onClick={zoomOut} disabled={!ready}>
+              −
+            </button>
+          </span>
+          <span className="tooltip-wrap" {...tip("Zoom in")}>
+            <button type="button" onClick={zoomIn} disabled={!ready}>
+              +
+            </button>
+          </span>
+          <span className="tooltip-wrap" {...tip("Fit entire video")}>
+            <button type="button" onClick={fitWidth} disabled={!ready}>
+              Fit
+            </button>
+          </span>
         </span>
         {!ready && !initError && (
           <span className="waveform-status">Loading timeline…</span>
@@ -684,8 +677,8 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
                   type="button"
                   className="waveform-import-btn"
                   onClick={() => setPeaksHelpOpen(true)}
-                  title="Import waveform peaks"
                   aria-label="Import waveform peaks"
+                  {...tip("Import waveform peaks")}
                 >
                   Import
                 </button>
@@ -708,7 +701,10 @@ export function WaveformTimeline({ project, onImportWaveform }: Props) {
         <div
           className="waveform-zoom"
           ref={zoomRef}
-          title="Scroll to zoom; Shift+scroll to pan"
+          {...tip("Scroll to zoom; Shift + scroll to pan", {
+            anchor: "cursor",
+            hideOnWheel: true,
+          })}
         />
       </div>
       <WaveformPeaksHelpDialog

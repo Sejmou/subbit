@@ -14,6 +14,8 @@ import {
   cueDisplayTimecode,
   cueTimecodeToFileSeconds,
 } from "../lib/display-time";
+import { useShortcutLabel } from "../hooks/useShortcutLabel";
+import { useTip } from "./Tooltip";
 
 interface Props {
   cueId: string;
@@ -30,6 +32,12 @@ export function CueTimeField({
   kind,
   locked = false,
 }: Props) {
+  const tip = useTip();
+  const setInLabel = useShortcutLabel("set-in");
+  const setOutLabel = useShortcutLabel("set-out");
+  const nudgeInLabel = useShortcutLabel("nudge-in-earlier");
+  const nudgeOutLabel = useShortcutLabel("nudge-out-earlier");
+  const seekToCueLabel = useShortcutLabel("seek-to-cue");
   const setCueStart = useProject((s) => s.setCueStart);
   const setCueEnd = useProject((s) => s.setCueEnd);
   const seek = usePlayback((s) => s.seek);
@@ -91,7 +99,19 @@ export function CueTimeField({
   };
 
   const label = kind === "in" ? "In" : "Out";
-  const jumpTitle = kind === "in" ? "Jump to In" : "Jump to Out";
+  const jumpTitle =
+    kind === "in"
+      ? locked
+        ? undefined
+        : `Jump to In (${seekToCueLabel})`
+      : locked
+        ? undefined
+        : "Jump to Out";
+  const editTitle = locked
+    ? "Reviewed (locked) — uncheck to edit"
+    : kind === "in"
+      ? `In time (${setInLabel} set to playhead, ${nudgeInLabel} nudge)`
+      : `Out time (${setOutLabel} set to playhead, ${nudgeOutLabel} nudge)`;
 
   return (
     <div className="cue-time-field" onMouseDown={(e) => e.stopPropagation()}>
@@ -105,7 +125,7 @@ export function CueTimeField({
         spellCheck={false}
         aria-label={`${label} time`}
         readOnly={locked}
-        title={locked ? "Reviewed (locked) — uncheck to edit" : undefined}
+        {...tip(editTitle)}
         onFocus={() => {
           focused.current = true;
         }}
@@ -122,9 +142,9 @@ export function CueTimeField({
       <button
         type="button"
         className="cue-time-jump"
-        title={jumpTitle}
         aria-label={jumpTitle}
         onClick={() => seek(fileSeconds)}
+        {...tip(jumpTitle)}
       >
         ↗
       </button>

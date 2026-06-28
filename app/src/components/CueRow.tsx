@@ -7,6 +7,7 @@ import { openRolePicker, NO_ROLE_LABEL } from "../lib/role-picker";
 import { isReviewedCueLocked } from "../lib/cue-lock";
 import { useShortcutLabel } from "../hooks/useShortcutLabel";
 import { CueTimeField } from "./CueTimeField";
+import { useTip } from "./Tooltip";
 import type { FocusCueDetail } from "../lib/focus-cue";
 import {
   buildHighlightChunks,
@@ -153,6 +154,9 @@ function CueRowImpl({
   } = useProject();
   const cycleShotLabel = useShortcutLabel("cycle-shot");
   const deleteCueLabel = useShortcutLabel("delete-cue");
+  const assignRoleLabel = useShortcutLabel("assign-role");
+  const toggleReviewedLabel = useShortcutLabel("toggle-reviewed");
+  const tip = useTip();
   useLockReviewedStore((s) => s.enabled);
   const locked = isReviewedCueLocked(cue);
 
@@ -202,7 +206,11 @@ function CueRowImpl({
           type="checkbox"
           checked={!!cue.reviewed}
           onChange={() => toggleReviewed(cue.id)}
-          title={locked ? "Reviewed (locked) — uncheck to edit" : "Reviewed"}
+          {...tip(
+            locked
+              ? "Reviewed (locked) — uncheck to edit"
+              : `Reviewed (${toggleReviewedLabel})`,
+          )}
         />
       </div>
 
@@ -223,51 +231,59 @@ function CueRowImpl({
         />
       </div>
 
-      <button
-        type="button"
-        className="speaker-select role-trigger"
-        title={
+      <span
+        className="tooltip-wrap"
+        {...tip(
           locked
             ? "Reviewed (locked) — uncheck to assign role"
-            : "Assign role (A)"
-        }
-        style={{ color: speaker?.color }}
-        disabled={locked}
-        onClick={(e) => {
-          if (locked) return;
-          e.stopPropagation();
-          selectCue(cue.id);
-          openRolePicker(cue.id);
-        }}
+            : `Assign role (${assignRoleLabel})`,
+        )}
       >
-        <span className="role-trigger-label">
-          {speaker?.name?.trim() || NO_ROLE_LABEL}
-        </span>
-        <span className="role-trigger-chevron" aria-hidden>
-          ▾
-        </span>
-      </button>
+        <button
+          type="button"
+          className="speaker-select role-trigger"
+          style={{ color: speaker?.color }}
+          disabled={locked}
+          onClick={(e) => {
+            if (locked) return;
+            e.stopPropagation();
+            selectCue(cue.id);
+            openRolePicker(cue.id);
+          }}
+        >
+          <span className="role-trigger-label">
+            {speaker?.name?.trim() || NO_ROLE_LABEL}
+          </span>
+          <span className="role-trigger-chevron" aria-hidden>
+            ▾
+          </span>
+        </button>
+      </span>
 
       <div className="cue-segments">
         {cue.segments.map((seg, i) => (
           <div key={i} className="segment">
-            <select
-              className="shot-select"
-              value={seg.shot}
-              disabled={locked}
-              onChange={(e) => setSegmentShot(cue.id, i, e.target.value)}
-              title={
+            <span
+              className="tooltip-wrap"
+              {...tip(
                 locked
                   ? "Reviewed (locked) — uncheck to change shot"
-                  : `Cycle shot type (${cycleShotLabel})`
-              }
+                  : `Cycle shot type (${cycleShotLabel})`,
+              )}
             >
-              {project.shots.map((sh) => (
-                <option key={sh.id} value={sh.id}>
-                  {sh.id}
-                </option>
-              ))}
-            </select>
+              <select
+                className="shot-select"
+                value={seg.shot}
+                disabled={locked}
+                onChange={(e) => setSegmentShot(cue.id, i, e.target.value)}
+              >
+                {project.shots.map((sh) => (
+                  <option key={sh.id} value={sh.id}>
+                    {sh.id}
+                  </option>
+                ))}
+              </select>
+            </span>
             <SegmentTextarea
               inputRef={i === 0 ? firstTextarea : undefined}
               cueId={cue.id}
@@ -288,24 +304,28 @@ function CueRowImpl({
         ))}
       </div>
 
-      <button
-        type="button"
-        className="cue-delete-btn"
-        title={
+      <span
+        className="tooltip-wrap"
+        {...tip(
           locked
             ? "Reviewed (locked) — uncheck to delete"
-            : `Delete cue (${deleteCueLabel})`
-        }
-        aria-label={`Delete cue ${index + 1}`}
-        disabled={locked}
-        onClick={(e) => {
-          if (locked) return;
-          e.stopPropagation();
-          deleteCue(cue.id);
-        }}
+            : `Delete cue (${deleteCueLabel})`,
+        )}
       >
-        <TrashIcon />
-      </button>
+        <button
+          type="button"
+          className="cue-delete-btn"
+          aria-label={`Delete cue ${index + 1}`}
+          disabled={locked}
+          onClick={(e) => {
+            if (locked) return;
+            e.stopPropagation();
+            deleteCue(cue.id);
+          }}
+        >
+          <TrashIcon />
+        </button>
+      </span>
     </div>
   );
 }

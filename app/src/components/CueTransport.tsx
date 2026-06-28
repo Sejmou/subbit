@@ -6,6 +6,7 @@ import { useShortcutLabel } from "../hooks/useShortcutLabel";
 import { isReviewedCueLocked } from "../lib/cue-lock";
 import { cueDisplayTimecode } from "../lib/display-time";
 import { useTimeReference } from "../store/time-reference";
+import { useTip } from "./Tooltip";
 
 const OFF_CUE_THRESHOLD_S = 0.3;
 
@@ -45,6 +46,7 @@ function formatDrift(seconds: number): string {
 
 /** Compact cue transport in the timeline toolbar. */
 export function CueTransport({ project }: { project: Project }) {
+  const tip = useTip();
   const selectedCueId = useProject((s) => s.selectedCueId);
   const selectCue = useProject((s) => s.selectCue);
   const setCueStart = useProject((s) => s.setCueStart);
@@ -108,27 +110,32 @@ export function CueTransport({ project }: { project: Project }) {
         )}
       </span>
 
-      <button
-        type="button"
-        className="cue-transport-btn"
-        disabled={!canPrev}
-        onClick={selectPrev}
-        title={`Previous cue (${previousCueLabel})`}
-        aria-label="Previous cue"
+      <span
+        className="tooltip-wrap"
+        {...tip(`Previous cue (${previousCueLabel})`)}
       >
-        <ChevronLeftIcon />
-      </button>
+        <button
+          type="button"
+          className="cue-transport-btn"
+          disabled={!canPrev}
+          onClick={selectPrev}
+          aria-label="Previous cue"
+        >
+          <ChevronLeftIcon />
+        </button>
+      </span>
 
-      <button
-        type="button"
-        className="cue-transport-btn"
-        disabled={!canNext}
-        onClick={selectNext}
-        title={`Next cue (${nextCueLabel})`}
-        aria-label="Next cue"
-      >
-        <ChevronRightIcon />
-      </button>
+      <span className="tooltip-wrap" {...tip(`Next cue (${nextCueLabel})`)}>
+        <button
+          type="button"
+          className="cue-transport-btn"
+          disabled={!canNext}
+          onClick={selectNext}
+          aria-label="Next cue"
+        >
+          <ChevronRightIcon />
+        </button>
+      </span>
 
       <span className="cue-transport-sep" aria-hidden />
 
@@ -137,29 +144,34 @@ export function CueTransport({ project }: { project: Project }) {
         <span className="cue-transport-tc">
           {hasCue ? cueDisplayTimecode(cue.start, project, timeReference) : "—"}
         </span>
-        <button
-          type="button"
-          className={`cue-transport-mark-btn${offIn ? " cue-transport-mark-btn--warn" : ""}`}
-          disabled={!hasCue}
-          onClick={() => cue && seek(cue.start)}
-          title={jumpInTitle}
-          aria-label="Jump to In"
-        >
-          ↗
-        </button>
-        <button
-          type="button"
-          className="cue-transport-set-btn"
-          disabled={!hasCue || cueLocked}
-          onClick={() => cue && setCueStart(cue.id, currentTime)}
-          title={
+        <span className="tooltip-wrap" {...tip(jumpInTitle)}>
+          <button
+            type="button"
+            className={`cue-transport-mark-btn${offIn ? " cue-transport-mark-btn--warn" : ""}`}
+            disabled={!hasCue}
+            onClick={() => cue && seek(cue.start)}
+            aria-label="Jump to In"
+          >
+            ↗
+          </button>
+        </span>
+        <span
+          className="tooltip-wrap"
+          {...tip(
             cueLocked
               ? "Reviewed (locked) — uncheck to set In"
-              : `Set In to playhead (${setInLabel})`
-          }
+              : `Set In to playhead (${setInLabel})`,
+          )}
         >
-          Set
-        </button>
+          <button
+            type="button"
+            className="cue-transport-set-btn"
+            disabled={!hasCue || cueLocked}
+            onClick={() => cue && setCueStart(cue.id, currentTime)}
+          >
+            Set
+          </button>
+        </span>
       </div>
 
       <div className="cue-transport-boundary">
@@ -167,29 +179,34 @@ export function CueTransport({ project }: { project: Project }) {
         <span className="cue-transport-tc">
           {hasCue ? cueDisplayTimecode(cue.end, project, timeReference) : "—"}
         </span>
-        <button
-          type="button"
-          className={`cue-transport-mark-btn${offOut ? " cue-transport-mark-btn--warn" : ""}`}
-          disabled={!hasCue}
-          onClick={() => cue && seek(cue.end)}
-          title={jumpOutTitle}
-          aria-label="Jump to Out"
-        >
-          ↗
-        </button>
-        <button
-          type="button"
-          className="cue-transport-set-btn"
-          disabled={!hasCue || cueLocked}
-          onClick={() => cue && setCueEnd(cue.id, currentTime)}
-          title={
+        <span className="tooltip-wrap" {...tip(jumpOutTitle)}>
+          <button
+            type="button"
+            className={`cue-transport-mark-btn${offOut ? " cue-transport-mark-btn--warn" : ""}`}
+            disabled={!hasCue}
+            onClick={() => cue && seek(cue.end)}
+            aria-label="Jump to Out"
+          >
+            ↗
+          </button>
+        </span>
+        <span
+          className="tooltip-wrap"
+          {...tip(
             cueLocked
               ? "Reviewed (locked) — uncheck to set Out"
-              : `Set Out to playhead (${setOutLabel})`
-          }
+              : `Set Out to playhead (${setOutLabel})`,
+          )}
         >
-          Set
-        </button>
+          <button
+            type="button"
+            className="cue-transport-set-btn"
+            disabled={!hasCue || cueLocked}
+            onClick={() => cue && setCueEnd(cue.id, currentTime)}
+          >
+            Set
+          </button>
+        </span>
       </div>
     </div>
   );

@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import type { Project } from "../types";
 import { SubtitlePreview } from "./SubtitlePreview";
+import { useTip } from "./Tooltip";
+import { useShortcutLabel } from "../hooks/useShortcutLabel";
 import { usePlayback } from "../store/playback";
 
 /**
@@ -17,8 +19,10 @@ export function VideoPlayer({
   previewEnabled: boolean;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
+  const tip = useTip();
   const { setVideoEl, setTime, setDuration, setPlaying, togglePlay } =
     usePlayback();
+  const playPauseLabel = useShortcutLabel("play-pause");
 
   useEffect(() => {
     const el = ref.current;
@@ -67,7 +71,7 @@ export function VideoPlayer({
         src={src}
         preload="metadata"
         onClick={() => togglePlay()}
-        title="Click or press Space to play / pause"
+        {...tip(`Click or press ${playPauseLabel} to play / pause`)}
       />
       {previewEnabled && <SubtitlePreview project={project} />}
     </div>

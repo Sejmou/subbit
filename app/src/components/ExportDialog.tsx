@@ -13,6 +13,7 @@ import {
 } from "../lib/program-start";
 import { secondsToTimecode } from "../lib/timecode";
 import { useProject } from "../store/project";
+import { useTip } from "./Tooltip";
 
 interface Props {
   open: boolean;
@@ -22,6 +23,7 @@ interface Props {
 
 /** Choose export format and run export. */
 export function ExportDialog({ open, onExport, onClose }: Props) {
+  const tip = useTip();
   const [format, setFormat] = useState<ExportFormat>("ass");
   const [speakerLabels, setSpeakerLabels] = useState(
     DEFAULT_DIARIZED_EXPORT_OPTIONS.speakerLabels,
@@ -183,7 +185,9 @@ export function ExportDialog({ open, onExport, onClose }: Props) {
                 onChange={(e) => setTimecodeOffset(e.target.value)}
                 size={11}
                 spellCheck={false}
-                title="Added on top of program time for SMPTE delivery (HH:MM:SS:FF)"
+                {...tip(
+                  "Added on top of program time for SMPTE delivery (HH:MM:SS:FF)",
+                )}
               />
             </label>
             <p className="hint">

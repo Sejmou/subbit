@@ -2,9 +2,11 @@ import { useState } from "react";
 import type { Project } from "../types";
 import { isSpeakerReferenced } from "../lib/speaker-refs";
 import { useProject } from "../store/project";
+import { useTip } from "./Tooltip";
 
 /** Maps diarization labels to real character names (Rolle). */
 export function SpeakerPanel({ project }: { project: Project }) {
+  const tip = useTip();
   const { renameSpeaker, setSpeakerColor, addSpeaker, removeSpeaker } =
     useProject();
   const [adding, setAdding] = useState(false);
@@ -35,7 +37,7 @@ export function SpeakerPanel({ project }: { project: Project }) {
                 type="color"
                 value={s.color}
                 onChange={(e) => setSpeakerColor(s.id, e.target.value)}
-                title="Color"
+                {...tip("Color")}
               />
               <input
                 className="speaker-name"
@@ -44,20 +46,24 @@ export function SpeakerPanel({ project }: { project: Project }) {
                 aria-label={`Name for ${displayName}`}
                 onChange={(e) => renameSpeaker(s.id, e.target.value)}
               />
-              <button
-                type="button"
-                className="speaker-remove-btn"
-                title={
+              <span
+                className="tooltip-wrap"
+                {...tip(
                   referenced
                     ? `${displayName} is assigned to cues and cannot be removed`
-                    : `Remove ${displayName}`
-                }
-                disabled={referenced}
-                aria-label={`Remove ${displayName}`}
-                onClick={() => removeSpeaker(s.id)}
+                    : `Remove ${displayName}`,
+                )}
               >
-                ×
-              </button>
+                <button
+                  type="button"
+                  className="speaker-remove-btn"
+                  disabled={referenced}
+                  aria-label={`Remove ${displayName}`}
+                  onClick={() => removeSpeaker(s.id)}
+                >
+                  ×
+                </button>
+              </span>
             </li>
           );
         })}

@@ -9,6 +9,7 @@ import {
   type VersionMeta,
 } from "../lib/history";
 import { formatRelativeTime } from "../lib/relative-time";
+import { useTip } from "./Tooltip";
 
 interface Props {
   open: boolean;
@@ -31,6 +32,7 @@ function formatSize(bytes: number): string {
 
 /** Modal listing persisted project snapshots, with restore / snapshot / delete. */
 export function HistoryPanel({ open, onClose, project, onRestore }: Props) {
+  const tip = useTip();
   const [versions, setVersions] = useState<VersionMeta[]>([]);
   const [loading, setLoading] = useState(false);
   const [label, setLabel] = useState("");
@@ -159,8 +161,8 @@ export function HistoryPanel({ open, onClose, project, onRestore }: Props) {
                     <button
                       className="danger"
                       onClick={() => void onDelete(v.id)}
-                      title="Delete this version"
                       aria-label="Delete this version"
+                      {...tip("Delete this version")}
                     >
                       ✕
                     </button>

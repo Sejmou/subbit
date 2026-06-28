@@ -370,6 +370,27 @@
 }
 
 /* ---- waveform timeline (peaks.js) ---- */
+.tooltip-wrap {
+  display: inline-flex;
+  max-width: 100%;
+}
+.tooltip-wrap > :disabled {
+  pointer-events: none;
+}
+.app-tooltip {
+  position: fixed;
+  z-index: 10000;
+  max-width: min(360px, calc(100vw - 16px));
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(40, 44, 52, 0.96);
+  color: #eee;
+  font-size: 12px;
+  line-height: 1.35;
+  pointer-events: none;
+  white-space: pre-wrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
 .waveform-pane {
   flex-shrink: 0;
   height: 132px;

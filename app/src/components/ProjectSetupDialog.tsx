@@ -9,6 +9,7 @@ import {
   SetupManualIcon,
   SetupNewProjectIcon,
 } from "./SetupChoiceIcons";
+import { useTip } from "./Tooltip";
 
 interface Props {
   open: boolean;
@@ -68,6 +69,7 @@ export function ProjectSetupDialog({
   onImportWhisperx,
   onAnnotateManually,
 }: Props) {
+  const tip = useTip();
   const modalRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const disabled = !!busy;
@@ -214,7 +216,7 @@ export function ProjectSetupDialog({
           <div className="setup-name-field setup-video-field">
             You&apos;ll be working on subtitles for:
             <div className="setup-video-card">
-              <p className="setup-video-file" title={meta.fileName}>
+              <p className="setup-video-file" {...tip(meta.fileName)}>
                 {meta.fileName}
               </p>
               <dl className="setup-video-meta">
