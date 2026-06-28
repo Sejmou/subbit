@@ -64,8 +64,10 @@ function HelpTutorial() {
         <p>
           Sometimes one line covers two shots — you will see two text boxes and
           two shot dropdowns in the same row. Tick <strong>reviewed</strong>{" "}
-          when you are happy with a line. Roles are edited in the panel under
-          the video; pick a role on each cue with the role button.
+          when you are happy with a line. With <strong>Lock reviewed</strong> on
+          (toolbar), reviewed lines cannot be edited until you untick reviewed.
+          Roles are edited in the panel under the video; pick a role on each cue
+          with the role button.
         </p>
       </section>
 

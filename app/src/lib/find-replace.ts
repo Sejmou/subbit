@@ -1,4 +1,5 @@
 import type { Cue } from "../types";
+import { isReviewedCueLocked } from "./cue-lock";
 
 export interface TextMatch {
   cueId: string;
@@ -72,6 +73,18 @@ export interface SegmentTextUpdate {
   cueId: string;
   segIndex: number;
   text: string;
+}
+
+/** Matches in cues that are not locked by reviewed status. */
+export function filterReplaceableMatches(
+  matches: readonly TextMatch[],
+  cues: readonly Cue[],
+): TextMatch[] {
+  const lockedIds = new Set(
+    cues.filter((c) => isReviewedCueLocked(c)).map((c) => c.id),
+  );
+  if (lockedIds.size === 0) return [...matches];
+  return matches.filter((m) => !lockedIds.has(m.cueId));
 }
 
 /** Build segment text updates for replace-all across many matches. */

@@ -1,8 +1,10 @@
 import { memo, useEffect, useMemo, useRef, type RefObject } from "react";
 import type { Cue, Project } from "../types";
 import { useProject } from "../store/project";
+import { useLockReviewedStore } from "../store/lock-reviewed";
 import { useAutosizeTextarea } from "../hooks/useAutosizeTextarea";
 import { openRolePicker, NO_ROLE_LABEL } from "../lib/role-picker";
+import { isReviewedCueLocked } from "../lib/cue-lock";
 import { useShortcutLabel } from "../hooks/useShortcutLabel";
 import { CueTimeField } from "./CueTimeField";
 import type { FocusCueDetail } from "../lib/focus-cue";
@@ -49,6 +51,7 @@ interface SegmentTextareaProps {
   cueId: string;
   segIndex: number;
   value: string;
+  readOnly?: boolean;
   onFocus: () => void;
   onChange: (value: string) => void;
   findHighlight?: FindHighlightState;
@@ -60,6 +63,7 @@ function SegmentTextarea({
   cueId,
   segIndex,
   value,
+  readOnly = false,
   onFocus,
   onChange,
   findHighlight = INACTIVE_FIND_HIGHLIGHT,
@@ -96,6 +100,7 @@ function SegmentTextarea({
       data-seg-index={segIndex}
       rows={1}
       value={value}
+      readOnly={readOnly}
       onFocus={onFocus}
       onChange={(e) => onChange(e.target.value)}
     />
@@ -148,6 +153,8 @@ function CueRowImpl({
   } = useProject();
   const cycleShotLabel = useShortcutLabel("cycle-shot");
   const deleteCueLabel = useShortcutLabel("delete-cue");
+  useLockReviewedStore((s) => s.enabled);
+  const locked = isReviewedCueLocked(cue);
 
   // Focus this row's text when navigation mode requests editing.
   useEffect(() => {
@@ -156,6 +163,7 @@ function CueRowImpl({
       const detail: FocusCueDetail =
         typeof raw === "string" ? { cueId: raw, scroll: "auto" } : raw;
       if (detail.cueId !== cue.id) return;
+      if (locked) return;
 
       const segIndex = detail.segIndex ?? 0;
       const el =
@@ -169,7 +177,7 @@ function CueRowImpl({
     }
     window.addEventListener("subbit:edit", onEdit);
     return () => window.removeEventListener("subbit:edit", onEdit);
-  }, [cue.id]);
+  }, [cue.id, locked]);
 
   const speaker = project.speakers.find((s) => s.id === cue.speakerId);
   const cls = [
@@ -177,6 +185,7 @@ function CueRowImpl({
     selected && "selected",
     active && "active",
     cue.reviewed && "reviewed",
+    locked && "reviewed-locked",
   ]
     .filter(Boolean)
     .join(" ");
@@ -193,7 +202,7 @@ function CueRowImpl({
           type="checkbox"
           checked={!!cue.reviewed}
           onChange={() => toggleReviewed(cue.id)}
-          title="Reviewed"
+          title={locked ? "Reviewed (locked) — uncheck to edit" : "Reviewed"}
         />
       </div>
 
@@ -203,21 +212,29 @@ function CueRowImpl({
           fileSeconds={cue.start}
           project={project}
           kind="in"
+          locked={locked}
         />
         <CueTimeField
           cueId={cue.id}
           fileSeconds={cue.end}
           project={project}
           kind="out"
+          locked={locked}
         />
       </div>
 
       <button
         type="button"
         className="speaker-select role-trigger"
-        title="Assign role (A)"
+        title={
+          locked
+            ? "Reviewed (locked) — uncheck to assign role"
+            : "Assign role (A)"
+        }
         style={{ color: speaker?.color }}
+        disabled={locked}
         onClick={(e) => {
+          if (locked) return;
           e.stopPropagation();
           selectCue(cue.id);
           openRolePicker(cue.id);
@@ -237,8 +254,13 @@ function CueRowImpl({
             <select
               className="shot-select"
               value={seg.shot}
+              disabled={locked}
               onChange={(e) => setSegmentShot(cue.id, i, e.target.value)}
-              title={`Cycle shot type (${cycleShotLabel})`}
+              title={
+                locked
+                  ? "Reviewed (locked) — uncheck to change shot"
+                  : `Cycle shot type (${cycleShotLabel})`
+              }
             >
               {project.shots.map((sh) => (
                 <option key={sh.id} value={sh.id}>
@@ -251,6 +273,7 @@ function CueRowImpl({
               cueId={cue.id}
               segIndex={i}
               value={seg.text}
+              readOnly={locked}
               findHighlight={findHighlight}
               segmentMatches={
                 segmentMatchIndex?.get(segmentMatchKey(cue.id, i)) ?? []
@@ -268,9 +291,15 @@ function CueRowImpl({
       <button
         type="button"
         className="cue-delete-btn"
-        title={`Delete cue (${deleteCueLabel})`}
+        title={
+          locked
+            ? "Reviewed (locked) — uncheck to delete"
+            : `Delete cue (${deleteCueLabel})`
+        }
         aria-label={`Delete cue ${index + 1}`}
+        disabled={locked}
         onClick={(e) => {
+          if (locked) return;
           e.stopPropagation();
           deleteCue(cue.id);
         }}

@@ -1,4 +1,5 @@
 import type { Cue, Project } from "../../types";
+import { isReviewedCueLocked } from "../cue-lock";
 import { frameDuration } from "../timecode";
 import { usePlayback } from "../../store/playback";
 import { useProject } from "../../store/project";
@@ -18,6 +19,8 @@ export interface ShortcutContext {
   project: Project | null;
   cue: Cue | null;
   cueIndex: number;
+  /** Selected cue is reviewed-locked (edits blocked until unreviewed). */
+  cueLocked: boolean;
   frame: number;
   caret: Caret | null;
   ps: ProjectState;
@@ -62,6 +65,7 @@ export function buildShortcutContext(
     project,
     cue,
     cueIndex,
+    cueLocked: cue ? isReviewedCueLocked(cue) : false,
     frame: project ? frameDuration(project.fps) : 0,
     caret: activeCaret(),
     ps,

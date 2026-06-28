@@ -46,6 +46,7 @@ import {
 } from "./lib/project-meta";
 import { useShortcuts } from "./hooks/useShortcuts";
 import { useKeyboardLayoutStore } from "./store/keyboard-layout";
+import { useLockReviewedStore } from "./store/lock-reviewed";
 import { LoadScreen } from "./components/LoadScreen";
 import { ProjectSetupDialog } from "./components/ProjectSetupDialog";
 import { VideoPlayer } from "./components/VideoPlayer";
@@ -116,6 +117,8 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const [unsavedOpen, setUnsavedOpen] = useState(false);
   const [previewEnabled, setPreviewEnabled] = useState(readPreviewEnabled);
+  const lockReviewedCues = useLockReviewedStore((s) => s.enabled);
+  const toggleLockReviewed = useLockReviewedStore((s) => s.toggle);
   const [speakerFilter, setSpeakerFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<ReviewStatusFilter[]>([]);
   const [rolePickerCueId, setRolePickerCueId] = useState<string | null>(null);
@@ -743,6 +746,8 @@ export default function App() {
         onCloseProject={() => void doCloseProject()}
         previewEnabled={previewEnabled}
         onTogglePreview={togglePreview}
+        lockReviewedCues={lockReviewedCues}
+        onToggleLockReviewed={toggleLockReviewed}
         speakerFilter={speakerFilter}
         statusFilter={statusFilter}
         onToggleSpeakerFilter={toggleSpeakerFilter}

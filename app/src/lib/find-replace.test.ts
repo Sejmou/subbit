@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Cue } from "../types";
 import {
   buildReplaceAllUpdates,
+  filterReplaceableMatches,
   findTextMatches,
   replaceMatchInText,
   replaceMatchesInText,
@@ -69,5 +70,15 @@ describe("replace helpers", () => {
       { cueId: "a", segIndex: 0, text: "hi hi" },
       { cueId: "b", segIndex: 0, text: "hi" },
     ]);
+  });
+});
+
+describe("filterReplaceableMatches", () => {
+  it("drops matches in reviewed locked cues", () => {
+    const locked = { ...cues[1], reviewed: true };
+    const all = findTextMatches(cues, "hello");
+    const filtered = filterReplaceableMatches(all, [cues[0], locked]);
+    expect(filtered.every((m) => m.cueId !== "b")).toBe(true);
+    expect(filtered.length).toBeLessThan(all.length);
   });
 });

@@ -1,6 +1,7 @@
 import { MOD_LABEL } from "./mod-label";
 import type { ShortcutContext } from "./context";
 import { focusCueForEdit } from "../focus-cue";
+import { isReviewedCueLocked } from "../cue-lock";
 import { openRolePicker } from "../role-picker";
 import { createKeyLabeler, type KeyLabeler } from "../keyboard-layout";
 
@@ -26,6 +27,17 @@ function mod(e: KeyEvent): boolean {
 /** True when no platform modifier is held — avoids stealing Cmd+R, Cmd+S in the browser, etc. */
 function plainKey(e: KeyEvent): boolean {
   return !e.metaKey && !e.ctrlKey && !e.altKey;
+}
+
+function canEditSelectedCue(ctx: ShortcutContext): boolean {
+  return !!ctx.cue && !ctx.cueLocked;
+}
+
+function caretCueLocked(ctx: ShortcutContext): boolean {
+  const caret = ctx.caret;
+  if (!caret || !ctx.project) return false;
+  const c = ctx.project.cues.find((cue) => cue.id === caret.cueId);
+  return c ? isReviewedCueLocked(c) : false;
 }
 
 /** Main or numpad 0 — layout-independent (Shift+0 is ")" on US keyboards). */
@@ -139,7 +151,11 @@ export const SHORTCUTS: ShortcutDef[] = [
     label: (m, k) => k.join([m, k.code("Enter")]),
     description: "Split cue at the caret + playhead",
     match: (e, ctx) =>
-      !!ctx.project && mod(e) && e.key === "Enter" && !!ctx.caret,
+      !!ctx.project &&
+      mod(e) &&
+      e.key === "Enter" &&
+      !!ctx.caret &&
+      !caretCueLocked(ctx),
     run: (ctx) => {
       const caret = ctx.caret!;
       ctx.ps.splitCueAtCaret(
@@ -161,7 +177,8 @@ export const SHORTCUTS: ShortcutDef[] = [
       mod(e) &&
       e.shiftKey &&
       (e.key === "S" || e.key === "s") &&
-      !!ctx.caret,
+      !!ctx.caret &&
+      !caretCueLocked(ctx),
     run: (ctx) => {
       const caret = ctx.caret!;
       ctx.ps.insertShotSplit(caret.cueId, caret.segIndex, caret.offset);
@@ -314,7 +331,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     label: (_, k) => k.code("KeyI"),
     description: "Set cue In to the playhead",
     match: (e, ctx) =>
-      plainKey(e) && !ctx.editing && !!ctx.cue && e.key === "i",
+      plainKey(e) && !ctx.editing && canEditSelectedCue(ctx) && e.key === "i",
     run: (ctx) => ctx.ps.setCueStart(ctx.cue!.id, ctx.pb.currentTime),
   },
   {
@@ -323,7 +340,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     label: (_, k) => k.code("KeyO"),
     description: "Set cue Out to the playhead",
     match: (e, ctx) =>
-      plainKey(e) && !ctx.editing && !!ctx.cue && e.key === "o",
+      plainKey(e) && !ctx.editing && canEditSelectedCue(ctx) && e.key === "o",
     run: (ctx) => ctx.ps.setCueEnd(ctx.cue!.id, ctx.pb.currentTime),
   },
   {
@@ -332,7 +349,10 @@ export const SHORTCUTS: ShortcutDef[] = [
     label: (_, k) => `${k.code("BracketLeft")} / ${k.code("BracketRight")}`,
     description: "Nudge In earlier / later (Shift = 10 frames)",
     match: (e, ctx) =>
-      plainKey(e) && !ctx.editing && !!ctx.cue && isBracketLeftKey(e),
+      plainKey(e) &&
+      !ctx.editing &&
+      canEditSelectedCue(ctx) &&
+      isBracketLeftKey(e),
     run: (ctx, e) => ctx.ps.nudgeCueStart(ctx.cue!.id, -nudgeStep(ctx, e)),
   },
   {
@@ -342,7 +362,10 @@ export const SHORTCUTS: ShortcutDef[] = [
     description: "Nudge In earlier / later (Shift = 10 frames)",
     showInHelp: false,
     match: (e, ctx) =>
-      plainKey(e) && !ctx.editing && !!ctx.cue && isBracketRightKey(e),
+      plainKey(e) &&
+      !ctx.editing &&
+      canEditSelectedCue(ctx) &&
+      isBracketRightKey(e),
     run: (ctx, e) => ctx.ps.nudgeCueStart(ctx.cue!.id, nudgeStep(ctx, e)),
   },
   {
@@ -351,7 +374,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     label: (_, k) => `${k.code("Quote")} / ${k.code("Backslash")}`,
     description: "Nudge Out earlier / later (Shift = 10 frames)",
     match: (e, ctx) =>
-      plainKey(e) && !ctx.editing && !!ctx.cue && isQuoteKey(e),
+      plainKey(e) && !ctx.editing && canEditSelectedCue(ctx) && isQuoteKey(e),
     run: (ctx, e) => ctx.ps.nudgeCueEnd(ctx.cue!.id, -nudgeStep(ctx, e)),
   },
   {
@@ -361,7 +384,10 @@ export const SHORTCUTS: ShortcutDef[] = [
     description: "Nudge Out earlier / later (Shift = 10 frames)",
     showInHelp: false,
     match: (e, ctx) =>
-      plainKey(e) && !ctx.editing && !!ctx.cue && isBackslashKey(e),
+      plainKey(e) &&
+      !ctx.editing &&
+      canEditSelectedCue(ctx) &&
+      isBackslashKey(e),
     run: (ctx, e) => ctx.ps.nudgeCueEnd(ctx.cue!.id, nudgeStep(ctx, e)),
   },
   {
@@ -445,7 +471,7 @@ export const SHORTCUTS: ShortcutDef[] = [
       mod(e) &&
       !e.shiftKey &&
       !ctx.editing &&
-      !!ctx.cue &&
+      canEditSelectedCue(ctx) &&
       e.key === "Backspace",
     run: (ctx) => ctx.ps.deleteCue(ctx.cue!.id),
     preventDefault: true,
@@ -486,7 +512,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     match: (e, ctx) =>
       plainKey(e) &&
       !ctx.editing &&
-      !!ctx.cue &&
+      canEditSelectedCue(ctx) &&
       (e.key === "a" || e.key === "A"),
     run: (ctx) => openRolePicker(ctx.cue!.id),
     preventDefault: true,
@@ -499,7 +525,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     match: (e, ctx) =>
       plainKey(e) &&
       !ctx.editing &&
-      !!ctx.cue &&
+      canEditSelectedCue(ctx) &&
       !!ctx.project &&
       (e.key === "s" || e.key === "S"),
     run: (ctx) => ctx.ps.cycleSegmentShot(ctx.cue!.id, ctx.ps.selectedSegment),

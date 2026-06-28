@@ -129,7 +129,8 @@
   cursor: not-allowed;
 }
 .toolbar button.preview-btn--on,
-.toolbar button.find-btn--on {
+.toolbar button.find-btn--on,
+.toolbar button.lock-reviewed-btn--on {
   background: var(--accent-dim, #1a3d2e);
   color: var(--accent, #00e180);
   border-color: var(--accent, #00e180);
@@ -1012,6 +1013,14 @@
 }
 .cue-row.reviewed .cue-no {
   color: var(--ok);
+}
+.cue-row.reviewed-locked .seg-text,
+.cue-row.reviewed-locked .cue-time-input {
+  cursor: default;
+}
+.cue-row.reviewed-locked .seg-text[readonly],
+.cue-row.reviewed-locked .cue-time-input[readonly] {
+  opacity: 0.85;
 }
 .cue-gutter {
   display: flex;

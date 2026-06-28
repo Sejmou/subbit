@@ -8,10 +8,12 @@ import {
 } from "../lib/cue-filters";
 import {
   buildReplaceAllUpdates,
+  filterReplaceableMatches,
   findTextMatches,
   replaceMatchInText,
   type TextMatch,
 } from "../lib/find-replace";
+import { isReviewedCueLocked } from "../lib/cue-lock";
 import {
   INACTIVE_FIND_HIGHLIGHT,
   type FindHighlightState,
@@ -82,6 +84,13 @@ export function FindReplaceDialog({
     [searchCues, findText, caseSensitive],
   );
 
+  const replaceableMatches = useMemo(
+    () => filterReplaceableMatches(matches, searchCues),
+    [matches, searchCues],
+  );
+
+  const lockedMatchCount = matches.length - replaceableMatches.length;
+
   useEffect(() => {
     setFindReplaceOpen(open);
     return () => setFindReplaceOpen(false);
@@ -117,11 +126,15 @@ export function FindReplaceDialog({
   const statusLine = useMemo(() => {
     if (!findText.trim()) return "Enter text to find";
     if (matches.length === 0) return "No matches";
+    const lockedNote =
+      lockedMatchCount > 0
+        ? ` · ${lockedMatchCount} in reviewed cues (replace skipped)`
+        : "";
     if (matchIndex < 0) {
-      return `${matches.length} match${matches.length === 1 ? "" : "es"}`;
+      return `${matches.length} match${matches.length === 1 ? "" : "es"}${lockedNote}`;
     }
-    return `${matchIndex + 1} of ${matches.length}`;
-  }, [findText, matches.length, matchIndex]);
+    return `${matchIndex + 1} of ${matches.length}${lockedNote}`;
+  }, [findText, matches.length, matchIndex, lockedMatchCount]);
 
   const goToIndex = useCallback(
     (index: number, focus = true) => {
@@ -147,12 +160,12 @@ export function FindReplaceDialog({
   );
 
   const replaceAll = useCallback(() => {
-    if (matches.length === 0) return;
+    if (replaceableMatches.length === 0) return;
     replaceSegmentTexts(
-      buildReplaceAllUpdates(project.cues, matches, replaceText),
+      buildReplaceAllUpdates(project.cues, replaceableMatches, replaceText),
     );
     setMatchIndex(-1);
-  }, [matches, project.cues, replaceText, replaceSegmentTexts]);
+  }, [replaceableMatches, project.cues, replaceText, replaceSegmentTexts]);
 
   // Enter / Shift+Enter navigate; Escape closes from anywhere while open.
   useEffect(() => {
@@ -215,7 +228,10 @@ export function FindReplaceDialog({
     const match = matches[index];
     if (!match) return;
     const cue = project.cues.find((c) => c.id === match.cueId);
-    if (!cue) return;
+    if (!cue || isReviewedCueLocked(cue)) {
+      goRelative(1);
+      return;
+    }
     const text = replaceMatchInText(
       cue.segments[match.segIndex].text,
       match,
@@ -237,6 +253,7 @@ export function FindReplaceDialog({
   if (!open) return null;
 
   const canAct = findText.length > 0 && matches.length > 0;
+  const canReplace = findText.length > 0 && replaceableMatches.length > 0;
 
   return (
     <div
@@ -320,13 +337,13 @@ export function FindReplaceDialog({
           >
             Next
           </button>
-          <button type="button" disabled={!canAct} onClick={replaceCurrent}>
+          <button type="button" disabled={!canReplace} onClick={replaceCurrent}>
             Replace
           </button>
           <button
             type="button"
             className="primary"
-            disabled={!canAct}
+            disabled={!canReplace}
             onClick={replaceAll}
           >
             Replace all

@@ -9,6 +9,7 @@ import type {
   Word,
 } from "../types";
 import { computeInsertCueRange, findInsertCueIndex } from "../lib/cue-insert";
+import { isReviewedCueLocked } from "../lib/cue-lock";
 import { isSpeakerReferenced } from "../lib/speaker-refs";
 import { resolveProjectName } from "../lib/project-meta";
 const EPS = 0.001;
@@ -146,6 +147,15 @@ function mapCue(
     ...project,
     cues: project.cues.map((c) => (c.id === cueId ? fn(c) : c)),
   };
+}
+
+function findCue(project: Project, cueId: string): Cue | undefined {
+  return project.cues.find((c) => c.id === cueId);
+}
+
+function cueIsLocked(project: Project, cueId: string): boolean {
+  const cue = findCue(project, cueId);
+  return cue !== undefined && isReviewedCueLocked(cue);
 }
 
 function clampCueStart(cue: Cue, time: number, prev: Cue | undefined): number {
@@ -326,26 +336,31 @@ export const useProject = create<ProjectState>((set, getState) => {
     selectCue: (id) => set({ selectedCueId: id, selectedSegment: 0 }),
     selectSegment: (index) => set({ selectedSegment: Math.max(0, index) }),
 
-    setSegmentText: (cueId, segIndex, text) =>
+    setSegmentText: (cueId, segIndex, text) => {
+      const p = getState().project;
+      if (!p || cueIsLocked(p, cueId)) return;
       update(
-        (p) =>
-          mapCue(p, cueId, (c) => ({
+        (proj) =>
+          mapCue(proj, cueId, (c) => ({
             ...c,
             segments: c.segments.map((s, i) =>
               i === segIndex ? { ...s, text } : s,
             ),
           })),
         `text:${cueId}:${segIndex}`,
-      ),
+      );
+    },
 
     replaceSegmentTexts: (updates) =>
       update((p) => {
-        if (updates.length === 0) return p;
+        const allowed = updates.filter((u) => !cueIsLocked(p, u.cueId));
+        if (allowed.length === 0) return p;
         const lookup = new Map(
-          updates.map((u) => [`${u.cueId}:${u.segIndex}`, u.text] as const),
+          allowed.map((u) => [`${u.cueId}:${u.segIndex}`, u.text] as const),
         );
         let changed = false;
         const cues = p.cues.map((c) => {
+          if (cueIsLocked(p, c.id)) return c;
           let cueChanged = false;
           const segments = c.segments.map((s, i) => {
             const text = lookup.get(`${c.id}:${i}`);
@@ -360,43 +375,52 @@ export const useProject = create<ProjectState>((set, getState) => {
         return changed ? { ...p, cues } : p;
       }),
 
-    setCueStart: (cueId, time) =>
-      update((p) => {
-        const idx = p.cues.findIndex((c) => c.id === cueId);
-        if (idx === -1) return p;
-        const c = p.cues[idx];
-        const start = clampCueStart(c, time, p.cues[idx - 1]);
-        if (start === c.start) return p;
-        return mapCue(p, cueId, (cue) => ({ ...cue, start }));
-      }, `start:${cueId}`),
-    setCueEnd: (cueId, time) =>
-      update((p) => {
-        const idx = p.cues.findIndex((c) => c.id === cueId);
-        if (idx === -1) return p;
-        const c = p.cues[idx];
-        const end = clampCueEnd(c, time, p.cues[idx + 1]);
-        if (end === c.end) return p;
-        return mapCue(p, cueId, (cue) => ({ ...cue, end }));
-      }, `end:${cueId}`),
-    setCueTimes: (cueId, start, end) =>
-      update((p) => {
-        const idx = p.cues.findIndex((c) => c.id === cueId);
-        if (idx === -1) return p;
-        const c = p.cues[idx];
+    setCueStart: (cueId, time) => {
+      const p = getState().project;
+      if (!p || cueIsLocked(p, cueId)) return;
+      update((proj) => {
+        const idx = proj.cues.findIndex((c) => c.id === cueId);
+        if (idx === -1) return proj;
+        const c = proj.cues[idx];
+        const start = clampCueStart(c, time, proj.cues[idx - 1]);
+        if (start === c.start) return proj;
+        return mapCue(proj, cueId, (cue) => ({ ...cue, start }));
+      }, `start:${cueId}`);
+    },
+    setCueEnd: (cueId, time) => {
+      const p = getState().project;
+      if (!p || cueIsLocked(p, cueId)) return;
+      update((proj) => {
+        const idx = proj.cues.findIndex((c) => c.id === cueId);
+        if (idx === -1) return proj;
+        const c = proj.cues[idx];
+        const end = clampCueEnd(c, time, proj.cues[idx + 1]);
+        if (end === c.end) return proj;
+        return mapCue(proj, cueId, (cue) => ({ ...cue, end }));
+      }, `end:${cueId}`);
+    },
+    setCueTimes: (cueId, start, end) => {
+      const p = getState().project;
+      if (!p || cueIsLocked(p, cueId)) return;
+      update((proj) => {
+        const idx = proj.cues.findIndex((c) => c.id === cueId);
+        if (idx === -1) return proj;
+        const c = proj.cues[idx];
         const next = clampCueMove(
           c,
           start,
           end,
-          p.cues[idx - 1],
-          p.cues[idx + 1],
+          proj.cues[idx - 1],
+          proj.cues[idx + 1],
         );
-        if (next.start === c.start && next.end === c.end) return p;
-        return mapCue(p, cueId, (cue) => ({
+        if (next.start === c.start && next.end === c.end) return proj;
+        return mapCue(proj, cueId, (cue) => ({
           ...cue,
           start: next.start,
           end: next.end,
         }));
-      }, `move:${cueId}`),
+      }, `move:${cueId}`);
+    },
     nudgeCueStart: (cueId, delta) => {
       const c = getState().project?.cues.find((x) => x.id === cueId);
       if (c) getState().setCueStart(cueId, c.start + delta);
@@ -406,21 +430,29 @@ export const useProject = create<ProjectState>((set, getState) => {
       if (c) getState().setCueEnd(cueId, c.end + delta);
     },
 
-    setCueSpeaker: (cueId, speakerId) =>
-      update((p) => mapCue(p, cueId, (c) => ({ ...c, speakerId }))),
-    setSegmentShot: (cueId, segIndex, shot) =>
-      update((p) =>
-        mapCue(p, cueId, (c) => ({
+    setCueSpeaker: (cueId, speakerId) => {
+      const p = getState().project;
+      if (!p || cueIsLocked(p, cueId)) return;
+      update((proj) => mapCue(proj, cueId, (c) => ({ ...c, speakerId })));
+    },
+    setSegmentShot: (cueId, segIndex, shot) => {
+      const p = getState().project;
+      if (!p || cueIsLocked(p, cueId)) return;
+      update((proj) =>
+        mapCue(proj, cueId, (c) => ({
           ...c,
           segments: c.segments.map((s, i) =>
             i === segIndex ? { ...s, shot } : s,
           ),
         })),
-      ),
-    cycleSegmentShot: (cueId, segIndex) =>
-      update((p) => {
-        const order = p.shots.map((s) => s.id);
-        return mapCue(p, cueId, (c) => ({
+      );
+    },
+    cycleSegmentShot: (cueId, segIndex) => {
+      const p = getState().project;
+      if (!p || cueIsLocked(p, cueId)) return;
+      update((proj) => {
+        const order = proj.shots.map((s) => s.id);
+        return mapCue(proj, cueId, (c) => ({
           ...c,
           segments: c.segments.map((s, i) => {
             if (i !== segIndex) return s;
@@ -428,15 +460,18 @@ export const useProject = create<ProjectState>((set, getState) => {
             return { ...s, shot: next };
           }),
         }));
-      }),
+      });
+    },
     toggleReviewed: (cueId) =>
       update((p) => mapCue(p, cueId, (c) => ({ ...c, reviewed: !c.reviewed }))),
 
-    splitCueAtCaret: (cueId, segIndex, charOffset, time) =>
-      update((p) => {
-        const idx = p.cues.findIndex((c) => c.id === cueId);
-        if (idx === -1) return p;
-        const c = p.cues[idx];
+    splitCueAtCaret: (cueId, segIndex, charOffset, time) => {
+      const p = getState().project;
+      if (!p || cueIsLocked(p, cueId)) return;
+      update((proj) => {
+        const idx = proj.cues.findIndex((c) => c.id === cueId);
+        if (idx === -1) return proj;
+        const c = proj.cues[idx];
         const t =
           time > c.start + EPS && time < c.end - EPS
             ? time
@@ -460,7 +495,8 @@ export const useProject = create<ProjectState>((set, getState) => {
         const rightSegments = [rightSeg, ...after].filter(
           (s) => s.text.length > 0,
         );
-        if (leftSegments.length === 0 || rightSegments.length === 0) return p;
+        if (leftSegments.length === 0 || rightSegments.length === 0)
+          return proj;
 
         const [lw, rw] = splitWordsAtTime(c.words, t);
         const left: Cue = {
@@ -479,18 +515,21 @@ export const useProject = create<ProjectState>((set, getState) => {
           reviewed: false,
         };
         const cues = [
-          ...p.cues.slice(0, idx),
+          ...proj.cues.slice(0, idx),
           left,
           right,
-          ...p.cues.slice(idx + 1),
+          ...proj.cues.slice(idx + 1),
         ];
-        return { ...p, cues };
-      }),
+        return { ...proj, cues };
+      });
+    },
 
-    insertShotSplit: (cueId, segIndex, charOffset) =>
-      update((p) => {
-        const order = p.shots.map((s) => s.id);
-        return mapCue(p, cueId, (c) => {
+    insertShotSplit: (cueId, segIndex, charOffset) => {
+      const p = getState().project;
+      if (!p || cueIsLocked(p, cueId)) return;
+      update((proj) => {
+        const order = proj.shots.map((s) => s.id);
+        return mapCue(proj, cueId, (c) => {
           const seg = c.segments[segIndex];
           const leftText = seg.text.slice(0, charOffset).trim();
           const rightText = seg.text.slice(charOffset).trim();
@@ -504,7 +543,8 @@ export const useProject = create<ProjectState>((set, getState) => {
           ];
           return { ...c, segments };
         });
-      }),
+      });
+    },
 
     insertCueAtPlayhead: (
       time,
@@ -562,6 +602,7 @@ export const useProject = create<ProjectState>((set, getState) => {
     deleteCue: (cueId) =>
       set((state) => {
         if (!state.project) return state;
+        if (cueIsLocked(state.project, cueId)) return state;
         const idx = state.project.cues.findIndex((c) => c.id === cueId);
         if (idx === -1) return state;
 

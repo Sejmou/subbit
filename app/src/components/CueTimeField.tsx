@@ -20,9 +20,16 @@ interface Props {
   fileSeconds: number;
   project: Project;
   kind: "in" | "out";
+  locked?: boolean;
 }
 
-export function CueTimeField({ cueId, fileSeconds, project, kind }: Props) {
+export function CueTimeField({
+  cueId,
+  fileSeconds,
+  project,
+  kind,
+  locked = false,
+}: Props) {
   const setCueStart = useProject((s) => s.setCueStart);
   const setCueEnd = useProject((s) => s.setCueEnd);
   const seek = usePlayback((s) => s.seek);
@@ -43,6 +50,7 @@ export function CueTimeField({ cueId, fileSeconds, project, kind }: Props) {
   }, [fileSeconds, project, timeReference]);
 
   const apply = useCallback(() => {
+    if (locked) return;
     try {
       const seconds = cueTimecodeToFileSeconds(
         draft,
@@ -66,6 +74,7 @@ export function CueTimeField({ cueId, fileSeconds, project, kind }: Props) {
     timeReference,
     setCueStart,
     setCueEnd,
+    locked,
   ]);
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -95,6 +104,8 @@ export function CueTimeField({ cueId, fileSeconds, project, kind }: Props) {
         size={11}
         spellCheck={false}
         aria-label={`${label} time`}
+        readOnly={locked}
+        title={locked ? "Reviewed (locked) — uncheck to edit" : undefined}
         onFocus={() => {
           focused.current = true;
         }}

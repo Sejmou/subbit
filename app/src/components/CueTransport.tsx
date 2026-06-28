@@ -1,7 +1,9 @@
 import type { Project } from "../types";
 import { useProject } from "../store/project";
 import { usePlayback } from "../store/playback";
+import { useLockReviewedStore } from "../store/lock-reviewed";
 import { useShortcutLabel } from "../hooks/useShortcutLabel";
+import { isReviewedCueLocked } from "../lib/cue-lock";
 import { cueDisplayTimecode } from "../lib/display-time";
 import { useTimeReference } from "../store/time-reference";
 
@@ -54,6 +56,7 @@ export function CueTransport({ project }: { project: Project }) {
   const nextCueLabel = useShortcutLabel("next-cue");
   const setInLabel = useShortcutLabel("set-in");
   const setOutLabel = useShortcutLabel("set-out");
+  useLockReviewedStore((s) => s.enabled);
 
   const cues = project.cues;
   const cueIndex = selectedCueId
@@ -61,6 +64,7 @@ export function CueTransport({ project }: { project: Project }) {
     : -1;
   const cue = cueIndex >= 0 ? cues[cueIndex] : null;
   const hasCue = cue !== null;
+  const cueLocked = cue ? isReviewedCueLocked(cue) : false;
   const canPrev = hasCue && cueIndex > 0;
   const canNext = hasCue && cueIndex < cues.length - 1;
 
@@ -146,9 +150,13 @@ export function CueTransport({ project }: { project: Project }) {
         <button
           type="button"
           className="cue-transport-set-btn"
-          disabled={!hasCue}
+          disabled={!hasCue || cueLocked}
           onClick={() => cue && setCueStart(cue.id, currentTime)}
-          title={`Set In to playhead (${setInLabel})`}
+          title={
+            cueLocked
+              ? "Reviewed (locked) — uncheck to set In"
+              : `Set In to playhead (${setInLabel})`
+          }
         >
           Set
         </button>
@@ -172,9 +180,13 @@ export function CueTransport({ project }: { project: Project }) {
         <button
           type="button"
           className="cue-transport-set-btn"
-          disabled={!hasCue}
+          disabled={!hasCue || cueLocked}
           onClick={() => cue && setCueEnd(cue.id, currentTime)}
-          title={`Set Out to playhead (${setOutLabel})`}
+          title={
+            cueLocked
+              ? "Reviewed (locked) — uncheck to set Out"
+              : `Set Out to playhead (${setOutLabel})`
+          }
         >
           Set
         </button>

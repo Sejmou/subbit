@@ -28,6 +28,8 @@ interface Props {
   onCloseProject: () => void;
   previewEnabled: boolean;
   onTogglePreview: () => void;
+  lockReviewedCues: boolean;
+  onToggleLockReviewed: () => void;
   speakerFilter: string[];
   statusFilter: ReviewStatusFilter[];
   onToggleSpeakerFilter: (speakerId: string) => void;
@@ -113,6 +115,8 @@ export function Toolbar({
   onCloseProject,
   previewEnabled,
   onTogglePreview,
+  lockReviewedCues,
+  onToggleLockReviewed,
   speakerFilter,
   statusFilter,
   onToggleSpeakerFilter,
@@ -203,6 +207,22 @@ export function Toolbar({
           title={`${previewEnabled ? "Hide" : "Show"} subtitle preview on video (${previewToggleLabel})`}
         >
           Preview
+        </button>
+        <button
+          className={
+            lockReviewedCues
+              ? "lock-reviewed-btn lock-reviewed-btn--on"
+              : "lock-reviewed-btn"
+          }
+          aria-pressed={lockReviewedCues}
+          onClick={onToggleLockReviewed}
+          title={
+            lockReviewedCues
+              ? "Reviewed cues are locked — click to allow editing reviewed cues"
+              : "Reviewed cues can be edited — click to lock reviewed cues"
+          }
+        >
+          Lock reviewed
         </button>
         <button onClick={onHistory} title="Version history">
           History

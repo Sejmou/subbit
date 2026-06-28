@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { writeLockReviewedCues } from "../lib/lock-reviewed-settings";
+import { useLockReviewedStore } from "./lock-reviewed";
 import { useProject } from "./project";
 import type { Project } from "../types";
 
@@ -39,6 +41,8 @@ const store = () => useProject.getState();
 const firstText = () => store().project!.cues[0].segments[0].text;
 
 beforeEach(() => {
+  writeLockReviewedCues(false);
+  useLockReviewedStore.setState({ enabled: false });
   // loadProject also resets the undo/redo stacks and coalescing state.
   store().loadProject(makeProject());
 });
@@ -319,5 +323,42 @@ describe("speakers", () => {
   it("refuses to remove a referenced speaker", () => {
     expect(store().removeSpeaker("SPEAKER_00")).toBe(false);
     expect(store().project!.speakers).toHaveLength(1);
+  });
+});
+
+describe("reviewed cue lock", () => {
+  beforeEach(() => {
+    writeLockReviewedCues(true);
+    useLockReviewedStore.setState({ enabled: true });
+    store().toggleReviewed("c1");
+  });
+
+  it("blocks text edits on reviewed cues", () => {
+    store().markSaved();
+    store().setSegmentText("c1", 0, "blocked");
+    expect(firstText()).toBe("hello");
+    expect(store().dirty).toBe(false);
+  });
+
+  it("blocks timing edits on reviewed cues", () => {
+    store().setCueEnd("c1", 10);
+    expect(store().project!.cues[0].end).toBe(2);
+  });
+
+  it("blocks delete on reviewed cues", () => {
+    store().deleteCue("c1");
+    expect(store().project!.cues).toHaveLength(2);
+  });
+
+  it("allows edits after unreviewing", () => {
+    store().toggleReviewed("c1");
+    store().setSegmentText("c1", 0, "edited");
+    expect(firstText()).toBe("edited");
+  });
+
+  it("allows edits when lock mode is off", () => {
+    useLockReviewedStore.getState().setEnabled(false);
+    store().setSegmentText("c1", 0, "edited");
+    expect(firstText()).toBe("edited");
   });
 });

@@ -88,6 +88,7 @@ function ctx(overrides: Partial<ShortcutContext> = {}): ShortcutContext {
     project,
     cue,
     cueIndex: 0,
+    cueLocked: false,
     frame: 0.04,
     caret: null,
     ps: ps as unknown as ShortcutContext["ps"],
