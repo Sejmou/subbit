@@ -26,24 +26,35 @@ export const usePlayback = create<PlaybackState>((set, getState) => ({
   duration: 0,
   playing: false,
   videoEl: null,
-  setVideoEl: (el) => set({ videoEl: el }),
-  setTime: (t) => set({ currentTime: t }),
-  setDuration: (d) => set({ duration: d }),
-  setPlaying: (p) => set({ playing: p }),
+  setVideoEl: (el) =>
+    set((state) => (state.videoEl === el ? state : { videoEl: el })),
+  setTime: (t) =>
+    set((state) => (state.currentTime === t ? state : { currentTime: t })),
+  setDuration: (d) =>
+    set((state) => (state.duration === d ? state : { duration: d })),
+  setPlaying: (p) =>
+    set((state) => (state.playing === p ? state : { playing: p })),
   seek: (t) => {
     const { videoEl } = getState();
     const clamped = Math.max(0, t);
-    if (videoEl) videoEl.currentTime = clamped;
-    set({ currentTime: clamped });
+    if (videoEl && videoEl.currentTime !== clamped) {
+      videoEl.currentTime = clamped;
+    }
+    set((state) =>
+      state.currentTime === clamped ? state : { currentTime: clamped },
+    );
   },
   playFrom: (t) => {
     const { videoEl } = getState();
     const clamped = Math.max(0, t);
     if (videoEl) {
-      videoEl.currentTime = clamped;
+      if (videoEl.currentTime !== clamped) videoEl.currentTime = clamped;
       void videoEl.play();
     }
-    set({ currentTime: clamped, playing: true });
+    set((state) => {
+      if (state.currentTime === clamped && state.playing) return state;
+      return { currentTime: clamped, playing: true };
+    });
   },
   togglePlay: () => {
     const { videoEl, playing } = getState();

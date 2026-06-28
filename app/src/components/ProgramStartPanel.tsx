@@ -51,31 +51,28 @@ export function ProgramStartPanel({ project, ready }: Props) {
   const [startDraft, setStartDraft] = useState(() =>
     programStartTimecode(project),
   );
-  const [playheadDraft, setPlayheadDraft] = useState(() =>
-    playheadDisplayClock(currentTime, contentStart, timeReference),
-  );
+  const [playheadEditing, setPlayheadEditing] = useState(false);
+  const [playheadDraft, setPlayheadDraft] = useState("");
   const [startError, setStartError] = useState<string | null>(null);
   const [playheadError, setPlayheadError] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
-  const playheadFocused = useRef(false);
+  const playheadDirtyRef = useRef(false);
+
+  const livePlayheadClock = playheadDisplayClock(
+    currentTime,
+    contentStart,
+    timeReference,
+  );
+  const playheadValue = playheadEditing ? playheadDraft : livePlayheadClock;
 
   useEffect(() => {
-    setStartDraft(
+    const next =
       contentStart <= 0
         ? "00:00:00:00"
-        : secondsToTimecode(contentStart, project.fps, "00:00:00:00"),
-    );
-    setStartError(null);
+        : secondsToTimecode(contentStart, project.fps, "00:00:00:00");
+    setStartDraft((prev) => (prev === next ? prev : next));
+    setStartError((prev) => (prev === null ? prev : null));
   }, [contentStart, project.fps]);
-
-  useEffect(() => {
-    if (!playheadFocused.current) {
-      setPlayheadDraft(
-        playheadDisplayClock(currentTime, contentStart, timeReference),
-      );
-      setPlayheadError(null);
-    }
-  }, [currentTime, contentStart, timeReference]);
 
   const applyStartDraft = useCallback(() => {
     try {
@@ -95,24 +92,24 @@ export function ProgramStartPanel({ project, ready }: Props) {
     }
   }, [startDraft, duration, project, setContentStartSeconds]);
 
-  const applyPlayheadDraft = useCallback(() => {
-    try {
-      const parsed = parseClock(playheadDraft);
-      const fileSeconds = playheadClockToFileSeconds(
-        parsed,
-        contentStart,
-        timeReference,
-      );
-      const clamped = clampPlayheadTime(fileSeconds, duration);
-      seek(clamped);
-      setPlayheadDraft(
-        playheadDisplayClock(clamped, contentStart, timeReference),
-      );
-      setPlayheadError(null);
-    } catch {
-      setPlayheadError("Use HH:MM:SS.mmm");
-    }
-  }, [playheadDraft, timeReference, contentStart, duration, seek]);
+  const applyPlayheadDraft = useCallback(
+    (draft: string) => {
+      try {
+        const parsed = parseClock(draft);
+        const fileSeconds = playheadClockToFileSeconds(
+          parsed,
+          contentStart,
+          timeReference,
+        );
+        const clamped = clampPlayheadTime(fileSeconds, duration);
+        seek(clamped);
+        setPlayheadError(null);
+      } catch {
+        setPlayheadError("Use HH:MM:SS.mmm");
+      }
+    },
+    [timeReference, contentStart, duration, seek],
+  );
 
   const setFromPlayhead = useCallback(() => {
     const seconds = clampProgramStart(currentTime, duration);
@@ -128,7 +125,9 @@ export function ProgramStartPanel({ project, ready }: Props) {
   const onPlayheadRefChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const next = e.target.value as "file" | "program";
     setTimeReference(next);
-    setPlayheadDraft(playheadDisplayClock(currentTime, contentStart, next));
+    if (playheadEditing) {
+      setPlayheadDraft(playheadDisplayClock(currentTime, contentStart, next));
+    }
     setPlayheadError(null);
   };
 
@@ -216,22 +215,31 @@ export function ProgramStartPanel({ project, ready }: Props) {
                 ? "program-start-clock-input program-start-input--error"
                 : "program-start-clock-input"
             }
-            value={playheadDraft}
+            value={playheadValue}
             onChange={(e) => {
+              playheadDirtyRef.current = true;
               setPlayheadDraft(e.target.value);
               setPlayheadError(null);
             }}
             onFocus={() => {
-              playheadFocused.current = true;
+              setPlayheadEditing(true);
+              setPlayheadDraft(livePlayheadClock);
+              playheadDirtyRef.current = false;
+              setPlayheadError(null);
             }}
-            onBlur={() => {
-              playheadFocused.current = false;
-              applyPlayheadDraft();
+            onBlur={(e) => {
+              setPlayheadEditing(false);
+              if (playheadDirtyRef.current) {
+                applyPlayheadDraft(e.currentTarget.value);
+              }
+              playheadDirtyRef.current = false;
             }}
             onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
               if (e.key === "Enter") {
                 e.preventDefault();
-                applyPlayheadDraft();
+                applyPlayheadDraft(e.currentTarget.value);
+                playheadDirtyRef.current = false;
+                e.currentTarget.blur();
               }
             }}
             size={12}

@@ -216,6 +216,16 @@ describe("resolveShortcut", () => {
     ).toBe("jog-back-frame");
   });
 
+  it("jumps to cue In and Out with H and L", () => {
+    const c = ctx();
+    resolveShortcut(makeKeyEvent("h"), c)?.run(c, makeKeyEvent("h"));
+    expect(c.pb.seek).toHaveBeenCalledWith(cue.start);
+
+    const c2 = ctx();
+    resolveShortcut(makeKeyEvent("l"), c2)?.run(c2, makeKeyEvent("l"));
+    expect(c2.pb.seek).toHaveBeenCalledWith(cue.end);
+  });
+
   it("nudges cue times from physical keys (layout-independent)", () => {
     const c = ctx();
     resolveShortcut(makeKeyEvent("ü", { code: "BracketLeft" }), c)?.run(

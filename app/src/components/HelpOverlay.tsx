@@ -88,9 +88,10 @@ function HelpTutorial() {
         <p>
           They often match, but not if you have jumped somewhere else in the
           video. The bar above the timeline shows the <strong>selected</strong>
-          line number; the <strong>In</strong> button (or <kbd>G</kbd>) jumps
-          the video to the start of that line without playing. The button turns
-          orange when you are not at the start of the selected line.
+          line number; the <strong>In</strong> button (or <kbd>H</kbd>) jumps
+          the video to the start of that line without playing; <kbd>L</kbd>{" "}
+          jumps to the end. The button turns orange when you are not at the
+          start of the selected line.
         </p>
       </section>
 

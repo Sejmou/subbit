@@ -496,13 +496,29 @@ export const SHORTCUTS: ShortcutDef[] = [
     preventDefault: true,
   },
   {
-    id: "seek-to-cue",
+    id: "seek-to-cue-in",
     group: "Playback & navigation",
-    label: (_, k) => k.code("KeyG"),
-    description: "Seek video to the selected cue",
+    label: (_, k) => `${k.code("KeyH")} / ${k.code("KeyL")}`,
+    description: "Jump to cue In / Out",
     match: (e, ctx) =>
-      plainKey(e) && !ctx.editing && !!ctx.cue && e.key === "g",
+      plainKey(e) &&
+      !ctx.editing &&
+      !!ctx.cue &&
+      (e.key === "h" || e.key === "H"),
     run: (ctx) => ctx.pb.seek(ctx.cue!.start),
+  },
+  {
+    id: "seek-to-cue-out",
+    group: "Playback & navigation",
+    label: (_, k) => `${k.code("KeyH")} / ${k.code("KeyL")}`,
+    description: "Jump to cue In / Out",
+    showInHelp: false,
+    match: (e, ctx) =>
+      plainKey(e) &&
+      !ctx.editing &&
+      !!ctx.cue &&
+      (e.key === "l" || e.key === "L"),
+    run: (ctx) => ctx.pb.seek(ctx.cue!.end),
   },
   {
     id: "assign-role",

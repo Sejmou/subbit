@@ -2,7 +2,7 @@ import type { Project } from "../types";
 import { useProject } from "../store/project";
 import { usePlayback } from "../store/playback";
 import { useLockReviewedStore } from "../store/lock-reviewed";
-import { useShortcutLabel } from "../hooks/useShortcutLabel";
+import { useShortcutLabel, useKeyLabel } from "../hooks/useShortcutLabel";
 import { isReviewedCueLocked } from "../lib/cue-lock";
 import { cueDisplayTimecode } from "../lib/display-time";
 import { useTimeReference } from "../store/time-reference";
@@ -53,7 +53,8 @@ export function CueTransport({ project }: { project: Project }) {
   const setCueEnd = useProject((s) => s.setCueEnd);
   const timeReference = useTimeReference((s) => s.reference);
   const { currentTime, seek } = usePlayback();
-  const seekToCueLabel = useShortcutLabel("seek-to-cue");
+  const seekToCueInLabel = useKeyLabel("KeyH");
+  const seekToCueOutLabel = useKeyLabel("KeyL");
   const previousCueLabel = useShortcutLabel("previous-cue");
   const nextCueLabel = useShortcutLabel("next-cue");
   const setInLabel = useShortcutLabel("set-in");
@@ -77,14 +78,14 @@ export function CueTransport({ project }: { project: Project }) {
 
   const jumpInTitle = hasCue
     ? offIn
-      ? `Jump to In (${seekToCueLabel}) — ${formatDrift(inDrift)}`
-      : `Jump to In (${seekToCueLabel})`
+      ? `Jump to In (${seekToCueInLabel}) — ${formatDrift(inDrift)}`
+      : `Jump to In (${seekToCueInLabel})`
     : undefined;
 
   const jumpOutTitle = hasCue
     ? offOut
-      ? `Jump to Out — ${formatDrift(outDrift)}`
-      : "Jump to Out"
+      ? `Jump to Out (${seekToCueOutLabel}) — ${formatDrift(outDrift)}`
+      : `Jump to Out (${seekToCueOutLabel})`
     : undefined;
 
   const selectPrev = () => {

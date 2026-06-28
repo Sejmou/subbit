@@ -14,7 +14,7 @@ import {
   cueDisplayTimecode,
   cueTimecodeToFileSeconds,
 } from "../lib/display-time";
-import { useShortcutLabel } from "../hooks/useShortcutLabel";
+import { useShortcutLabel, useKeyLabel } from "../hooks/useShortcutLabel";
 import { useTip } from "./Tooltip";
 
 interface Props {
@@ -37,7 +37,8 @@ export function CueTimeField({
   const setOutLabel = useShortcutLabel("set-out");
   const nudgeInLabel = useShortcutLabel("nudge-in-earlier");
   const nudgeOutLabel = useShortcutLabel("nudge-out-earlier");
-  const seekToCueLabel = useShortcutLabel("seek-to-cue");
+  const seekToCueInLabel = useKeyLabel("KeyH");
+  const seekToCueOutLabel = useKeyLabel("KeyL");
   const setCueStart = useProject((s) => s.setCueStart);
   const setCueEnd = useProject((s) => s.setCueEnd);
   const seek = usePlayback((s) => s.seek);
@@ -103,10 +104,10 @@ export function CueTimeField({
     kind === "in"
       ? locked
         ? undefined
-        : `Jump to In (${seekToCueLabel})`
+        : `Jump to In (${seekToCueInLabel})`
       : locked
         ? undefined
-        : "Jump to Out";
+        : `Jump to Out (${seekToCueOutLabel})`;
   const editTitle = locked
     ? "Reviewed (locked) — uncheck to edit"
     : kind === "in"

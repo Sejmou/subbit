@@ -20,13 +20,14 @@ export function VideoPlayer({
 }) {
   const ref = useRef<HTMLVideoElement>(null);
   const tip = useTip();
-  const { setVideoEl, setTime, setDuration, setPlaying, togglePlay } =
-    usePlayback();
   const playPauseLabel = useShortcutLabel("play-pause");
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+
+    const { setVideoEl, setTime, setDuration, setPlaying } =
+      usePlayback.getState();
     setVideoEl(el);
 
     const onTime = () => setTime(el.currentTime);
@@ -60,9 +61,9 @@ export function VideoPlayer({
       el.removeEventListener("pause", onPause);
       el.removeEventListener("playing", onPlaying);
       cancelAnimationFrame(raf);
-      setVideoEl(null);
+      usePlayback.getState().setVideoEl(null);
     };
-  }, [setVideoEl, setTime, setDuration, setPlaying]);
+  }, [src]);
 
   return (
     <div className="video-wrap">
@@ -70,7 +71,7 @@ export function VideoPlayer({
         ref={ref}
         src={src}
         preload="metadata"
-        onClick={() => togglePlay()}
+        onClick={() => usePlayback.getState().togglePlay()}
         {...tip(`Click or press ${playPauseLabel} to play / pause`)}
       />
       {previewEnabled && <SubtitlePreview project={project} />}
