@@ -183,6 +183,19 @@ export function peaksPixelsPerSecondForZoom(
   return Math.ceil(viewWidthPx / targetMinVisibleSeconds);
 }
 
+/** peaks.js `waveformData` payload from parsed peaks input. */
+export function peaksWaveformData(input: WaveformPeaksInput) {
+  if (input.kind === "dat") {
+    return { arraybuffer: input.arrayBuffer };
+  }
+  return {
+    json: {
+      ...input.json,
+      channels: input.json.channels ?? 1,
+    },
+  };
+}
+
 function parseDatHeader(view: DataView): WaveformPeaksMeta {
   if (view.byteLength < 20) {
     throw new Error(

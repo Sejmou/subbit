@@ -1,3 +1,4 @@
+import type { PeaksInstance } from "peaks.js";
 import type { Cue, Project } from "../types";
 import { secondsToTimecode, timecodeToSeconds } from "./timecode";
 
@@ -38,4 +39,43 @@ export function clampProgramStart(seconds: number, duration: number): number {
   if (!Number.isFinite(seconds) || seconds <= 0) return 0;
   if (!Number.isFinite(duration) || duration <= 0) return seconds;
   return Math.min(seconds, Math.max(0, duration - 1 / 25));
+}
+
+/** Width of the pre-program-start shading overlay in layout pixels. */
+export function programStartLeaderWidthPx(
+  contentStartSeconds: number,
+  viewStartSeconds: number,
+  viewEndSeconds: number,
+  containerWidthPx: number,
+): number {
+  if (contentStartSeconds <= 0) return 0;
+  const span = viewEndSeconds - viewStartSeconds;
+  if (span <= 0 || containerWidthPx <= 0) return 0;
+  if (contentStartSeconds <= viewStartSeconds) return 0;
+  if (contentStartSeconds >= viewEndSeconds) return containerWidthPx;
+  return ((contentStartSeconds - viewStartSeconds) / span) * containerWidthPx;
+}
+
+/** Create or move the program-start point marker on the peaks timeline. */
+export function syncProgramStartPeaksPoint(
+  peaks: PeaksInstance,
+  contentStartSeconds: number,
+): void {
+  const start = Math.max(0, contentStartSeconds);
+  const existing = peaks.points.getPoint(PROGRAM_START_POINT_ID);
+
+  if (existing) {
+    if (Math.abs(existing.time - start) > 0.0001) {
+      existing.update({ time: start, labelText: "Program start" });
+    }
+    return;
+  }
+
+  peaks.points.add({
+    id: PROGRAM_START_POINT_ID,
+    time: start,
+    editable: true,
+    color: "#ffb74d",
+    labelText: "Program start",
+  });
 }
