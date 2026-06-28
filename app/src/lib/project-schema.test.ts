@@ -62,7 +62,7 @@ describe("parseProjectData", () => {
         fingerprintVersion: 1,
       },
     });
-    expect(parsed.video).toEqual({ duration: 100 });
+    expect(parsed.video).toEqual({ duration: 100, fileSize: 123 });
   });
 
   it("rejects invalid JSON via parseProject", () => {

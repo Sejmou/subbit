@@ -47,9 +47,7 @@ function durationsMatch(a: number, b: number): boolean {
 /** True for projects saved with the earlier sparse-hash identity format. */
 export function isLegacyVideoIdentity(video: VideoIdentity): boolean {
   return (
-    video.fingerprint !== undefined ||
-    video.fingerprintVersion !== undefined ||
-    video.fileSize !== undefined
+    video.fingerprint !== undefined || video.fingerprintVersion !== undefined
   );
 }
 
@@ -64,6 +62,7 @@ export async function buildVideoIdentity(
   const identity: VideoIdentity = {
     fileName: file.name,
     duration,
+    fileSize: file.size,
   };
 
   const frameRate = await probeMp4FrameRate(file);

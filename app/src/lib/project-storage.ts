@@ -3,6 +3,7 @@ import type { Project } from "../types";
 import { parseProjectData } from "./project-schema";
 import type { CachedWaveformPeaks } from "./waveform-cache";
 import { clearProjectHistoryById } from "./history";
+import { clearCachedVideoHandleForProject } from "./video-handle";
 
 const ACTIVE_PROJECT_KEY = "subbit:activeProjectId";
 const PROJECT_PREFIX = "subbit:project:";
@@ -128,6 +129,7 @@ export async function deleteStoredProject(projectId: string): Promise<boolean> {
     del(projectMetaKey(projectId)),
     del(waveformKey(projectId)),
     clearProjectHistoryById(projectId),
+    clearCachedVideoHandleForProject(projectId),
   ]);
 
   const activeId = await getActiveProjectId();

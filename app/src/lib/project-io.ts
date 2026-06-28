@@ -99,6 +99,66 @@ export async function pickFile(
   return handles?.[0];
 }
 
+/** MIME map from FS Access `accept` to an HTML `<input accept>` string. */
+export function acceptRecordToInputAccept(
+  accept: Record<string, string[]>,
+): string {
+  const parts = new Set<string>();
+  for (const [mime, exts] of Object.entries(accept)) {
+    parts.add(mime);
+    for (const ext of exts) {
+      parts.add(ext.startsWith(".") ? ext : `.${ext}`);
+    }
+  }
+  return [...parts].join(",");
+}
+
+function pickFileViaInput(accept: string): Promise<File | undefined> {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = accept;
+    input.hidden = true;
+
+    let settled = false;
+    const settle = (file: File | undefined) => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener("focus", onWindowFocus);
+      input.remove();
+      resolve(file);
+    };
+
+    input.addEventListener("change", () => {
+      settle(input.files?.[0]);
+    });
+    input.addEventListener("cancel", () => {
+      settle(undefined);
+    });
+
+    const onWindowFocus = () => {
+      window.setTimeout(() => {
+        if (!settled && !input.files?.length) settle(undefined);
+      }, 500);
+    };
+
+    document.body.appendChild(input);
+    window.addEventListener("focus", onWindowFocus);
+    input.click();
+  });
+}
+
+/** Pick a file for one-off reads; falls back to `<input type="file">` outside Chromium. */
+export async function pickFileAsFile(
+  accept: Record<string, string[]>,
+  description: string,
+): Promise<File | undefined> {
+  const handle = await pickFile(accept, description);
+  if (handle) return readHandleAsFile(handle);
+  if (isFsAccessSupported()) return undefined;
+  return pickFileViaInput(acceptRecordToInputAccept(accept));
+}
+
 export async function pickProjectSaveFile(suggestedName: string) {
   const picker = win().showSaveFilePicker?.({
     suggestedName,
@@ -117,6 +177,13 @@ export async function readHandleAsFile(handle: FsFileHandle): Promise<File> {
   return handle.getFile();
 }
 
+/** True when a cached FS handle no longer resolves (moved, renamed, deleted). */
+export function isFileHandleStaleError(err: unknown): boolean {
+  if (err instanceof DOMException && err.name === "NotFoundError") return true;
+  if (err instanceof Error && err.name === "NotFoundError") return true;
+  return false;
+}
+
 export async function writeTextToHandle(
   handle: FsFileHandle,
   text: string,
@@ -132,6 +199,10 @@ export async function cacheVideoHandle(handle: FsFileHandle) {
   await set(HANDLE_KEYS.video, handle);
 }
 const LEGACY_VIDEO_HANDLE_KEY = "subbit:movieHandle";
+
+export async function clearCachedVideoHandle(): Promise<void> {
+  await Promise.all([del(HANDLE_KEYS.video), del(LEGACY_VIDEO_HANDLE_KEY)]);
+}
 
 export async function getCachedVideoHandle(): Promise<
   FsFileHandle | undefined
@@ -149,7 +220,8 @@ export async function getCachedProjectHandle(): Promise<
   return get(HANDLE_KEYS.project);
 }
 export async function clearCachedHandles() {
-  await Promise.all([del(HANDLE_KEYS.video), del(HANDLE_KEYS.project)]);
+  await clearCachedVideoHandle();
+  await del(HANDLE_KEYS.project);
 }
 
 // --- download/upload fallback ---
@@ -176,6 +248,9 @@ export function downloadBlob(filename: string, blob: Blob) {
 function normalizeVideoIdentityForSave(video: VideoIdentity): VideoIdentity {
   const out: VideoIdentity = { duration: video.duration };
   if (video.fileName) out.fileName = video.fileName;
+  if (video.fileSize != null && video.fileSize > 0) {
+    out.fileSize = video.fileSize;
+  }
   if (
     video.frameRateNumerator !== undefined &&
     video.frameRateDenominator !== undefined

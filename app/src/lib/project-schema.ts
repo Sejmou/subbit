@@ -65,6 +65,7 @@ const videoIdentitySchema = z
   .transform((val) => ({
     fileName: val.fileName,
     duration: val.duration,
+    ...(val.fileSize !== undefined ? { fileSize: val.fileSize } : {}),
     ...(val.frameRateNumerator !== undefined &&
     val.frameRateDenominator !== undefined
       ? {

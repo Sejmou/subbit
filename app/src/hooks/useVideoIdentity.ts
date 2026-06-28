@@ -101,6 +101,16 @@ export function useVideoIdentity(videoFile: File | null) {
 
         lastCheckedKey.current = checkKey;
         if (match.ok) {
+          if (
+            storedVideo.fileSize === undefined &&
+            current.fileSize !== undefined
+          ) {
+            setVideoIdentity({
+              ...storedVideo,
+              fileSize: current.fileSize,
+              fileName: videoFile.name,
+            });
+          }
           setStatus("ok");
           setMessage(null);
           return;

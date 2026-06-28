@@ -1,10 +1,28 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+  buildVideoIdentity,
   compareVideoIdentity,
   formatVideoMismatchMessage,
   isLegacyVideoIdentity,
 } from "./video-identity";
 import type { VideoIdentity } from "../types";
+
+vi.mock("./mp4-probe", () => ({
+  formatFrameRate: (n: number, d: number) => String(n / d),
+  probeMp4FrameRate: vi.fn().mockResolvedValue(null),
+}));
+
+describe("buildVideoIdentity", () => {
+  it("records file size from the loaded File", async () => {
+    const file = new File(["x"], "clip.mp4", { type: "video/mp4" });
+    Object.defineProperty(file, "size", { value: 1_048_576 });
+    expect(await buildVideoIdentity(file, 90)).toMatchObject({
+      fileName: "clip.mp4",
+      duration: 90,
+      fileSize: 1_048_576,
+    });
+  });
+});
 
 describe("compareVideoIdentity", () => {
   it("passes when only the filename differs", () => {
@@ -113,6 +131,7 @@ describe("isLegacyVideoIdentity", () => {
         frameRateDenominator: 1,
       }),
     ).toBe(false);
+    expect(isLegacyVideoIdentity({ duration: 1, fileSize: 123 })).toBe(false);
   });
 });
 

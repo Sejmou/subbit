@@ -16,18 +16,21 @@ import {
   parseWaveformFromBundle,
 } from "./lib/import-project-bundle";
 import {
-  cacheVideoHandle,
   downloadBlob,
   downloadText,
-  ensurePermission,
-  getCachedVideoHandle,
-  hasPermission,
+  isFileHandleStaleError,
   isFsAccessSupported,
   pickFile,
+  pickFileAsFile,
   readHandleAsFile,
   serializeProject,
   type FsFileHandle,
 } from "./lib/project-io";
+import {
+  cacheVideoHandleForProject,
+  canRestoreLastSession,
+  resolveVideoForProject,
+} from "./lib/video-handle";
 import {
   getActiveProjectId,
   listStoredProjectSummaries,
@@ -48,6 +51,7 @@ import { useShortcuts } from "./hooks/useShortcuts";
 import { useKeyboardLayoutStore } from "./store/keyboard-layout";
 import { useLockReviewedStore } from "./store/lock-reviewed";
 import { LoadScreen } from "./components/LoadScreen";
+import { LinkVideoDialog } from "./components/LinkVideoDialog";
 import { ProjectSetupDialog } from "./components/ProjectSetupDialog";
 import { VideoPlayer } from "./components/VideoPlayer";
 import { CueList } from "./components/CueList";
@@ -74,7 +78,7 @@ import {
 } from "./lib/waveform-peaks";
 import { usePlayback } from "./store/playback";
 import type { ReviewStatusFilter } from "./lib/cue-filters";
-import type { Project } from "./types";
+import type { Project, VideoIdentity } from "./types";
 import {
   readPreviewEnabled,
   writePreviewEnabled,
@@ -99,6 +103,7 @@ export default function App() {
   const clearProject = useProject((s) => s.clearProject);
   const markSaved = useProject((s) => s.markSaved);
   const restoreProject = useProject((s) => s.restoreProject);
+  const syncVideoNameFromFile = useProject((s) => s.syncVideoNameFromFile);
 
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoFileName, setVideoFileName] = useState<string | null>(null);
@@ -134,11 +139,38 @@ export default function App() {
   const [deleteTarget, setDeleteTarget] = useState<StoredProjectSummary | null>(
     null,
   );
+  const [pendingVideoPick, setPendingVideoPick] = useState<{
+    projectName: string;
+    videoName: string;
+    video?: VideoIdentity;
+  } | null>(null);
 
   const videoHandle = useRef<FsFileHandle | null>(null);
   const pendingOpenProjectId = useRef<string | null>(null);
   const unsavedResolver = useRef<((proceed: boolean) => void) | null>(null);
   const fsSupported = isFsAccessSupported();
+
+  const clearPendingVideoPick = useCallback(() => {
+    pendingOpenProjectId.current = null;
+    setPendingVideoPick(null);
+  }, []);
+
+  const armPendingVideoPick = useCallback(
+    (pick: {
+      projectId: string;
+      projectName: string;
+      videoName: string;
+      video?: VideoIdentity;
+    }) => {
+      pendingOpenProjectId.current = pick.projectId;
+      setPendingVideoPick({
+        projectName: pick.projectName,
+        videoName: pick.videoName,
+        video: pick.video,
+      });
+    },
+    [],
+  );
 
   const setVideoFromFile = useCallback((file: File) => {
     setVideoFile(file);
@@ -149,6 +181,17 @@ export default function App() {
     });
     setVideoFileName(file.name);
   }, []);
+
+  const pickVideoFile = useCallback(() => pickFile(VIDEO_ACCEPT, "Video"), []);
+
+  const applyVideoForProject = useCallback(
+    (file: File, handle: FsFileHandle) => {
+      videoHandle.current = handle;
+      setVideoFromFile(file);
+      syncVideoNameFromFile(file.name);
+    },
+    [setVideoFromFile, syncVideoNameFromFile],
+  );
 
   const closeSetup = useCallback(() => {
     setSetupOpen(false);
@@ -209,45 +252,58 @@ export default function App() {
   );
 
   const pickProjectBundle = useCallback(async () => {
-    const handle = await pickFile(ZIP_ACCEPT, "Subbit project bundle");
-    if (!handle) return null;
-    return new Uint8Array(await (await readHandleAsFile(handle)).arrayBuffer());
+    const file = await pickFileAsFile(ZIP_ACCEPT, "Subbit project bundle");
+    if (!file) return null;
+    return new Uint8Array(await file.arrayBuffer());
   }, []);
 
   /** New-user path: video first, empty project, then setup dialog. */
   const beginNewSessionWithVideo = useCallback(
     async (file: File, handle?: FsFileHandle) => {
-      pendingOpenProjectId.current = null;
+      clearPendingVideoPick();
+      const next = createEmptyProject(file.name);
       if (handle) {
+        await cacheVideoHandleForProject(next.id, handle);
         videoHandle.current = handle;
-        await cacheVideoHandle(handle);
       }
       setVideoFromFile(file);
-      await activateProject(createEmptyProject(file.name));
+      await activateProject(next);
       setSetupOpen(true);
       setStarted(true);
     },
-    [setVideoFromFile, activateProject],
+    [clearPendingVideoPick, setVideoFromFile, activateProject],
   );
 
   const pickVideo = useCallback(async () => {
-    const handle = await pickFile(VIDEO_ACCEPT, "Video");
+    const handle = await pickVideoFile();
     if (!handle) return;
-    await beginNewSessionWithVideo(await readHandleAsFile(handle), handle);
-  }, [beginNewSessionWithVideo]);
+    try {
+      await beginNewSessionWithVideo(await readHandleAsFile(handle), handle);
+    } catch (err) {
+      if (isFileHandleStaleError(err)) {
+        alert("That video file could not be opened. Try choosing it again.");
+        return;
+      }
+      throw err;
+    }
+  }, [beginNewSessionWithVideo, pickVideoFile]);
 
   const onVideoFile = useCallback(
     async (file: File) => {
       const pendingId = pendingOpenProjectId.current;
       if (pendingId) {
-        pendingOpenProjectId.current = null;
         setVideoFromFile(file);
+        syncVideoNameFromFile(file.name);
         const stored = await loadStoredProject(pendingId);
-        if (!stored) return;
+        if (!stored) {
+          clearPendingVideoPick();
+          return;
+        }
         setBusy("Opening project…");
         try {
           await setActiveProjectId(pendingId);
           await activateProject(stored);
+          clearPendingVideoPick();
           setStarted(true);
         } finally {
           setBusy(null);
@@ -256,7 +312,13 @@ export default function App() {
       }
       await beginNewSessionWithVideo(file);
     },
-    [beginNewSessionWithVideo, activateProject, setVideoFromFile],
+    [
+      beginNewSessionWithVideo,
+      activateProject,
+      clearPendingVideoPick,
+      setVideoFromFile,
+      syncVideoNameFromFile,
+    ],
   );
 
   const openStoredProject = useCallback(
@@ -268,28 +330,28 @@ export default function App() {
         return false;
       }
 
-      let videoH = videoHandle.current ?? (await getCachedVideoHandle());
+      const resolved = await resolveVideoForProject(stored, {
+        fsSupported,
+        sessionHandle: videoHandle.current,
+        pickVideo: fsSupported ? pickVideoFile : undefined,
+      });
 
-      if (!videoH) {
-        if (fsSupported) {
-          const picked = await pickFile(VIDEO_ACCEPT, "Video");
-          if (!picked) return false;
-          videoH = picked;
-          await cacheVideoHandle(picked);
-        } else {
-          pendingOpenProjectId.current = projectId;
-          alert("Select the matching video file below to open this project.");
-          return false;
+      if (!resolved) {
+        if (!fsSupported) {
+          armPendingVideoPick({
+            projectId,
+            projectName: stored.name,
+            videoName: stored.videoName,
+            video: stored.video,
+          });
         }
+        return false;
       }
-
-      if (!(await ensurePermission(videoH, "read"))) return false;
 
       setBusy("Opening project…");
       try {
         await setActiveProjectId(projectId);
-        videoHandle.current = videoH;
-        setVideoFromFile(await readHandleAsFile(videoH));
+        applyVideoForProject(resolved.file, resolved.handle);
         await activateProject(stored);
         setStarted(true);
         return true;
@@ -297,7 +359,14 @@ export default function App() {
         setBusy(null);
       }
     },
-    [fsSupported, activateProject, setVideoFromFile, refreshStoredProjects],
+    [
+      fsSupported,
+      activateProject,
+      applyVideoForProject,
+      armPendingVideoPick,
+      pickVideoFile,
+      refreshStoredProjects,
+    ],
   );
 
   const confirmDeleteProject = useCallback(async () => {
@@ -322,22 +391,22 @@ export default function App() {
 
   const doRestore = useCallback(
     async (silent: boolean): Promise<boolean> => {
-      const [videoH, projectId] = await Promise.all([
-        getCachedVideoHandle(),
-        getActiveProjectId(),
-      ]);
-      if (!videoH || !projectId) return false;
+      const projectId = await getActiveProjectId();
+      if (!projectId) return false;
 
       const stored = await loadStoredProject(projectId);
       if (!stored) return false;
 
-      const check = silent ? hasPermission : ensurePermission;
-      if (!(await check(videoH, "read"))) return false;
+      const resolved = await resolveVideoForProject(stored, {
+        fsSupported: true,
+        sessionHandle: videoHandle.current,
+        pickVideo: silent ? undefined : pickVideoFile,
+      });
+      if (!resolved) return false;
 
       setBusy("Reopening...");
       try {
-        videoHandle.current = videoH;
-        setVideoFromFile(await readHandleAsFile(videoH));
+        applyVideoForProject(resolved.file, resolved.handle);
         await activateProject(stored);
         setStarted(true);
         return true;
@@ -345,7 +414,7 @@ export default function App() {
         setBusy(null);
       }
     },
-    [activateProject, setVideoFromFile],
+    [activateProject, applyVideoForProject, pickVideoFile],
   );
 
   useEffect(() => {
@@ -357,12 +426,9 @@ export default function App() {
       setProjectsLoading(true);
       await refreshStoredProjects();
       if (fsSupported && (await doRestore(true))) return;
-      const [videoH, projectId] = await Promise.all([
-        getCachedVideoHandle(),
-        getActiveProjectId(),
-      ]);
-      if (videoH && projectId && (await loadStoredProject(projectId))) {
-        setCanRestore(true);
+      const projectId = await getActiveProjectId();
+      if (projectId && (await loadStoredProject(projectId))) {
+        setCanRestore(await canRestoreLastSession(projectId));
       }
     })();
   }, [fsSupported, doRestore, refreshStoredProjects]);
@@ -443,6 +509,7 @@ export default function App() {
   );
 
   const closeProject = useCallback(() => {
+    videoHandle.current = null;
     setStarted(false);
     setSetupOpen(false);
     setSetupBusy(null);
@@ -475,11 +542,10 @@ export default function App() {
       return false;
     }
 
-    const handle = await pickFile(WAVEFORM_ACCEPT, "waveform peaks");
-    if (!handle) return false;
+    const file = await pickFileAsFile(WAVEFORM_ACCEPT, "waveform peaks");
+    if (!file) return false;
 
     try {
-      const file = await readHandleAsFile(handle);
       const parsed = await parseWaveformPeaksFile(file);
       const mismatch = formatWaveformDurationMismatch(
         parsed.meta.duration,
@@ -514,10 +580,10 @@ export default function App() {
     async (projectName: string) => {
       setSetupBusy("Importing whisperx…");
       try {
-        const handle = await pickFile(JSON_ACCEPT, "whisperx JSON");
-        if (!handle) return;
+        const file = await pickFileAsFile(JSON_ACCEPT, "whisperx JSON");
+        if (!file) return;
         const video = videoFileName ?? "video";
-        const text = await (await readHandleAsFile(handle)).text();
+        const text = await file.text();
         const data = parseSubtitleJsonText(text);
         const imported = projectFromWhisperxData(data, video);
         await activateProject({
@@ -552,13 +618,22 @@ export default function App() {
     if (!(await guardUnsaved())) return;
 
     if (fsSupported) {
-      const handle = await pickFile(VIDEO_ACCEPT, "Video");
+      const handle = await pickVideoFile();
       if (!handle) return;
-      videoHandle.current = handle;
-      await cacheVideoHandle(handle);
-      const file = await readHandleAsFile(handle);
-      setVideoFromFile(file);
-      await activateProject(createEmptyProject(file.name));
+      try {
+        const file = await readHandleAsFile(handle);
+        const next = createEmptyProject(file.name);
+        await cacheVideoHandleForProject(next.id, handle);
+        videoHandle.current = handle;
+        setVideoFromFile(file);
+        await activateProject(next);
+      } catch (err) {
+        if (isFileHandleStaleError(err)) {
+          alert("That video file could not be opened. Try choosing it again.");
+          return;
+        }
+        throw err;
+      }
     } else if (videoFileName) {
       await activateProject(createEmptyProject(videoFileName));
     } else {
@@ -701,6 +776,15 @@ export default function App() {
           onRestore={() => void doRestore(false)}
           onOpenProject={(id) => void openStoredProject(id)}
           onDeleteProject={setDeleteTarget}
+        />
+        <LinkVideoDialog
+          open={pendingVideoPick !== null}
+          projectName={pendingVideoPick?.projectName ?? ""}
+          videoName={pendingVideoPick?.videoName ?? ""}
+          video={pendingVideoPick?.video}
+          busy={busy}
+          onVideoFile={(file) => void onVideoFile(file)}
+          onCancel={clearPendingVideoPick}
         />
         <ConfirmDialog
           open={deleteTarget !== null}

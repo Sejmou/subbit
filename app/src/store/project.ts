@@ -136,6 +136,8 @@ interface ProjectState {
   setFps: (fps: number) => void;
   /** Bind timeline identity (duration + frame rate) from the loaded video. */
   setVideoIdentity: (video: VideoIdentity) => void;
+  /** Update stored video filename hints when the loaded file name differs (not dirty). */
+  syncVideoNameFromFile: (fileName: string) => void;
 }
 
 function mapCue(
@@ -681,6 +683,21 @@ export const useProject = create<ProjectState>((set, getState) => {
         "program-start",
       ),
     setFps: (fps) => update((p) => ({ ...p, fps })),
+    syncVideoNameFromFile: (fileName) =>
+      set((state) => {
+        if (!state.project || state.project.videoName === fileName)
+          return state;
+        const video = state.project.video
+          ? { ...state.project.video, fileName }
+          : state.project.video;
+        return {
+          project: {
+            ...state.project,
+            videoName: fileName,
+            video,
+          },
+        };
+      }),
     setVideoIdentity: (video) => update((p) => ({ ...p, video }), "video"),
   };
 });

@@ -74,8 +74,9 @@ export interface VideoIdentity {
   duration: number;
   frameRateNumerator?: number;
   frameRateDenominator?: number;
-  /** @deprecated Legacy sparse-hash identity — ignored on compare, stripped on save. */
+  /** Byte size hint for display; ignored when comparing video identity. */
   fileSize?: number;
+  /** @deprecated Legacy sparse-hash identity — stripped on load and save. */
   fingerprint?: string;
   fingerprintVersion?: number;
 }
