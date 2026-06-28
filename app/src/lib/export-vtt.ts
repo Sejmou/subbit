@@ -1,7 +1,7 @@
 import type { DiarizedExportOptions } from "./export-format";
-import type { Project, Speaker } from "../types";
+import type { Cue, Project, Speaker } from "../types";
 import { cuePlainText, speakerForCue, speakerRoleName } from "./export-text";
-import { contentStartSeconds, fileTimeToProgramTime } from "./program-start";
+import { fileSecondsToSubtitleSeconds } from "./program-start";
 
 /** WebVTT timestamp HH:MM:SS.mmm */
 function vttTime(seconds: number): string {
@@ -12,6 +12,18 @@ function vttTime(seconds: number): string {
   const h = Math.floor(total / 3600);
   const pad = (n: number, w = 2) => String(n).padStart(w, "0");
   return `${pad(h)}:${pad(m)}:${pad(s)}.${pad(ms, 3)}`;
+}
+
+function cueExportSeconds(
+  cue: Cue,
+  project: Project,
+  boundary: "in" | "out",
+): number {
+  const fileSeconds = boundary === "in" ? cue.start : cue.end;
+  return fileSecondsToSubtitleSeconds(
+    fileSeconds,
+    project.referenceStartSeconds,
+  );
 }
 
 function vttClassName(speaker: Speaker): string {
@@ -43,7 +55,6 @@ export function exportVtt(
     }
   }
 
-  const contentStart = contentStartSeconds(project);
   const cues = project.cues.map((cue) => {
     const text = escapeVttText(cuePlainText(cue));
     const speaker = speakerForCue(project, cue);
@@ -62,7 +73,7 @@ export function exportVtt(
       }
     }
 
-    return `${vttTime(fileTimeToProgramTime(cue.start, contentStart))} --> ${vttTime(fileTimeToProgramTime(cue.end, contentStart))}\n${body}\n`;
+    return `${vttTime(cueExportSeconds(cue, project, "in"))} --> ${vttTime(cueExportSeconds(cue, project, "out"))}\n${body}\n`;
   });
 
   const blocks = ["WEBVTT", ""];

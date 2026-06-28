@@ -5,6 +5,7 @@ import { useLockReviewedStore } from "../store/lock-reviewed";
 import { useAutosizeTextarea } from "../hooks/useAutosizeTextarea";
 import { openRolePicker, NO_ROLE_LABEL } from "../lib/role-picker";
 import { isReviewedCueLocked } from "../lib/cue-lock";
+import { cueEndSeconds, cueStartSeconds } from "../lib/cue-timing";
 import { useShortcutLabel } from "../hooks/useShortcutLabel";
 import { CueTimeField } from "./CueTimeField";
 import { useTip } from "./Tooltip";
@@ -217,14 +218,14 @@ function CueRowImpl({
       <div className="cue-times">
         <CueTimeField
           cueId={cue.id}
-          fileSeconds={cue.start}
+          fileSeconds={cueStartSeconds(cue)}
           project={project}
           kind="in"
           locked={locked}
         />
         <CueTimeField
           cueId={cue.id}
-          fileSeconds={cue.end}
+          fileSeconds={cueEndSeconds(cue)}
           project={project}
           kind="out"
           locked={locked}

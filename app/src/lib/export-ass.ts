@@ -1,7 +1,7 @@
 import type { DiarizedExportOptions } from "./export-format";
-import type { Project, Speaker } from "../types";
+import type { Cue, Project, Speaker } from "../types";
 import { cuePlainText, speakerForCue, speakerRoleName } from "./export-text";
-import { contentStartSeconds, fileTimeToProgramTime } from "./program-start";
+import { fileSecondsToSubtitleSeconds } from "./program-start";
 
 /** ASS timestamp H:MM:SS.cc (centiseconds). */
 function assTime(seconds: number): string {
@@ -12,6 +12,18 @@ function assTime(seconds: number): string {
   const h = Math.floor(total / 3600);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${h}:${pad(m)}:${pad(s)}.${pad(cs)}`;
+}
+
+function cueExportSeconds(
+  cue: Cue,
+  project: Project,
+  boundary: "in" | "out",
+): number {
+  const fileSeconds = boundary === "in" ? cue.start : cue.end;
+  return fileSecondsToSubtitleSeconds(
+    fileSeconds,
+    project.referenceStartSeconds,
+  );
 }
 
 /** #RRGGBB → ASS &HAABBGGRR (alpha + BGR). */
@@ -77,7 +89,6 @@ export function exportAss(
     }
   }
 
-  const contentStart = contentStartSeconds(project);
   const dialogues = project.cues.map((cue) => {
     const text = assEscape(cuePlainText(cue));
     const speaker = speakerForCue(project, cue);
@@ -86,7 +97,7 @@ export function exportAss(
         ? (styleBySpeakerId.get(speaker.id) ?? "Default")
         : "Default";
     const name = speakerLabels && speaker ? speakerRoleName(project, cue) : "";
-    return `Dialogue: 0,${assTime(fileTimeToProgramTime(cue.start, contentStart))},${assTime(fileTimeToProgramTime(cue.end, contentStart))},${style},${name},0,0,0,,${text}`;
+    return `Dialogue: 0,${assTime(cueExportSeconds(cue, project, "in"))},${assTime(cueExportSeconds(cue, project, "out"))},${style},${name},0,0,0,,${text}`;
   });
 
   return [

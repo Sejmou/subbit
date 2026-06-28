@@ -8,8 +8,6 @@ import {
 import type { Project } from "../types";
 import { useProject } from "../store/project";
 import { usePlayback } from "../store/playback";
-import { useTimeReference } from "../store/time-reference";
-import { contentStartSeconds } from "../lib/program-start";
 import {
   cueDisplayTimecode,
   cueTimecodeToFileSeconds,
@@ -42,49 +40,32 @@ export function CueTimeField({
   const setCueStart = useProject((s) => s.setCueStart);
   const setCueEnd = useProject((s) => s.setCueEnd);
   const seek = usePlayback((s) => s.seek);
-  const timeReference = useTimeReference((s) => s.reference);
-  const contentStart = contentStartSeconds(project);
 
   const [draft, setDraft] = useState(() =>
-    cueDisplayTimecode(fileSeconds, project, timeReference),
+    cueDisplayTimecode(fileSeconds, project),
   );
   const [error, setError] = useState(false);
   const focused = useRef(false);
 
   useEffect(() => {
     if (!focused.current) {
-      setDraft(cueDisplayTimecode(fileSeconds, project, timeReference));
+      setDraft(cueDisplayTimecode(fileSeconds, project));
       setError(false);
     }
-  }, [fileSeconds, project, timeReference]);
+  }, [fileSeconds, project]);
 
   const apply = useCallback(() => {
     if (locked) return;
     try {
-      const seconds = cueTimecodeToFileSeconds(
-        draft,
-        project.fps,
-        contentStart,
-        timeReference,
-      );
+      const seconds = cueTimecodeToFileSeconds(draft, project);
       if (kind === "in") setCueStart(cueId, seconds);
       else setCueEnd(cueId, seconds);
-      setDraft(cueDisplayTimecode(seconds, project, timeReference));
+      setDraft(cueDisplayTimecode(seconds, project));
       setError(false);
     } catch {
       setError(true);
     }
-  }, [
-    draft,
-    cueId,
-    kind,
-    project,
-    contentStart,
-    timeReference,
-    setCueStart,
-    setCueEnd,
-    locked,
-  ]);
+  }, [draft, cueId, kind, project, setCueStart, setCueEnd, locked]);
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -93,7 +74,7 @@ export function CueTimeField({
       (e.target as HTMLInputElement).blur();
     }
     if (e.key === "Escape") {
-      setDraft(cueDisplayTimecode(fileSeconds, project, timeReference));
+      setDraft(cueDisplayTimecode(fileSeconds, project));
       setError(false);
       (e.target as HTMLInputElement).blur();
     }

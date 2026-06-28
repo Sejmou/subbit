@@ -1,68 +1,74 @@
 import type { ExportFormatInfo } from "./export-format";
-import { secondsToTimecode } from "./timecode";
+import type { Project } from "../types";
+import {
+  fileSecondsToSubtitleTimecode,
+  nominalTimecodeFps,
+  projectFrameRate,
+  totalFramesToTimecode,
+} from "./frame-time";
+import { cueExportFrame, referenceStartTimecode } from "./program-start";
 
-const PROGRAM_START_BASE =
-  "Program start skips leader/black at the head of the file. Cue In/Out in the editor stay on the file timeline; only exported times count from program start.";
+const REFERENCE_START_BASE =
+  "Reference start skips leader/black at the head of the file. Cue In/Out in the editor use subtitle SMPTE; export subtracts the reference point.";
 
 export function exportFormatHint(
   info: ExportFormatInfo,
-  contentStart: number,
-  fps: number,
+  project: Project,
 ): string {
   const parts = [info.hint];
+  const ref = project.referenceStartSeconds;
 
-  if (contentStart > 0) {
-    const skip = secondsToTimecode(contentStart, fps, "00:00:00:00");
+  if (ref > 0) {
+    const skip = referenceStartTimecode(project);
     parts.push(
-      `Program start is set at file ${skip}; export times subtract this leader.`,
+      `Reference start is set at ${skip}; export times count from subtitle zero.`,
     );
   } else {
     parts.push(
-      "No program start set — export times match the file from 00:00:00.",
+      "No reference start set — export times match subtitle SMPTE from the project start timecode.",
     );
   }
 
   if (info.usesDeliveryOffset) {
     parts.push(
-      "Broadcast offset is added on top for SMPTE delivery timecodes.",
+      "Delivery SMPTE uses the project start timecode at the reference point.",
     );
   } else {
     parts.push(
-      "Export uses program time from 00:00:00 (no broadcast offset in this format).",
+      "Export uses subtitle-relative time from 00:00:00 (no broadcast offset in this format).",
     );
   }
 
-  parts.push(PROGRAM_START_BASE);
+  parts.push(REFERENCE_START_BASE);
   return parts.join(" ");
 }
 
 /** One-line summary for the export preview block. */
 export function exportPreviewSummary(
-  fileStart: number,
-  fileEnd: number,
-  contentStart: number,
-  fps: number,
-  timecodeOffset: string,
+  project: Project,
+  inSeconds: number,
+  outSeconds: number,
   usesDeliveryOffset: boolean,
 ): {
-  programIn: string;
-  programOut: string;
+  subtitleIn: string;
+  subtitleOut: string;
   deliveryIn?: string;
   deliveryOut?: string;
 } {
-  const programInSec = Math.max(0, fileStart - contentStart);
-  const programOutSec = Math.max(0, fileEnd - contentStart);
-  const programIn = secondsToTimecode(programInSec, fps, "00:00:00:00");
-  const programOut = secondsToTimecode(programOutSec, fps, "00:00:00:00");
+  const tcFps = nominalTimecodeFps(projectFrameRate(project));
+  const exportIn = cueExportFrame(inSeconds, project);
+  const exportOut = cueExportFrame(outSeconds, project);
+  const subtitleIn = totalFramesToTimecode(exportIn, tcFps);
+  const subtitleOut = totalFramesToTimecode(exportOut, tcFps);
 
   if (!usesDeliveryOffset) {
-    return { programIn, programOut };
+    return { subtitleIn, subtitleOut };
   }
 
   return {
-    programIn,
-    programOut,
-    deliveryIn: secondsToTimecode(programInSec, fps, timecodeOffset),
-    deliveryOut: secondsToTimecode(programOutSec, fps, timecodeOffset),
+    subtitleIn,
+    subtitleOut,
+    deliveryIn: fileSecondsToSubtitleTimecode(inSeconds, project),
+    deliveryOut: fileSecondsToSubtitleTimecode(outSeconds, project),
   };
 }

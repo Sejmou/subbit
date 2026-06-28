@@ -23,12 +23,14 @@ function makeProject(
   id = "00000000-0000-4000-8000-000000000001",
 ): Project {
   return {
-    version: 1,
+    version: 2,
     id,
     name: "clip",
     videoName: "clip.mp4",
-    fps: 25,
-    timecodeOffset: "10:00:00:00",
+    fpsNumerator: 25,
+    fpsDenominator: 1,
+    startTimecode: "10:00:00:00",
+    referenceStartSeconds: 0,
     defaultShot: "ON",
     shots: [{ id: "ON", label: "On-screen" }],
     speakers: [{ id: "SPEAKER_00", name: "A", color: "#fff" }],

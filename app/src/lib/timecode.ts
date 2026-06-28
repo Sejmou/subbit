@@ -6,6 +6,12 @@
  * media time of 101.0s exports as 10:01:41:00.
  */
 
+import type { Project } from "../types";
+import {
+  mediaFrameToSubtitleTimecode,
+  secondsToMediaFrame,
+} from "./frame-time";
+
 /** Parse "HH:MM:SS:FF" into a number of seconds, given fps for the frame part. */
 export function timecodeToSeconds(tc: string, fps: number): number {
   const parts = tc.trim().split(":");
@@ -63,6 +69,26 @@ export function secondsToClockShort(seconds: number): string {
   const h = Math.floor(total / 3600);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+
+/** Visible subtitle timeline window as SMPTE `start – end`. */
+export function formatSubtitleTimelineRange(
+  startSeconds: number,
+  endSeconds: number,
+  project: Project,
+  durationSeconds?: number,
+): string {
+  const fmt = (t: number) =>
+    mediaFrameToSubtitleTimecode(secondsToMediaFrame(t, project), project);
+  let label = `${fmt(startSeconds)} – ${fmt(endSeconds)}`;
+  if (
+    durationSeconds != null &&
+    Number.isFinite(durationSeconds) &&
+    durationSeconds > 0
+  ) {
+    label += ` / ${fmt(durationSeconds)}`;
+  }
+  return label;
 }
 
 /** Visible timeline window as `start – end`, optionally with `/ duration`. */

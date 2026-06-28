@@ -4,9 +4,10 @@ import {
   resolveSpeakerFromInference,
 } from "./infer-speaker";
 import {
-  DEFAULT_FPS,
+  DEFAULT_FPS_DENOMINATOR,
+  DEFAULT_FPS_NUMERATOR,
   DEFAULT_SHOTS,
-  DEFAULT_TIMECODE_OFFSET,
+  DEFAULT_START_TIMECODE,
   PROJECT_VERSION,
   type Cue,
   type Project,
@@ -119,8 +120,10 @@ export function importWhisperx(json: WhisperxJson, videoName: string): Project {
     id: newProjectId(),
     name: resolveProjectName("", videoName),
     videoName,
-    fps: DEFAULT_FPS,
-    timecodeOffset: DEFAULT_TIMECODE_OFFSET,
+    fpsNumerator: DEFAULT_FPS_NUMERATOR,
+    fpsDenominator: DEFAULT_FPS_DENOMINATOR,
+    startTimecode: DEFAULT_START_TIMECODE,
+    referenceStartSeconds: 0,
     defaultShot,
     shots: DEFAULT_SHOTS,
     speakers,
@@ -137,7 +140,7 @@ function buildSpeakers(segments: WhisperxSegment[]): Speaker[] {
   }
   return [...labels].sort().map((id, i) => ({
     id,
-    name: id, // editable; user renames e.g. SPEAKER_07 -> "Mia"
+    name: id,
     color: SPEAKER_PALETTE[i % SPEAKER_PALETTE.length],
   }));
 }

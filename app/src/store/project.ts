@@ -10,9 +10,10 @@ import type {
 } from "../types";
 import { computeInsertCueRange, findInsertCueIndex } from "../lib/cue-insert";
 import { isReviewedCueLocked } from "../lib/cue-lock";
+import { frameStep, snapToFrame } from "../lib/cue-timing";
 import { isSpeakerReferenced } from "../lib/speaker-refs";
 import { resolveProjectName } from "../lib/project-meta";
-const EPS = 0.001;
+
 const DEFAULT_CUE_DURATION = 2;
 
 const SPEAKER_PALETTE = [
@@ -44,11 +45,11 @@ function newId(): string {
 
 function splitWordsAtTime(
   words: Word[] | undefined,
-  t: number,
+  splitTime: number,
 ): [Word[] | undefined, Word[] | undefined] {
   if (!words) return [undefined, undefined];
-  const left = words.filter((w) => w.start < t);
-  const right = words.filter((w) => w.start >= t);
+  const left = words.filter((w) => w.start < splitTime);
+  const right = words.filter((w) => w.start >= splitTime);
   return [left, right];
 }
 
@@ -95,8 +96,8 @@ interface ProjectState {
   setCueEnd: (cueId: string, time: number) => void;
   /** Set In and Out together (e.g. dragging a cue on the timeline). */
   setCueTimes: (cueId: string, start: number, end: number) => void;
-  nudgeCueStart: (cueId: string, delta: number) => void;
-  nudgeCueEnd: (cueId: string, delta: number) => void;
+  nudgeCueStart: (cueId: string, deltaFrames: number) => void;
+  nudgeCueEnd: (cueId: string, deltaFrames: number) => void;
 
   // metadata
   setCueSpeaker: (cueId: string, speakerId: string | null) => void;
@@ -131,9 +132,8 @@ interface ProjectState {
 
   // settings
   setProjectName: (name: string) => void;
-  setTimecodeOffset: (offset: string) => void;
-  setContentStartSeconds: (seconds: number) => void;
-  setFps: (fps: number) => void;
+  setStartTimecode: (timecode: string) => void;
+  setReferenceStartSeconds: (seconds: number) => void;
   /** Bind timeline identity (duration + frame rate) from the loaded video. */
   setVideoIdentity: (video: VideoIdentity) => void;
   /** Update stored video filename hints when the loaded file name differs (not dirty). */
@@ -160,18 +160,30 @@ function cueIsLocked(project: Project, cueId: string): boolean {
   return cue !== undefined && isReviewedCueLocked(cue);
 }
 
-function clampCueStart(cue: Cue, time: number, prev: Cue | undefined): number {
+function clampCueStart(
+  cue: Cue,
+  start: number,
+  prev: Cue | undefined,
+  project: Project,
+): number {
+  const gap = frameStep(project);
   const min = prev ? prev.end : 0;
-  const max = cue.end - EPS;
+  const max = cue.end - gap;
   if (min > max) return cue.start;
-  return Math.min(Math.max(min, time), max);
+  return Math.min(Math.max(min, start), max);
 }
 
-function clampCueEnd(cue: Cue, time: number, next: Cue | undefined): number {
-  const min = cue.start + EPS;
+function clampCueEnd(
+  cue: Cue,
+  end: number,
+  next: Cue | undefined,
+  project: Project,
+): number {
+  const gap = frameStep(project);
+  const min = cue.start + gap;
   const max = next ? next.start : Infinity;
   if (min > max) return cue.end;
-  return Math.min(Math.max(min, time), max);
+  return Math.min(Math.max(min, end), max);
 }
 
 /** Move a cue as a block — keeps duration unless neighbors leave no room. */
@@ -181,9 +193,11 @@ function clampCueMove(
   end: number,
   prev: Cue | undefined,
   next: Cue | undefined,
+  project: Project,
 ): { start: number; end: number } {
+  const gap = frameStep(project);
   const duration = end - start;
-  if (duration <= EPS) return { start: cue.start, end: cue.end };
+  if (duration < gap) return { start: cue.start, end: cue.end };
 
   const minStart = prev ? prev.end : 0;
   const maxEnd = next ? next.start : Infinity;
@@ -205,7 +219,7 @@ function clampCueMove(
   }
 
   newStart = Math.max(0, newStart);
-  if (newEnd - newStart <= EPS) return { start: cue.start, end: cue.end };
+  if (newEnd - newStart < gap) return { start: cue.start, end: cue.end };
   return { start: newStart, end: newEnd };
 }
 
@@ -384,7 +398,12 @@ export const useProject = create<ProjectState>((set, getState) => {
         const idx = proj.cues.findIndex((c) => c.id === cueId);
         if (idx === -1) return proj;
         const c = proj.cues[idx];
-        const start = clampCueStart(c, time, proj.cues[idx - 1]);
+        const start = clampCueStart(
+          c,
+          snapToFrame(time, proj),
+          proj.cues[idx - 1],
+          proj,
+        );
         if (start === c.start) return proj;
         return mapCue(proj, cueId, (cue) => ({ ...cue, start }));
       }, `start:${cueId}`);
@@ -396,7 +415,12 @@ export const useProject = create<ProjectState>((set, getState) => {
         const idx = proj.cues.findIndex((c) => c.id === cueId);
         if (idx === -1) return proj;
         const c = proj.cues[idx];
-        const end = clampCueEnd(c, time, proj.cues[idx + 1]);
+        const end = clampCueEnd(
+          c,
+          snapToFrame(time, proj),
+          proj.cues[idx + 1],
+          proj,
+        );
         if (end === c.end) return proj;
         return mapCue(proj, cueId, (cue) => ({ ...cue, end }));
       }, `end:${cueId}`);
@@ -410,10 +434,11 @@ export const useProject = create<ProjectState>((set, getState) => {
         const c = proj.cues[idx];
         const next = clampCueMove(
           c,
-          start,
-          end,
+          snapToFrame(start, proj),
+          snapToFrame(end, proj),
           proj.cues[idx - 1],
           proj.cues[idx + 1],
+          proj,
         );
         if (next.start === c.start && next.end === c.end) return proj;
         return mapCue(proj, cueId, (cue) => ({
@@ -423,13 +448,17 @@ export const useProject = create<ProjectState>((set, getState) => {
         }));
       }, `move:${cueId}`);
     },
-    nudgeCueStart: (cueId, delta) => {
-      const c = getState().project?.cues.find((x) => x.id === cueId);
-      if (c) getState().setCueStart(cueId, c.start + delta);
+    nudgeCueStart: (cueId, deltaFrames) => {
+      const p = getState().project;
+      const c = p?.cues.find((x) => x.id === cueId);
+      if (!c || !p) return;
+      getState().setCueStart(cueId, c.start + deltaFrames * frameStep(p));
     },
-    nudgeCueEnd: (cueId, delta) => {
-      const c = getState().project?.cues.find((x) => x.id === cueId);
-      if (c) getState().setCueEnd(cueId, c.end + delta);
+    nudgeCueEnd: (cueId, deltaFrames) => {
+      const p = getState().project;
+      const c = p?.cues.find((x) => x.id === cueId);
+      if (!c || !p) return;
+      getState().setCueEnd(cueId, c.end + deltaFrames * frameStep(p));
     },
 
     setCueSpeaker: (cueId, speakerId) => {
@@ -474,9 +503,11 @@ export const useProject = create<ProjectState>((set, getState) => {
         const idx = proj.cues.findIndex((c) => c.id === cueId);
         if (idx === -1) return proj;
         const c = proj.cues[idx];
+        const splitTime = snapToFrame(time, proj);
+        const gap = frameStep(proj);
         const t =
-          time > c.start + EPS && time < c.end - EPS
-            ? time
+          splitTime > c.start + gap && splitTime < c.end - gap
+            ? splitTime
             : (c.start + c.end) / 2;
 
         const seg = c.segments[segIndex];
@@ -672,17 +703,16 @@ export const useProject = create<ProjectState>((set, getState) => {
         "project-name",
       ),
 
-    setTimecodeOffset: (offset) =>
-      update((p) => ({ ...p, timecodeOffset: offset }), "offset"),
-    setContentStartSeconds: (seconds) =>
+    setStartTimecode: (timecode) =>
+      update((p) => ({ ...p, startTimecode: timecode }), "start-timecode"),
+    setReferenceStartSeconds: (seconds) =>
       update(
         (p) => ({
           ...p,
-          contentStartSeconds: seconds <= 0 ? undefined : seconds,
+          referenceStartSeconds: Math.max(0, seconds),
         }),
-        "program-start",
+        "reference-start",
       ),
-    setFps: (fps) => update((p) => ({ ...p, fps })),
     syncVideoNameFromFile: (fileName) =>
       set((state) => {
         if (!state.project || state.project.videoName === fileName)
@@ -698,6 +728,20 @@ export const useProject = create<ProjectState>((set, getState) => {
           },
         };
       }),
-    setVideoIdentity: (video) => update((p) => ({ ...p, video }), "video"),
+    setVideoIdentity: (video) =>
+      update(
+        (p) => ({
+          ...p,
+          video,
+          ...(video.frameRateNumerator != null &&
+          video.frameRateDenominator != null
+            ? {
+                fpsNumerator: video.frameRateNumerator,
+                fpsDenominator: video.frameRateDenominator,
+              }
+            : {}),
+        }),
+        "video",
+      ),
   };
 });

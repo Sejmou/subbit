@@ -3,59 +3,46 @@ import type { Project } from "../types";
 import {
   cueDisplayTimecode,
   cueTimecodeToFileSeconds,
-  playheadClockToFileSeconds,
-  playheadDisplayClock,
-  referenceSeconds,
+  playheadDisplayTimecode,
+  playheadTimecodeToFileSeconds,
 } from "./display-time";
 
-const project = {
-  fps: 25,
-  contentStartSeconds: 100,
-} as Project;
-
-describe("referenceSeconds", () => {
-  it("returns file time in file mode", () => {
-    expect(referenceSeconds(150, 100, "file")).toBe(150);
-  });
-
-  it("returns program time in program mode", () => {
-    expect(referenceSeconds(150, 100, "program")).toBe(50);
-  });
-
-  it("clamps program time at zero", () => {
-    expect(referenceSeconds(50, 100, "program")).toBe(0);
-  });
-});
+const project: Project = {
+  version: 2,
+  id: "00000000-0000-4000-8000-000000000001",
+  name: "test",
+  videoName: "test.mp4",
+  fpsNumerator: 25,
+  fpsDenominator: 1,
+  startTimecode: "00:00:00:00",
+  referenceStartSeconds: 100,
+  defaultShot: "ON",
+  shots: [{ id: "ON", label: "On-screen" }],
+  speakers: [],
+  cues: [],
+};
 
 describe("cueDisplayTimecode", () => {
-  it("shows file time from zero in file mode", () => {
-    expect(cueDisplayTimecode(101, project, "file")).toBe("00:01:41:00");
+  it("shows subtitle SMPTE from reference frame", () => {
+    expect(cueDisplayTimecode(101, project)).toBe("00:00:01:00");
   });
 
-  it("shows program time from zero in program mode", () => {
-    expect(cueDisplayTimecode(101, project, "program")).toBe("00:00:01:00");
+  it("shows subtitle zero before reference", () => {
+    expect(cueDisplayTimecode(50, project)).toBe("00:00:00:00");
   });
 });
 
 describe("cueTimecodeToFileSeconds", () => {
-  it("round-trips file mode cue timecodes", () => {
-    const tc = cueDisplayTimecode(101, project, "file");
-    expect(cueTimecodeToFileSeconds(tc, 25, 100, "file")).toBeCloseTo(101, 4);
-  });
-
-  it("round-trips program mode cue timecodes", () => {
-    const tc = cueDisplayTimecode(101, project, "program");
-    expect(cueTimecodeToFileSeconds(tc, 25, 100, "program")).toBeCloseTo(
-      101,
-      4,
-    );
+  it("round-trips cue timecodes", () => {
+    const tc = cueDisplayTimecode(101, project);
+    expect(cueTimecodeToFileSeconds(tc, project)).toBeCloseTo(101, 4);
   });
 });
 
-describe("playheadDisplayClock", () => {
-  it("round-trips through playheadClockToFileSeconds in program mode", () => {
-    const clock = playheadDisplayClock(101, 100, "program");
-    expect(clock).toBe("00:00:01.000");
-    expect(playheadClockToFileSeconds(1, 100, "program")).toBe(101);
+describe("playheadDisplayTimecode", () => {
+  it("round-trips through playheadTimecodeToFileSeconds", () => {
+    const tc = playheadDisplayTimecode(101, project);
+    expect(tc).toBe("00:00:01:00");
+    expect(playheadTimecodeToFileSeconds(tc, project)).toBeCloseTo(101, 4);
   });
 });

@@ -44,12 +44,14 @@ const cue: Cue = {
 };
 
 const project: Project = {
-  version: 1,
+  version: 2,
   id: "00000000-0000-4000-8000-000000000001",
   name: "test",
   videoName: "test",
-  fps: 25,
-  timecodeOffset: "10:00:00:00",
+  fpsNumerator: 25,
+  fpsDenominator: 1,
+  startTimecode: "00:00:00:00",
+  referenceStartSeconds: 0,
   defaultShot: "ON",
   shots: [{ id: "ON", label: "On-screen" }],
   speakers: [{ id: "SPEAKER_00", name: "A", color: "#fff" }],
@@ -72,7 +74,7 @@ function ctx(overrides: Partial<ShortcutContext> = {}): ShortcutContext {
     splitCueAtCaret: vi.fn(),
     insertShotSplit: vi.fn(),
     deleteCue: vi.fn(),
-    setContentStartSeconds: vi.fn(),
+    setReferenceStartSeconds: vi.fn(),
     selectedSegment: 0,
   };
   const pb = {
@@ -89,7 +91,7 @@ function ctx(overrides: Partial<ShortcutContext> = {}): ShortcutContext {
     cue,
     cueIndex: 0,
     cueLocked: false,
-    frame: 0.04,
+    frameStep: 0.04,
     caret: null,
     ps: ps as unknown as ShortcutContext["ps"],
     pb: pb as unknown as ShortcutContext["pb"],
@@ -194,7 +196,7 @@ describe("resolveShortcut", () => {
       c,
       makeKeyEvent(" ", { shiftKey: true }),
     );
-    expect(c.pb.playFrom).toHaveBeenCalledWith(cue.start);
+    expect(c.pb.playFrom).toHaveBeenCalledWith(1);
   });
 
   it("handles navigation bindings when a cue is selected", () => {
@@ -219,11 +221,11 @@ describe("resolveShortcut", () => {
   it("jumps to cue In and Out with H and L", () => {
     const c = ctx();
     resolveShortcut(makeKeyEvent("h"), c)?.run(c, makeKeyEvent("h"));
-    expect(c.pb.seek).toHaveBeenCalledWith(cue.start);
+    expect(c.pb.seek).toHaveBeenCalledWith(1);
 
     const c2 = ctx();
     resolveShortcut(makeKeyEvent("l"), c2)?.run(c2, makeKeyEvent("l"));
-    expect(c2.pb.seek).toHaveBeenCalledWith(cue.end);
+    expect(c2.pb.seek).toHaveBeenCalledWith(5);
   });
 
   it("nudges cue times from physical keys (layout-independent)", () => {
@@ -232,42 +234,42 @@ describe("resolveShortcut", () => {
       c,
       makeKeyEvent("ü", { code: "BracketLeft" }),
     );
-    expect(c.ps.nudgeCueStart).toHaveBeenCalledWith("cue-1", -c.frame);
+    expect(c.ps.nudgeCueStart).toHaveBeenCalledWith("cue-1", -1);
 
     const c2 = ctx();
     resolveShortcut(
       makeKeyEvent("Ü", { code: "BracketLeft", shiftKey: true }),
       c2,
     )?.run(c2, makeKeyEvent("Ü", { code: "BracketLeft", shiftKey: true }));
-    expect(c2.ps.nudgeCueStart).toHaveBeenCalledWith("cue-1", -(c2.frame * 10));
+    expect(c2.ps.nudgeCueStart).toHaveBeenCalledWith("cue-1", -10);
 
     const c3 = ctx();
     resolveShortcut(makeKeyEvent("+", { code: "BracketRight" }), c3)?.run(
       c3,
       makeKeyEvent("+", { code: "BracketRight" }),
     );
-    expect(c3.ps.nudgeCueStart).toHaveBeenCalledWith("cue-1", c3.frame);
+    expect(c3.ps.nudgeCueStart).toHaveBeenCalledWith("cue-1", 1);
 
     const c4 = ctx();
     resolveShortcut(makeKeyEvent("'", { code: "Quote" }), c4)?.run(
       c4,
       makeKeyEvent("'", { code: "Quote" }),
     );
-    expect(c4.ps.nudgeCueEnd).toHaveBeenCalledWith("cue-1", -c4.frame);
+    expect(c4.ps.nudgeCueEnd).toHaveBeenCalledWith("cue-1", -1);
 
     const c5 = ctx();
     resolveShortcut(makeKeyEvent("\\", { code: "Backslash" }), c5)?.run(
       c5,
       makeKeyEvent("\\", { code: "Backslash" }),
     );
-    expect(c5.ps.nudgeCueEnd).toHaveBeenCalledWith("cue-1", c5.frame);
+    expect(c5.ps.nudgeCueEnd).toHaveBeenCalledWith("cue-1", 1);
 
     const c6 = ctx();
     resolveShortcut(
       makeKeyEvent("\\", { code: "Backslash", shiftKey: true }),
       c6,
     )?.run(c6, makeKeyEvent("\\", { code: "Backslash", shiftKey: true }));
-    expect(c6.ps.nudgeCueEnd).toHaveBeenCalledWith("cue-1", c6.frame * 10);
+    expect(c6.ps.nudgeCueEnd).toHaveBeenCalledWith("cue-1", 10);
   });
 
   it("ignores navigation shortcuts while editing text", () => {
@@ -340,14 +342,14 @@ describe("resolveShortcut", () => {
     expect(c2.ps.cycleSegmentShot).toHaveBeenCalledWith("cue-1", 0);
   });
 
-  it("handles program start shortcuts on 0 and legacy Home/End keys", () => {
+  it("handles reference frame shortcuts on 0 and legacy Home/End keys", () => {
     const c = ctx({
-      project: { ...project, contentStartSeconds: 12 },
+      project: { ...project, referenceStartSeconds: 12 },
       pb: { ...ctx().pb, currentTime: 5, duration: 100 },
     });
 
     expect(resolveShortcut(makeKeyEvent("0", { code: "Digit0" }), c)?.id).toBe(
-      "seek-program-start",
+      "seek-reference-frame",
     );
     resolveShortcut(makeKeyEvent("0", { code: "Digit0" }), c)?.run(
       c,
@@ -356,35 +358,35 @@ describe("resolveShortcut", () => {
     expect(c.pb.seek).toHaveBeenCalledWith(12);
 
     expect(resolveShortcut(makeKeyEvent("Home"), c)?.id).toBe(
-      "seek-program-start",
+      "seek-reference-frame",
     );
 
     expect(
       resolveShortcut(makeKeyEvent("0", { code: "Digit0", shiftKey: true }), c)
         ?.id,
-    ).toBe("set-program-start");
+    ).toBe("set-reference-frame");
     resolveShortcut(
       makeKeyEvent("0", { code: "Digit0", shiftKey: true }),
       c,
     )?.run(c, makeKeyEvent("0", { code: "Digit0", shiftKey: true }));
-    expect(c.ps.setContentStartSeconds).toHaveBeenCalledWith(5);
+    expect(c.ps.setReferenceStartSeconds).toHaveBeenCalledWith(5);
 
     expect(
       resolveShortcut(makeKeyEvent("Home", { shiftKey: true }), c)?.id,
-    ).toBe("set-program-start");
+    ).toBe("set-reference-frame");
 
     expect(
       resolveShortcut(makeKeyEvent("0", { code: "Digit0", altKey: true }), c)
         ?.id,
-    ).toBe("clear-program-start");
+    ).toBe("clear-reference-frame");
     resolveShortcut(
       makeKeyEvent("0", { code: "Digit0", altKey: true }),
       c,
     )?.run(c, makeKeyEvent("0", { code: "Digit0", altKey: true }));
-    expect(c.ps.setContentStartSeconds).toHaveBeenCalledWith(0);
+    expect(c.ps.setReferenceStartSeconds).toHaveBeenCalledWith(0);
 
     expect(
       resolveShortcut(makeKeyEvent("End", { shiftKey: true }), c)?.id,
-    ).toBe("clear-program-start");
+    ).toBe("clear-reference-frame");
   });
 });

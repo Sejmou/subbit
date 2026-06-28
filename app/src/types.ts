@@ -1,9 +1,13 @@
 /**
  * Core domain model for Subbit.
  *
- * The "source of truth" while editing is a Project, which is a superset of the
- * whisperx output (we keep word-level timing so cues can be re-split losslessly).
- * The Project serializes to project.json and exports to .srt and the delivery CSV.
+ * The editable source of truth is a {@link Project} — a superset of whisperx
+ * output with word-level timing so cues can be re-split without losing alignment.
+ * Saved as `.subbit.json`; exported to delivery CSV, SRT, VTT, ASS, etc.
+ *
+ * Cue `start`/`end` are stored as file-relative seconds (playback / WhisperX
+ * axis). Subtitle SMPTE in the UI is derived from `startTimecode`,
+ * `referenceStartSeconds`, and the project frame rate.
  */
 
 export type ShotId = string;
@@ -14,7 +18,7 @@ export interface Segment {
   shot: ShotId;
 }
 
-/** Word-level timing carried over from whisperx, used for fast splitting. */
+/** Word-level timing from whisperx; file-relative seconds. */
 export interface Word {
   word: string;
   start: number;
@@ -37,7 +41,9 @@ export interface InferredSpeaker {
  */
 export interface Cue {
   id: string;
+  /** File-relative seconds (inclusive); same axis as video playback. */
   start: number;
+  /** File-relative seconds (exclusive); active-cue lookup uses [start, end). */
   end: number;
   /** Diarization label (e.g. SPEAKER_07) or a custom id; null = unassigned. */
   speakerId: string | null;
@@ -82,6 +88,7 @@ export interface VideoIdentity {
 }
 
 export interface Project {
+  /** Schema version; bump when the on-disk JSON shape changes (see {@link PROJECT_VERSION}). */
   version: number;
   /** Stable id assigned at creation; used for persisted version history. */
   id: string;
@@ -89,24 +96,22 @@ export interface Project {
   name: string;
   /** Source video filename hint (e.g. clip.mp4). */
   videoName: string;
-  /** Timeline identity of the source video (duration + container frame rate). */
+  /** Timeline identity of the linked video (duration + probed frame rate). */
   video?: VideoIdentity;
-  /** Frames per second for SMPTE timecode (e.g. 25 for PAL). */
-  fps: number;
-  /** Broadcast start offset, SMPTE "HH:MM:SS:FF" (default 10:00:00:00). */
-  timecodeOffset: string;
-  /**
-   * Seconds into the video file where exported program time 0:00:00:00 begins
-   * (skips leader/black/slate without re-encoding). Cue times stay in file time.
-   */
-  contentStartSeconds?: number;
+  /** Frame rate for SMPTE labels and snapping edits; copied from `video` or default 25/1. */
+  fpsNumerator: number;
+  fpsDenominator: number;
+  /** SMPTE at `referenceStartSeconds` (e.g. `00:00:00:00`, `01:00:00:00`). */
+  startTimecode: string;
+  /** File seconds where subtitle zero begins; leader before this is skipped on export. */
+  referenceStartSeconds: number;
   defaultShot: ShotId;
   shots: ShotType[];
   speakers: Speaker[];
   cues: Cue[];
 }
 
-export const PROJECT_VERSION = 1;
+export const PROJECT_VERSION = 2;
 
 export const DEFAULT_SHOTS: ShotType[] = [
   { id: "ON", label: "On-screen" },
@@ -114,5 +119,6 @@ export const DEFAULT_SHOTS: ShotType[] = [
   { id: "CONTRE", label: "Contre-champ" },
 ];
 
-export const DEFAULT_TIMECODE_OFFSET = "10:00:00:00";
-export const DEFAULT_FPS = 25;
+export const DEFAULT_START_TIMECODE = "00:00:00:00";
+export const DEFAULT_FPS_NUMERATOR = 25;
+export const DEFAULT_FPS_DENOMINATOR = 1;

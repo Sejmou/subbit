@@ -3,15 +3,18 @@ import { writeLockReviewedCues } from "../lib/lock-reviewed-settings";
 import { useLockReviewedStore } from "./lock-reviewed";
 import { useProject } from "./project";
 import type { Project } from "../types";
+import { PROJECT_VERSION } from "../types";
 
 function makeProject(): Project {
   return {
-    version: 1,
+    version: PROJECT_VERSION,
     id: "00000000-0000-4000-8000-000000000001",
     name: "clip",
     videoName: "clip.mp4",
-    fps: 25,
-    timecodeOffset: "10:00:00:00",
+    fpsNumerator: 25,
+    fpsDenominator: 1,
+    startTimecode: "00:00:00:00",
+    referenceStartSeconds: 0,
     defaultShot: "ON",
     shots: [
       { id: "ON", label: "On-screen" },
@@ -39,11 +42,14 @@ function makeProject(): Project {
 
 const store = () => useProject.getState();
 const firstText = () => store().project!.cues[0].segments[0].text;
+const cueSeconds = (cueId: string, boundary: "start" | "end") => {
+  const cue = store().project!.cues.find((c) => c.id === cueId)!;
+  return boundary === "start" ? cue.start : cue.end;
+};
 
 beforeEach(() => {
   writeLockReviewedCues(false);
   useLockReviewedStore.setState({ enabled: false });
-  // loadProject also resets the undo/redo stacks and coalescing state.
   store().loadProject(makeProject());
 });
 
@@ -127,12 +133,12 @@ describe("coalescing", () => {
   });
 
   it("keeps timing nudges to one cue as a single step", () => {
-    store().nudgeCueEnd("c2", 0.04);
-    store().nudgeCueEnd("c2", 0.04);
+    store().nudgeCueEnd("c2", 1);
+    store().nudgeCueEnd("c2", 1);
     expect(store().past).toHaveLength(1);
 
     store().undo();
-    expect(store().project!.cues[1].end).toBeCloseTo(4, 5);
+    expect(store().project!.cues[1].end).toBe(4);
   });
 });
 
@@ -161,8 +167,8 @@ describe("cue boundary clamping", () => {
 
   it("preserves duration when moving a cue as a block", () => {
     store().setCueTimes("c2", 2.5, 4.5);
-    expect(store().project!.cues[1].start).toBeCloseTo(2.5, 5);
-    expect(store().project!.cues[1].end).toBeCloseTo(4.5, 5);
+    expect(cueSeconds("c2", "start")).toBeCloseTo(2.5, 1);
+    expect(cueSeconds("c2", "end")).toBeCloseTo(4.5, 1);
   });
 
   it("preserves duration when a move is clamped against the previous cue", () => {
@@ -237,8 +243,8 @@ describe("insertCueAtPlayhead / deleteCue", () => {
     expect(store().project!.cues).toHaveLength(3);
     const inserted = store().project!.cues[1];
     expect(id).toBe(inserted.id);
-    expect(inserted.start).toBe(1.5);
-    expect(inserted.end).toBe(3.5);
+    expect(cueSeconds(inserted.id, "start")).toBeCloseTo(1.5, 1);
+    expect(cueSeconds(inserted.id, "end")).toBeCloseTo(3.5, 1);
     expect(inserted.segments[0].text).toBe("");
     expect(store().selectedCueId).toBe(inserted.id);
   });
@@ -261,7 +267,7 @@ describe("insertCueAtPlayhead / deleteCue", () => {
         },
         {
           id: "c2",
-          start: 2.5,
+          start: 2.52,
           end: 4,
           speakerId: "SPEAKER_00",
           segments: [{ text: "world", shot: "ON" }],
@@ -270,16 +276,16 @@ describe("insertCueAtPlayhead / deleteCue", () => {
     });
     store().insertCueAtPlayhead(1.2);
     const inserted = store().project!.cues[1];
-    expect(inserted.start).toBe(1.2);
-    expect(inserted.end).toBe(2.5);
+    expect(cueSeconds(inserted.id, "start")).toBeCloseTo(1.2, 1);
+    expect(cueSeconds(inserted.id, "end")).toBeCloseTo(2.5, 1);
   });
 
   it("inserts at the end when the playhead is past existing cues", () => {
     store().insertCueAtPlayhead(10);
     expect(store().project!.cues).toHaveLength(3);
     const inserted = store().project!.cues[2];
-    expect(inserted.start).toBe(10);
-    expect(inserted.end).toBe(12);
+    expect(cueSeconds(inserted.id, "start")).toBe(10);
+    expect(cueSeconds(inserted.id, "end")).toBe(12);
   });
 
   it("deletes the selected cue and selects a neighbor", () => {

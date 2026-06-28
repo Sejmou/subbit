@@ -1,7 +1,7 @@
 import type { Project } from "../types";
-import { formatTimelineViewRange } from "../lib/timecode";
+import { formatSubtitleTimelineRange } from "../lib/timecode";
 import { CueTransport } from "./CueTransport";
-import { ProgramStartPanel } from "./ProgramStartPanel";
+import { TimeMappingPanel } from "./TimeMappingPanel";
 import { useTip } from "./Tooltip";
 import { useWaveformPeaksTimeline } from "../hooks/useWaveformPeaksTimeline";
 
@@ -38,17 +38,18 @@ export function WaveformTimeline({
     >
       <div className="waveform-toolbar">
         <span className="waveform-toolbar-label">Timeline</span>
-        <ProgramStartPanel project={project} ready={ready} />
+        <TimeMappingPanel project={project} ready={ready} />
         <CueTransport project={project} />
         <span className="waveform-toolbar-actions">
           <span
             className="waveform-view-range"
-            {...tip("Visible file-time range / total duration")}
+            {...tip("Visible subtitle SMPTE range / total duration")}
           >
             {ready && viewRange
-              ? formatTimelineViewRange(
+              ? formatSubtitleTimelineRange(
                   viewRange.start,
                   viewRange.end,
+                  project,
                   duration,
                 )
               : "—"}
@@ -105,7 +106,7 @@ export function WaveformTimeline({
       <div className="waveform-view-wrap">
         {leaderWidthPx > 0 && (
           <div
-            className="program-start-leader"
+            className="time-mapping-leader"
             style={{ width: leaderWidthPx }}
           />
         )}

@@ -1,62 +1,37 @@
 import type { Project } from "../types";
-import { contentStartSeconds, fileTimeToProgramTime } from "./program-start";
 import {
-  secondsToClock,
-  secondsToTimecode,
-  timecodeToSeconds,
-} from "./timecode";
-import type { TimeReference } from "../store/time-reference";
+  fileSecondsToSubtitleTimecode,
+  subtitleTimecodeToFileSeconds,
+} from "./frame-time";
 
-/** File seconds for the active time reference (editor display / playhead field). */
-export function referenceSeconds(
-  fileSeconds: number,
-  contentStart: number,
-  reference: TimeReference,
-): number {
-  return reference === "file"
-    ? fileSeconds
-    : fileTimeToProgramTime(fileSeconds, contentStart);
-}
-
-/** SMPTE cue time for the active reference (frames, zero-based offset). */
+/** Subtitle SMPTE for a media time (playhead or cue boundary). */
 export function cueDisplayTimecode(
   fileSeconds: number,
   project: Project,
-  reference: TimeReference,
 ): string {
-  const seconds = referenceSeconds(
-    fileSeconds,
-    contentStartSeconds(project),
-    reference,
-  );
-  return secondsToTimecode(seconds, project.fps, "00:00:00:00");
+  return fileSecondsToSubtitleTimecode(fileSeconds, project);
 }
 
-/** Playhead clock field for the active reference. */
-export function playheadDisplayClock(
+/** Subtitle SMPTE for the playhead field. */
+export function playheadDisplayTimecode(
   fileSeconds: number,
-  contentStart: number,
-  reference: TimeReference,
+  project: Project,
 ): string {
-  return secondsToClock(referenceSeconds(fileSeconds, contentStart, reference));
+  return cueDisplayTimecode(fileSeconds, project);
 }
 
-/** Parse a playhead clock value back to file seconds. */
-export function playheadClockToFileSeconds(
-  clockSeconds: number,
-  contentStart: number,
-  reference: TimeReference,
+/** Parse playhead SMPTE back to media seconds. */
+export function playheadTimecodeToFileSeconds(
+  timecode: string,
+  project: Project,
 ): number {
-  return reference === "file" ? clockSeconds : clockSeconds + contentStart;
+  return subtitleTimecodeToFileSeconds(timecode, project);
 }
 
-/** Parse a displayed cue timecode back to file seconds. */
+/** Parse displayed cue timecode back to media seconds. */
 export function cueTimecodeToFileSeconds(
   timecode: string,
-  fps: number,
-  contentStart: number,
-  reference: TimeReference,
+  project: Project,
 ): number {
-  const refSeconds = timecodeToSeconds(timecode, fps);
-  return reference === "file" ? refSeconds : refSeconds + contentStart;
+  return playheadTimecodeToFileSeconds(timecode, project);
 }

@@ -147,7 +147,7 @@ function HelpTutorial() {
             still works — you just see a plain track.
           </li>
           <li>
-            An orange <strong>Program start</strong> marker when your video has
+            An orange <strong>Subtitle start</strong> marker when your video has
             leader or black before the actual content begins.
           </li>
         </ul>
@@ -168,8 +168,8 @@ function HelpTutorial() {
             the whole line.
           </li>
           <li>
-            <strong>Drag</strong> the orange Program start marker to move where
-            “time zero” should be for export.
+            <strong>Drag</strong> the orange Subtitle start marker to move where
+            subtitle zero should be for export.
           </li>
           <li>
             Click the narrow overview strip to jump to another part of the
@@ -188,9 +188,9 @@ function HelpTutorial() {
             on the right — Fit shows the entire video.
           </li>
           <li>
-            The time readout shows which slice of the programme you are looking
-            at. If text on the bars is hard to read, zoom in until the labels
-            appear.
+            The time readout shows subtitle SMPTE for the slice of the programme
+            you are looking at. If text on the bars is hard to read, zoom in
+            until the labels appear.
           </li>
         </ul>
 
@@ -205,16 +205,17 @@ function HelpTutorial() {
         <h3>Bar above the timeline</h3>
         <ul className="help-steps help-steps--bullets">
           <li>
-            <strong>Program start</strong> — set where the “real” programme
-            begins if there is leader at the head. Use <strong>Set</strong> at
-            the playhead, or drag the orange marker. The <strong>?</strong>{" "}
-            button explains how this affects export.
+            <strong>Start TC</strong> — SMPTE label at subtitle start. Type any
+            valid <code>HH:MM:SS:FF</code> value.
           </li>
           <li>
-            <strong>Playhead</strong> — the current time. Type a time and press
-            Enter to jump there. <strong>File</strong> vs{" "}
-            <strong>Program</strong>
-            only changes how times are shown, not the subtitles themselves.
+            <strong>Subtitle start</strong> — where in the file that label
+            applies. Use <strong>Set</strong> at the playhead, or drag the
+            orange marker. The <strong>?</strong> button explains time mapping.
+          </li>
+          <li>
+            <strong>Playhead</strong> — current subtitle SMPTE. Type a timecode
+            and press Enter to jump there.
           </li>
           <li>
             Arrows and the <strong>In</strong> button — step between selected
@@ -224,13 +225,13 @@ function HelpTutorial() {
       </section>
 
       <section>
-        <h3>Program start (leader at the head)</h3>
+        <h3>Subtitle start (leader at the head)</h3>
         <p>
           Some videos start with black, bars, or a countdown before the actual
-          programme. Program start marks that hand-off. While you edit, times
-          stay as they are in the file — but when you <strong>export</strong>,
-          subtitle times are shifted so the moment you marked becomes “zero” for
-          delivery.
+          programme. The subtitle start marker marks that hand-off. Cue
+          positions stay locked to the file — when you <strong>export</strong>,
+          subtitle times are labelled from the start timecode at the frame you
+          marked.
         </p>
       </section>
     </div>

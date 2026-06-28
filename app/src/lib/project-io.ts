@@ -184,6 +184,14 @@ export function isFileHandleStaleError(err: unknown): boolean {
   return false;
 }
 
+/** True when getFile() was blocked (permission not granted, no user gesture). */
+export function isFileHandlePermissionError(err: unknown): boolean {
+  if (err instanceof DOMException && err.name === "NotAllowedError")
+    return true;
+  if (err instanceof Error && err.name === "NotAllowedError") return true;
+  return false;
+}
+
 export async function writeTextToHandle(
   handle: FsFileHandle,
   text: string,

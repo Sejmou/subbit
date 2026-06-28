@@ -5,6 +5,8 @@ import {
   clearCachedVideoHandle,
   ensurePermission,
   getCachedVideoHandle,
+  hasPermission,
+  isFileHandlePermissionError,
   isFileHandleStaleError,
   readHandleAsFile,
   type FsFileHandle,
@@ -31,15 +33,29 @@ export function formatVideoFilenameMismatch(
   return `This project was created for “${project.videoName}”, but the video file is “${fileName}”. Timings are verified by duration and frame rate, not the filename.`;
 }
 
-/** Returns false when the handle is stale (moved, renamed, deleted). Rethrows other errors. */
+/** Returns false when the handle is stale or unreadable without a user gesture. */
 export async function verifyVideoHandle(
   handle: FsFileHandle,
 ): Promise<boolean> {
+  if (!(await hasPermission(handle, "read"))) return false;
   try {
     await readHandleAsFile(handle);
     return true;
   } catch (err) {
-    if (isFileHandleStaleError(err)) return false;
+    if (isFileHandleStaleError(err) || isFileHandlePermissionError(err)) {
+      return false;
+    }
+    throw err;
+  }
+}
+
+async function readVideoFromHandle(handle: FsFileHandle): Promise<File | null> {
+  try {
+    return await readHandleAsFile(handle);
+  } catch (err) {
+    if (isFileHandleStaleError(err) || isFileHandlePermissionError(err)) {
+      return null;
+    }
     throw err;
   }
 }
@@ -82,6 +98,8 @@ export async function resolveVideoForProject(
   opts: {
     fsSupported: boolean;
     sessionHandle?: FsFileHandle | null;
+    /** When true (user clicked Open/Restore), may prompt for read permission. */
+    requestPermission?: boolean;
     pickVideo?: () => Promise<FsFileHandle | undefined>;
   },
 ): Promise<ResolvedVideo | null> {
@@ -97,23 +115,20 @@ export async function resolveVideoForProject(
     if (tried.has(handle)) continue;
     tried.add(handle);
 
-    if (!(await verifyVideoHandle(handle))) {
-      await clearCachedVideoHandleForProject(project.id);
+    const mayPrompt =
+      opts.requestPermission === true || opts.pickVideo !== undefined;
+    if (mayPrompt) {
+      if (!(await ensurePermission(handle, "read"))) continue;
+    } else if (!(await hasPermission(handle, "read"))) {
       continue;
     }
 
-    if (!(await ensurePermission(handle, "read"))) return null;
-
-    try {
-      const file = await readHandleAsFile(handle);
-      return { file, handle };
-    } catch (err) {
-      if (isFileHandleStaleError(err)) {
-        await clearCachedVideoHandleForProject(project.id);
-        continue;
-      }
-      throw err;
+    const file = await readVideoFromHandle(handle);
+    if (!file) {
+      await clearCachedVideoHandleForProject(project.id);
+      continue;
     }
+    return { file, handle };
   }
 
   if (!opts.fsSupported || !opts.pickVideo) return null;
@@ -132,9 +147,10 @@ export async function canRestoreLastSession(
 ): Promise<boolean> {
   const handle = await getCachedVideoHandleForProject(projectId);
   if (!handle) return false;
-  if (!(await verifyVideoHandle(handle))) {
-    await clearCachedVideoHandleForProject(projectId);
-    return false;
-  }
+
+  const permission = await handle.queryPermission?.({ mode: "read" });
+  if (permission === "denied") return false;
+  if (permission === "granted") return verifyVideoHandle(handle);
+  // "prompt" — cached handle exists; Restore click can request permission.
   return true;
 }

@@ -1,81 +1,135 @@
 import type { PeaksInstance } from "peaks.js";
 import type { Cue, Project } from "../types";
-import { secondsToTimecode, timecodeToSeconds } from "./timecode";
+import { cueEndSeconds, cueStartSeconds } from "./cue-timing";
+import {
+  fileSecondsToSubtitleTimecode,
+  projectFrameRate,
+  secondsToFrame,
+  subtitleTimecodeToFileSeconds,
+} from "./frame-time";
 
-export const PROGRAM_START_POINT_ID = "program-start";
+export const REFERENCE_START_POINT_ID = "reference-start";
 
-/** Seconds into the file where exported program time 0:00:00:00 begins. */
-export function contentStartSeconds(project: Project): number {
-  return project.contentStartSeconds ?? 0;
+/** Cues starting before the reference point (export clamps to subtitle zero). */
+export function cuesBeforeReferenceStart(project: Project): Cue[] {
+  const ref = project.referenceStartSeconds;
+  if (ref <= 0) return [];
+  return project.cues.filter((c) => c.start < ref);
 }
 
-/** File timeline seconds → program seconds for export (clamped at zero). */
-export function fileTimeToProgramTime(
-  fileSeconds: number,
-  contentStart: number,
+/** @deprecated Use cuesBeforeReferenceStart */
+export const cuesBeforeReferenceFrame = cuesBeforeReferenceStart;
+
+export function clampReferenceStart(
+  seconds: number,
+  durationSeconds: number,
 ): number {
-  return Math.max(0, fileSeconds - contentStart);
-}
-
-export function programStartTimecode(project: Project): string {
-  const start = contentStartSeconds(project);
-  if (start <= 0) return "00:00:00:00";
-  return secondsToTimecode(start, project.fps, "00:00:00:00");
-}
-
-export function parseProgramStartTimecode(tc: string, fps: number): number {
-  const trimmed = tc.trim();
-  if (!trimmed || trimmed === "00:00:00:00") return 0;
-  return timecodeToSeconds(trimmed, fps);
-}
-
-export function cuesBeforeProgramStart(project: Project): Cue[] {
-  const start = contentStartSeconds(project);
-  if (start <= 0) return [];
-  return project.cues.filter((c) => c.start < start);
-}
-
-export function clampProgramStart(seconds: number, duration: number): number {
   if (!Number.isFinite(seconds) || seconds <= 0) return 0;
-  if (!Number.isFinite(duration) || duration <= 0) return seconds;
-  return Math.min(seconds, Math.max(0, duration - 1 / 25));
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) return seconds;
+  return Math.min(seconds, Math.max(0, durationSeconds - 1 / 25));
 }
 
-/** Width of the pre-program-start shading overlay in layout pixels. */
-export function programStartLeaderWidthPx(
-  contentStartSeconds: number,
+/** @deprecated Use clampReferenceStart */
+export const clampReferenceFrame = clampReferenceStart;
+
+export function maxReferenceStartSeconds(
+  _project: Project,
+  durationSeconds: number,
+): number {
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0)
+    return Infinity;
+  return Math.max(0, durationSeconds - 1 / 25);
+}
+
+/** @deprecated Use maxReferenceStartSeconds */
+export const maxReferenceFrame = maxReferenceStartSeconds;
+
+/** @deprecated Use parseReferenceStartTimecode */
+export const parseReferenceFrameTimecode = parseReferenceStartTimecode;
+
+/** @deprecated Use REFERENCE_START_POINT_ID */
+export const REFERENCE_FRAME_POINT_ID = REFERENCE_START_POINT_ID;
+
+export function referenceStartTimecode(project: Project): string {
+  return fileSecondsToSubtitleTimecode(project.referenceStartSeconds, project);
+}
+
+/** @deprecated Use referenceStartTimecode */
+export const referenceFrameTimecode = referenceStartTimecode;
+
+export function parseReferenceStartTimecode(
+  tc: string,
+  project: Project,
+): number {
+  const trimmed = tc.trim();
+  if (!trimmed || trimmed === project.startTimecode) return 0;
+  return Math.max(0, subtitleTimecodeToFileSeconds(trimmed, project));
+}
+
+/** Width of pre-reference shading overlay in layout pixels. */
+export function referenceLeaderWidthPx(
+  referenceStartSeconds: number,
   viewStartSeconds: number,
   viewEndSeconds: number,
   containerWidthPx: number,
 ): number {
-  if (contentStartSeconds <= 0) return 0;
+  if (referenceStartSeconds <= 0) return 0;
   const span = viewEndSeconds - viewStartSeconds;
   if (span <= 0 || containerWidthPx <= 0) return 0;
-  if (contentStartSeconds <= viewStartSeconds) return 0;
-  if (contentStartSeconds >= viewEndSeconds) return containerWidthPx;
-  return ((contentStartSeconds - viewStartSeconds) / span) * containerWidthPx;
+  if (referenceStartSeconds <= viewStartSeconds) return 0;
+  if (referenceStartSeconds >= viewEndSeconds) return containerWidthPx;
+  return ((referenceStartSeconds - viewStartSeconds) / span) * containerWidthPx;
 }
 
-/** Create or move the program-start point marker on the peaks timeline. */
-export function syncProgramStartPeaksPoint(
+/** Create or move the reference-start point marker on the peaks timeline. */
+export function syncReferenceStartPeaksPoint(
   peaks: PeaksInstance,
-  contentStartSeconds: number,
+  referenceStartSeconds: number,
 ): void {
-  const start = Math.max(0, contentStartSeconds);
-  const existing = peaks.points.getPoint(PROGRAM_START_POINT_ID);
+  const time = Math.max(0, referenceStartSeconds);
+  const existing = peaks.points.getPoint(REFERENCE_START_POINT_ID);
 
   if (existing) {
-    if (Math.abs(existing.time - start) > 0.0001) {
-      existing.update({ time: start, labelText: "Program start" });
+    if (Math.abs(existing.time - time) > 0.0001) {
+      existing.update({ time, labelText: "Subtitle start" });
     }
     return;
   }
 
   peaks.points.add({
-    id: PROGRAM_START_POINT_ID,
-    time: start,
+    id: REFERENCE_START_POINT_ID,
+    time,
     editable: true,
     color: "#ffb74d",
-    labelText: "Program start",
+    labelText: "Subtitle start",
   });
 }
+
+/** @deprecated Use syncReferenceStartPeaksPoint */
+export function syncReferenceFramePeaksPoint(
+  peaks: PeaksInstance,
+  referenceFrame: number,
+  project: Project,
+): void {
+  void referenceFrame;
+  void project;
+  syncReferenceStartPeaksPoint(peaks, project.referenceStartSeconds);
+}
+
+/** Subtitle seconds from file time (clamped at zero). */
+export function fileSecondsToSubtitleSeconds(
+  fileSeconds: number,
+  referenceStartSeconds: number,
+): number {
+  return Math.max(0, fileSeconds - referenceStartSeconds);
+}
+
+/** Export subtitle frame index for a cue boundary. */
+export function cueExportFrame(fileSeconds: number, project: Project): number {
+  const rate = projectFrameRate(project);
+  const refFrame = secondsToFrame(project.referenceStartSeconds, rate);
+  const fileFrame = secondsToFrame(fileSeconds, rate);
+  return Math.max(0, fileFrame - refFrame);
+}
+
+export { cueStartSeconds, cueEndSeconds };

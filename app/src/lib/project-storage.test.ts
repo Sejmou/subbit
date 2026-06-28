@@ -27,12 +27,14 @@ const PROJECT_ID_B = "00000000-0000-4000-8000-000000000002";
 const PROJECT_ID_LEGACY = "00000000-0000-4000-8000-000000000099";
 
 const project: Project = {
-  version: 1,
+  version: 2,
   id: PROJECT_ID_A,
   name: "Episode 1",
   videoName: "ep01.mp4",
-  fps: 25,
-  timecodeOffset: "10:00:00:00",
+  fpsNumerator: 25,
+  fpsDenominator: 1,
+  startTimecode: "10:00:00:00",
+  referenceStartSeconds: 0,
   defaultShot: "ON",
   shots: [{ id: "ON", label: "On-screen" }],
   speakers: [],

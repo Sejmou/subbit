@@ -4,11 +4,10 @@ Design reference for unifying the editor around **subtitle SMPTE time** — one
 timeline, no File/Program toggle — with frame-accurate editing and project-scoped
 configuration.
 
-Status: **planned** (not yet implemented).
+Status: **implemented** (project schema v2).
 
-**Breaking change:** project JSON schema changes in one shot. No migration from
-older saved projects — existing `.subbit.json` files from before this redesign
-will not load.
+**Breaking change:** project JSON schema v2 replaces v1 on save. v1 `.subbit.json`
+files load in memory and upgrade automatically (no cue timing changes).
 
 ---
 
@@ -19,26 +18,26 @@ still operate on **file time** (seconds from the start of the media file); only
 labels and editable fields use SMPTE.
 
 ```text
-subtitleTC = startTimecode + (mediaFrame − referenceFrame)   // SMPTE, nominal fps
-fileSeconds = mediaFrame × fpsDenominator / fpsNumerator     // for playback & Peaks
+subtitleTC = startTimecode + (fileSeconds − referenceStartSeconds)   // SMPTE, via frame math
+fileSeconds = cue.start / cue.end / playhead                         // canonical storage
 ```
 
 | Concept               | Project field                     | Meaning                                                              |
 | --------------------- | --------------------------------- | -------------------------------------------------------------------- |
-| **Start timecode**    | `startTimecode`                   | SMPTE at the reference frame (`00:00:00:00` EU, `01:00:00:00` US, …) |
-| **Reference frame**   | `referenceFrame` (integer)        | First frame of subtitle timing (skips leader/black)                  |
+| **Start timecode**    | `startTimecode`                   | SMPTE at the reference point (`00:00:00:00` EU, `01:00:00:00` US, …) |
+| **Reference start**   | `referenceStartSeconds` (float)   | Media seconds where subtitle timing begins (skips leader/black)      |
 | **Media frame rate**  | `fpsNumerator` / `fpsDenominator` | Exact container rate (e.g. `24000/1001`)                             |
 | **Nominal SMPTE fps** | (derived, not stored)             | Integer for `:FF` field — `round(num/den)` → `24`, `25`, `30`        |
-| **Cue position**      | `startFrame` / `endFrame`         | Integer frame index from file start                                  |
+| **Cue position**      | `start` / `end` (seconds)         | Float seconds from file start (WhisperX-aligned)                     |
 
 ### Removed (old schema)
 
 | Old field / feature                                     | Replacement                                    |
 | ------------------------------------------------------- | ---------------------------------------------- |
 | `timecodeOffset`                                        | `startTimecode`                                |
-| `contentStartSeconds`                                   | `referenceFrame`                               |
+| `contentStartSeconds`                                   | `referenceStartSeconds`                        |
 | `fps` (number)                                          | `fpsNumerator` / `fpsDenominator`              |
-| Cue `start` / `end` (seconds)                           | `startFrame` / `endFrame`                      |
+| Cue `startFrame` / `endFrame`                           | `start` / `end` (seconds)                      |
 | **`timeReference`** (`file` \| `program`, localStorage) | Single subtitle timeline from project settings |
 
 ---
@@ -63,29 +62,27 @@ agree.
 
 ## Display & edit pipeline
 
-1. **Storage:** cue `startFrame` / `endFrame` (integers from file start).
-2. **Display:** frame → subtitle SMPTE via start timecode, reference frame,
-   nominal fps.
-3. **Edit (type TC, set In/Out, nudge):** parse SMPTE → frame index → store;
-   seek to `frame × den / num`.
+1. **Storage:** cue `start` / `end` (float seconds from file start).
+2. **Display:** seconds → subtitle SMPTE via start timecode, reference start,
+   nominal fps (frame math at display time).
+3. **Edit (type TC, set In/Out, nudge):** parse SMPTE → seconds → snap to frame
+   boundary on commit; seek to snapped seconds.
 4. **Playback while playing:** `video.currentTime` stays continuous; **shown**
    playhead rounds to nearest frame’s SMPTE (standard NLE behaviour).
 5. **Peaks timeline:** scroll/zoom stays in file seconds; **axis labels, playhead
    label, marker tooltip, view-range text** use subtitle SMPTE formatters.
-6. **Export:** same formula as the UI (no separate offset step in the export
-   dialog).
+6. **Export:** subtitle-relative seconds from `(fileSeconds − referenceStart)`.
 
 ### WhisperX import
 
 WhisperX timings are **file-relative float seconds** (audio-aligned, often
 sub-frame). On import:
 
-- Convert each boundary: `frame = round(seconds × num / den)`.
-- Store `startFrame` / `endFrame`.
-- Snap word-level `start`/`end` to frames on import as well.
+- Store `start` / `end` **unchanged** (preserve WhisperX alignment).
+- Store word-level `start`/`end` as floats.
 
-No reference frame or start timecode in the import file — new projects default
-to reference frame `0` and start timecode `00:00:00:00`.
+No reference start or start timecode in the import file — new projects default
+to `referenceStartSeconds: 0` and start timecode `00:00:00:00`.
 
 ---
 
@@ -94,10 +91,10 @@ to reference frame `0` and start timecode `00:00:00:00`.
 | Field                             | Default                   | Set when           |
 | --------------------------------- | ------------------------- | ------------------ |
 | `startTimecode`                   | `00:00:00:00`             | Project creation   |
-| `referenceFrame`                  | `0`                       | Project creation   |
+| `referenceStartSeconds`           | `0`                       | Project creation   |
 | `fpsNumerator` / `fpsDenominator` | `25/1`                    | Until video linked |
 | Nominal SMPTE fps                 | `round(num/den)`          | Derived            |
-| Cues                              | `startFrame` / `endFrame` | Import or manual   |
+| Cues                              | `start` / `end` (seconds) | Import or manual   |
 
 When a video is linked, copy probed `frameRateNumerator/Denominator` from
 `VideoIdentity` onto the project. Fallback `25/1` if probe fails.

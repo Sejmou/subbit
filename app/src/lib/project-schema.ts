@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Project } from "../types";
+import { isV1ProjectData, prepareProjectData } from "./migrate-project-v1";
 
 const wordSchema = z.object({
   word: z.string(),
@@ -19,16 +20,20 @@ const inferredSpeakerSchema = z.object({
   confidence: z.number().min(0).max(1),
 });
 
-const cueSchema = z.object({
-  id: z.string(),
-  start: z.number(),
-  end: z.number(),
-  speakerId: z.union([z.string(), z.null()]).default(null),
-  segments: z.array(segmentSchema).min(1),
-  reviewed: z.boolean().optional(),
-  inferredSpeaker: inferredSpeakerSchema.nullable().optional(),
-  words: z.array(wordSchema).optional(),
-});
+const cueSchema = z
+  .object({
+    id: z.string(),
+    start: z.number().nonnegative(),
+    end: z.number().nonnegative(),
+    speakerId: z.union([z.string(), z.null()]).default(null),
+    segments: z.array(segmentSchema).min(1),
+    reviewed: z.boolean().optional(),
+    inferredSpeaker: inferredSpeakerSchema.nullable().optional(),
+    words: z.array(wordSchema).optional(),
+  })
+  .refine((c) => c.end > c.start, {
+    message: "end must be greater than start",
+  });
 
 const speakerSchema = z.object({
   id: z.string(),
@@ -81,9 +86,10 @@ export const projectSchema = z.object({
   name: z.string().min(1),
   videoName: z.string(),
   video: videoIdentitySchema.optional(),
-  fps: z.number().positive(),
-  timecodeOffset: z.string(),
-  contentStartSeconds: z.number().nonnegative().optional(),
+  fpsNumerator: z.number().int().positive(),
+  fpsDenominator: z.number().int().positive(),
+  startTimecode: z.string(),
+  referenceStartSeconds: z.number().nonnegative(),
   defaultShot: z.string(),
   shots: z.array(shotTypeSchema),
   speakers: z.array(speakerSchema),
@@ -96,14 +102,21 @@ function formatValidationError(error: z.ZodError): string {
   return `Not a valid Subbit project file. ${path}${issue.message}`;
 }
 
-/** Validate parsed JSON as a Subbit project. */
+/** Validate parsed JSON as a Subbit project (v2 native, or legacy upgraded on load). */
 export function parseProjectData(data: unknown): Project {
-  const result = projectSchema.safeParse(data);
+  const normalized = prepareProjectData(data);
+  const result = projectSchema.safeParse(normalized);
   if (!result.success) throw new Error(formatValidationError(result.error));
   return result.data;
 }
 
 /** True when the value looks like a saved Subbit project (not whisperx). */
 export function isSubbitProject(data: unknown): boolean {
-  return projectSchema.safeParse(data).success;
+  if (isV1ProjectData(data)) return true;
+  try {
+    parseProjectData(data);
+    return true;
+  } catch {
+    return false;
+  }
 }

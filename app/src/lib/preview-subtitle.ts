@@ -16,7 +16,7 @@ export function previewAtTime(
   if (idx < 0) return null;
 
   const cue = project.cues[idx];
-  const segIdx = activeSegmentIndex(cue, t);
+  const segIdx = activeSegmentIndex(cue, t, project);
   const text = cue.segments[segIdx]?.text.trim();
   if (!text) return null;
 

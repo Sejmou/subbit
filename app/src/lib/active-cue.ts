@@ -1,6 +1,6 @@
 import type { Cue } from "../types";
 
-/** Binary search for the cue whose [start, end) contains t. */
+/** Binary search for the cue whose [start, end) contains t (media seconds). */
 export function findActiveCueIndex(cues: Cue[], t: number): number {
   let lo = 0;
   let hi = cues.length - 1;

@@ -6,22 +6,26 @@ import { useTip } from "./Tooltip";
 
 interface Props {
   open: boolean;
+  fsSupported: boolean;
   projectName: string;
   videoName: string;
   video?: VideoIdentity;
   busy: string | null;
   onVideoFile: (file: File) => void;
+  onPickVideo: () => void;
   onCancel: () => void;
 }
 
-/** Ask the user to re-link a video file when the browser cannot restore handles. */
+/** Ask the user to re-link a video file before opening a stored project. */
 export function LinkVideoDialog({
   open,
+  fsSupported,
   projectName,
   videoName,
   video,
   busy,
   onVideoFile,
+  onPickVideo,
   onCancel,
 }: Props) {
   const tip = useTip();
@@ -32,7 +36,8 @@ export function LinkVideoDialog({
 
   const chooseVideo = () => {
     if (disabled) return;
-    videoInput.current?.click();
+    if (fsSupported) onPickVideo();
+    else videoInput.current?.click();
   };
 
   if (!open) return null;
@@ -49,12 +54,13 @@ export function LinkVideoDialog({
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="setup-modal-top">
-          <h2 id="link-video-title">Link video to open project</h2>
+          <h2 id="link-video-title">Choose video to open project</h2>
         </div>
 
         <p className="link-video-lead">
-          This browser can&apos;t reopen the video automatically. Choose the
-          matching file for <strong>{projectName}</strong>.
+          <strong>{projectName}</strong> needs its source video before you can
+          edit. Choose the matching file below — timings are verified by
+          duration and frame rate, not the filename.
         </p>
 
         <div className="setup-name-field setup-video-field">
@@ -80,6 +86,17 @@ export function LinkVideoDialog({
           </div>
         </div>
 
+        <p className="link-video-format-hint">
+          Video file · MP4 works best · .mp4, .m4v, or .mov
+        </p>
+
+        {!fsSupported && (
+          <p className="link-video-browser-hint">
+            This browser can&apos;t remember file access between sessions, so
+            you&apos;ll need to choose the video each time you open a project.
+          </p>
+        )}
+
         {busy && <p className="setup-busy">{busy}</p>}
 
         <div className="confirm-actions link-video-actions">
@@ -99,7 +116,7 @@ export function LinkVideoDialog({
         <input
           ref={videoInput}
           type="file"
-          accept="video/mp4,video/*"
+          accept="video/mp4,video/quicktime,.mp4,.m4v,.mov,video/*"
           hidden
           onChange={(e) => {
             const file = e.target.files?.[0];

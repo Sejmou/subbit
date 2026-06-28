@@ -5,12 +5,14 @@ import {
 } from "./load-subtitles";
 
 const subbitFixture = {
-  version: 1,
+  version: 2,
   id: "00000000-0000-4000-8000-000000000001",
   name: "clip.mp4",
   videoName: "clip.mp4",
-  fps: 25,
-  timecodeOffset: "10:00:00:00",
+  fpsNumerator: 25,
+  fpsDenominator: 1,
+  startTimecode: "00:00:00:00",
+  referenceStartSeconds: 0,
   defaultShot: "ON",
   shots: [{ id: "ON", label: "On-screen" }],
   speakers: [{ id: "SPEAKER_00", name: "A", color: "#fff" }],
@@ -48,9 +50,10 @@ describe("parseSubtitleJsonText", () => {
 
 describe("projectFromSubtitleData", () => {
   it("loads a valid Subbit project", () => {
-    expect(projectFromSubtitleData(subbitFixture, "clip.mp4")).toEqual(
-      subbitFixture,
-    );
+    const project = projectFromSubtitleData(subbitFixture, "clip.mp4");
+    expect(project.version).toBe(2);
+    expect(project.cues[0].start).toBe(0);
+    expect(project.cues[0].end).toBe(2);
   });
 
   it("loads valid whisperx JSON", () => {

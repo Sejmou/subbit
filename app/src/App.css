@@ -870,7 +870,7 @@
   flex: 1;
   min-height: 0;
 }
-.program-start-leader {
+.time-mapping-leader {
   position: absolute;
   top: 0;
   left: 0;
@@ -886,7 +886,7 @@
   height: 100%;
   background: #12151a;
 }
-.program-start-panel {
+.time-mapping-panel {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -895,14 +895,14 @@
   padding-left: 6px;
   border-left: 1px solid var(--border);
 }
-.program-start-label {
+.time-mapping-label {
   display: inline-flex;
   align-items: center;
   gap: 3px;
   font-size: 10px;
   color: var(--text-dim);
 }
-.program-start-help-btn {
+.time-mapping-help-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -917,84 +917,81 @@
   font-size: 9px;
   line-height: 1;
 }
-.waveform-toolbar .program-start-help-btn {
+.waveform-toolbar .time-mapping-help-btn {
   width: 14px;
   height: 14px;
   min-height: 14px;
   padding: 0;
 }
-.program-start-help {
+.time-mapping-help {
   width: min(480px, 92vw);
 }
-.program-start-help h3 {
+.time-mapping-help h3 {
   margin: 16px 0 8px;
   font-size: 13px;
   color: var(--accent);
 }
-.program-start-help p {
+.time-mapping-help p {
   margin: 0 0 10px;
   color: var(--text-dim);
 }
-.program-start-help-steps {
+.time-mapping-help-steps {
   margin: 0 0 10px;
   padding-left: 20px;
   color: var(--text-dim);
 }
-.program-start-help-steps li + li {
+.time-mapping-help-steps li + li {
   margin-top: 8px;
 }
-.program-start-input {
+.time-mapping-input {
   font-family: ui-monospace, monospace;
   font-size: 10px;
   padding: 1px 3px;
   width: 8.75em;
 }
-.program-start-clock-input {
+.time-mapping-clock-input {
   font-family: ui-monospace, monospace;
   font-size: 10px;
   padding: 1px 3px;
   width: 9.25em;
 }
-.program-start-input--error {
+.time-mapping-input--error {
   border-color: #ff8a80;
 }
-.program-start-sep {
+.time-mapping-sep {
   width: 1px;
   height: 14px;
   margin: 0 2px;
   background: var(--border);
   flex-shrink: 0;
 }
-.program-start-playhead-fields {
+.time-mapping-playhead-fields {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   flex-wrap: wrap;
 }
-.program-start-playhead-label {
+.time-mapping-playhead-label {
   font-size: 10px;
   color: var(--text-dim);
   white-space: nowrap;
 }
-.program-start-playhead-ref {
-  min-width: 0;
-}
-.program-start-warn {
+.time-mapping-warn {
   font-size: 10px;
   color: #ffb74d;
 }
-.program-start-error {
+.time-mapping-error {
   font-size: 10px;
   color: #ff8a80;
 }
-.export-program-start {
+.export-time-mapping {
   margin: 8px 0;
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--bg-2);
 }
-.export-program-start strong {
+.export-time-mapping strong {
   display: block;
   margin-bottom: 4px;
   font-size: 12px;
@@ -1811,8 +1808,19 @@ kbd {
   line-height: 1.5;
   color: var(--text-dim);
 }
+.link-video-format-hint {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.link-video-browser-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
 .link-video-actions {
-  margin-top: 4px;
+  margin-top: 16px;
 }
 .load-new-dropzone {
   display: flex;

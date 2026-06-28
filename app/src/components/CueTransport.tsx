@@ -4,8 +4,8 @@ import { usePlayback } from "../store/playback";
 import { useLockReviewedStore } from "../store/lock-reviewed";
 import { useShortcutLabel, useKeyLabel } from "../hooks/useShortcutLabel";
 import { isReviewedCueLocked } from "../lib/cue-lock";
+import { cueStartSeconds, cueEndSeconds } from "../lib/cue-timing";
 import { cueDisplayTimecode } from "../lib/display-time";
-import { useTimeReference } from "../store/time-reference";
 import { useTip } from "./Tooltip";
 
 const OFF_CUE_THRESHOLD_S = 0.3;
@@ -51,7 +51,6 @@ export function CueTransport({ project }: { project: Project }) {
   const selectCue = useProject((s) => s.selectCue);
   const setCueStart = useProject((s) => s.setCueStart);
   const setCueEnd = useProject((s) => s.setCueEnd);
-  const timeReference = useTimeReference((s) => s.reference);
   const { currentTime, seek } = usePlayback();
   const seekToCueInLabel = useKeyLabel("KeyH");
   const seekToCueOutLabel = useKeyLabel("KeyL");
@@ -71,8 +70,10 @@ export function CueTransport({ project }: { project: Project }) {
   const canPrev = hasCue && cueIndex > 0;
   const canNext = hasCue && cueIndex < cues.length - 1;
 
-  const inDrift = cue ? currentTime - cue.start : 0;
-  const outDrift = cue ? currentTime - cue.end : 0;
+  const cueIn = cue ? cueStartSeconds(cue) : 0;
+  const cueOut = cue ? cueEndSeconds(cue) : 0;
+  const inDrift = cue ? currentTime - cueIn : 0;
+  const outDrift = cue ? currentTime - cueOut : 0;
   const offIn = hasCue && Math.abs(inDrift) > OFF_CUE_THRESHOLD_S;
   const offOut = hasCue && Math.abs(outDrift) > OFF_CUE_THRESHOLD_S;
 
@@ -143,14 +144,14 @@ export function CueTransport({ project }: { project: Project }) {
       <div className="cue-transport-boundary">
         <span className="cue-transport-boundary-label">In</span>
         <span className="cue-transport-tc">
-          {hasCue ? cueDisplayTimecode(cue.start, project, timeReference) : "—"}
+          {hasCue ? cueDisplayTimecode(cueIn, project) : "—"}
         </span>
         <span className="tooltip-wrap" {...tip(jumpInTitle)}>
           <button
             type="button"
             className={`cue-transport-mark-btn${offIn ? " cue-transport-mark-btn--warn" : ""}`}
             disabled={!hasCue}
-            onClick={() => cue && seek(cue.start)}
+            onClick={() => hasCue && seek(cueIn)}
             aria-label="Jump to In"
           >
             ↗
@@ -178,14 +179,14 @@ export function CueTransport({ project }: { project: Project }) {
       <div className="cue-transport-boundary">
         <span className="cue-transport-boundary-label">Out</span>
         <span className="cue-transport-tc">
-          {hasCue ? cueDisplayTimecode(cue.end, project, timeReference) : "—"}
+          {hasCue ? cueDisplayTimecode(cueOut, project) : "—"}
         </span>
         <span className="tooltip-wrap" {...tip(jumpOutTitle)}>
           <button
             type="button"
             className={`cue-transport-mark-btn${offOut ? " cue-transport-mark-btn--warn" : ""}`}
             disabled={!hasCue}
-            onClick={() => cue && seek(cue.end)}
+            onClick={() => hasCue && seek(cueOut)}
             aria-label="Jump to Out"
           >
             ↗

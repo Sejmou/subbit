@@ -16,7 +16,7 @@ const word = (speaker: string, start: number, end: number): Word => ({
 describe("inferSpeakerFromWords", () => {
   it("uses duration-weighted plurality", () => {
     const inferred = inferSpeakerFromWords(
-      [word("A", 0, 3), word("B", 3, 4)],
+      [word("A", 0, 75), word("B", 75, 100)],
       null,
     );
     expect(inferred).toEqual({ speakerId: "A", confidence: 0.75 });

@@ -25,21 +25,31 @@ const cues: Cue[] = [
 
 describe("computeInsertCueRange", () => {
   it("creates a 1.5s cue in a gap", () => {
-    const range = computeInsertCueRange(cues, 2, TIMELINE_NEW_CUE_DURATION);
+    const range = computeInsertCueRange(
+      cues,
+      2,
+      TIMELINE_NEW_CUE_DURATION,
+      Infinity,
+    );
     expect(range).toEqual({ start: 2, end: 3.5 });
   });
 
   it("shortens the cue when the next section is closer than the default duration", () => {
-    const range = computeInsertCueRange(cues, 4, TIMELINE_NEW_CUE_DURATION);
+    const range = computeInsertCueRange(
+      cues,
+      4,
+      TIMELINE_NEW_CUE_DURATION,
+      Infinity,
+    );
     expect(range).toEqual({ start: 4, end: 5 });
   });
 
   it("rejects clicks inside an existing section", () => {
     expect(
-      computeInsertCueRange(cues, 1, TIMELINE_NEW_CUE_DURATION),
+      computeInsertCueRange(cues, 1, TIMELINE_NEW_CUE_DURATION, Infinity),
     ).toBeNull();
     expect(
-      computeInsertCueRange(cues, 5, TIMELINE_NEW_CUE_DURATION),
+      computeInsertCueRange(cues, 5, TIMELINE_NEW_CUE_DURATION, Infinity),
     ).toBeNull();
   });
 
@@ -54,14 +64,14 @@ describe("computeInsertCueRange", () => {
       },
       {
         id: "b",
-        start: 1.0005,
+        start: 1,
         end: 2,
         speakerId: null,
         segments: [{ text: "b", shot: "ON" }],
       },
     ];
     expect(
-      computeInsertCueRange(tight, 1, TIMELINE_NEW_CUE_DURATION),
+      computeInsertCueRange(tight, 1, TIMELINE_NEW_CUE_DURATION, Infinity),
     ).toBeNull();
   });
 

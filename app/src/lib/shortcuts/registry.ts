@@ -4,6 +4,11 @@ import { focusCueForEdit } from "../focus-cue";
 import { isReviewedCueLocked } from "../cue-lock";
 import { openRolePicker } from "../role-picker";
 import { createKeyLabeler, type KeyLabeler } from "../keyboard-layout";
+import { cueEndSeconds, cueStartSeconds, snapToFrame } from "../cue-timing";
+import {
+  clampReferenceStart,
+  maxReferenceStartSeconds,
+} from "../program-start";
 
 type KeyEvent = globalThis.KeyboardEvent;
 
@@ -62,8 +67,8 @@ function isBackslashKey(e: KeyEvent): boolean {
   return e.code === "Backslash" || e.key === "\\";
 }
 
-function nudgeStep(ctx: ShortcutContext, e: KeyEvent): number {
-  return e.shiftKey ? ctx.frame * JOG_FRAMES : ctx.frame;
+function nudgeStep(_ctx: ShortcutContext, e: KeyEvent): number {
+  return e.shiftKey ? JOG_FRAMES : 1;
 }
 
 /** Cmd/Ctrl-free keys; allows Alt for Option/Alt combos. */
@@ -209,7 +214,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     description: "Play from the selected cue In",
     match: (e, ctx) =>
       canPlayback(e, ctx) && e.shiftKey && e.key === " " && !!ctx.cue,
-    run: (ctx) => ctx.pb.playFrom(ctx.cue!.start),
+    run: (ctx) => ctx.pb.playFrom(cueStartSeconds(ctx.cue!)),
     preventDefault: true,
   },
   {
@@ -289,7 +294,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     description: "Jog playhead 10 frames",
     match: (e, ctx) =>
       canPlayback(e, ctx) && e.shiftKey && e.key === "ArrowLeft",
-    run: (ctx) => ctx.pb.seek(ctx.pb.currentTime - ctx.frame * JOG_FRAMES),
+    run: (ctx) => ctx.pb.seek(ctx.pb.currentTime - ctx.frameStep * JOG_FRAMES),
     preventDefault: true,
   },
   {
@@ -301,7 +306,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     showInHelp: false,
     match: (e, ctx) =>
       canPlayback(e, ctx) && e.shiftKey && e.key === "ArrowRight",
-    run: (ctx) => ctx.pb.seek(ctx.pb.currentTime + ctx.frame * JOG_FRAMES),
+    run: (ctx) => ctx.pb.seek(ctx.pb.currentTime + ctx.frameStep * JOG_FRAMES),
     preventDefault: true,
   },
   {
@@ -311,7 +316,7 @@ export const SHORTCUTS: ShortcutDef[] = [
       `${k.join([m, "Shift", k.code("ArrowLeft")])} / ${k.code("ArrowRight")}`,
     description: "Jog playhead 1 frame",
     match: (e, ctx) => canModShiftPlayback(e, ctx) && e.key === "ArrowLeft",
-    run: (ctx) => ctx.pb.seek(ctx.pb.currentTime - ctx.frame),
+    run: (ctx) => ctx.pb.seek(ctx.pb.currentTime - ctx.frameStep),
     preventDefault: true,
   },
   {
@@ -322,7 +327,7 @@ export const SHORTCUTS: ShortcutDef[] = [
     description: "Jog playhead 1 frame",
     showInHelp: false,
     match: (e, ctx) => canModShiftPlayback(e, ctx) && e.key === "ArrowRight",
-    run: (ctx) => ctx.pb.seek(ctx.pb.currentTime + ctx.frame),
+    run: (ctx) => ctx.pb.seek(ctx.pb.currentTime + ctx.frameStep),
     preventDefault: true,
   },
   {
@@ -391,10 +396,10 @@ export const SHORTCUTS: ShortcutDef[] = [
     run: (ctx, e) => ctx.ps.nudgeCueEnd(ctx.cue!.id, nudgeStep(ctx, e)),
   },
   {
-    id: "seek-program-start",
-    group: "Program sync",
+    id: "seek-reference-frame",
+    group: "Time mapping",
     label: (_, k) => k.code("Digit0"),
-    description: "Seek to program start (or file start if unset)",
+    description: "Seek to the reference frame (or file start if unset)",
     match: (e, ctx) =>
       navKey(e) &&
       !e.altKey &&
@@ -403,16 +408,17 @@ export const SHORTCUTS: ShortcutDef[] = [
       !!ctx.project &&
       (isZeroKey(e) || e.key === "Home"),
     run: (ctx) => {
-      const start = ctx.project!.contentStartSeconds ?? 0;
-      ctx.pb.seek(start > 0 ? start : 0);
+      const project = ctx.project!;
+      const ref = project.referenceStartSeconds;
+      ctx.pb.seek(ref > 0 ? ref : 0);
     },
     preventDefault: true,
   },
   {
-    id: "set-program-start",
-    group: "Program sync",
+    id: "set-reference-frame",
+    group: "Time mapping",
     label: (_, k) => k.shift("Digit0"),
-    description: "Set program start to the playhead (skip leader on export)",
+    description: "Set reference frame to the playhead (skip leader on export)",
     match: (e, ctx) =>
       navKey(e) &&
       !e.altKey &&
@@ -421,28 +427,29 @@ export const SHORTCUTS: ShortcutDef[] = [
       !!ctx.project &&
       (isZeroKey(e) || e.key === "Home"),
     run: (ctx) => {
+      const project = ctx.project!;
       const duration = ctx.pb.duration;
-      const t = Math.max(0, ctx.pb.currentTime);
-      const seconds =
-        Number.isFinite(duration) && duration > 0
-          ? Math.min(t, Math.max(0, duration - ctx.frame))
-          : t;
-      ctx.ps.setContentStartSeconds(seconds <= 0 ? 0 : seconds);
+      const maxSeconds = maxReferenceStartSeconds(project, duration);
+      const seconds = clampReferenceStart(
+        snapToFrame(Math.max(0, ctx.pb.currentTime), project),
+        maxSeconds,
+      );
+      ctx.ps.setReferenceStartSeconds(seconds <= 0 ? 0 : seconds);
     },
     preventDefault: true,
   },
   {
-    id: "clear-program-start",
-    group: "Program sync",
+    id: "clear-reference-frame",
+    group: "Time mapping",
     label: (_, k) => k.alt("Digit0"),
-    description: "Clear program start",
+    description: "Clear reference frame (subtitle zero at file start)",
     match: (e, ctx) =>
       navKey(e) &&
       !ctx.editing &&
       !!ctx.project &&
       ((e.altKey && !e.shiftKey && isZeroKey(e)) ||
         (!e.altKey && e.shiftKey && e.key === "End")),
-    run: (ctx) => ctx.ps.setContentStartSeconds(0),
+    run: (ctx) => ctx.ps.setReferenceStartSeconds(0),
     preventDefault: true,
   },
   {
@@ -505,7 +512,7 @@ export const SHORTCUTS: ShortcutDef[] = [
       !ctx.editing &&
       !!ctx.cue &&
       (e.key === "h" || e.key === "H"),
-    run: (ctx) => ctx.pb.seek(ctx.cue!.start),
+    run: (ctx) => ctx.pb.seek(cueStartSeconds(ctx.cue!)),
   },
   {
     id: "seek-to-cue-out",
@@ -518,7 +525,7 @@ export const SHORTCUTS: ShortcutDef[] = [
       !ctx.editing &&
       !!ctx.cue &&
       (e.key === "l" || e.key === "L"),
-    run: (ctx) => ctx.pb.seek(ctx.cue!.end),
+    run: (ctx) => ctx.pb.seek(cueEndSeconds(ctx.cue!)),
   },
   {
     id: "assign-role",

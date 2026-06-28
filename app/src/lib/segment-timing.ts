@@ -1,4 +1,5 @@
-import type { Cue } from "../types";
+import type { Cue, Project } from "../types";
+import { snapToFrame } from "./cue-timing";
 
 const EPS = 0.001;
 
@@ -30,11 +31,16 @@ export function splitTimeAtSegment(cue: Cue, segIndex: number): number {
   );
 }
 
-/** Index of the segment visible at time `t` within a cue (handles mid-cue shot changes). */
-export function activeSegmentIndex(cue: Cue, t: number): number {
+/** Index of the segment visible at playhead time within a cue. */
+export function activeSegmentIndex(
+  cue: Cue,
+  t: number,
+  project: Project,
+): number {
   if (cue.segments.length <= 1) return 0;
+  const splitSeconds = snapToFrame(t, project);
   for (let i = cue.segments.length - 1; i >= 0; i--) {
-    if (t >= splitTimeAtSegment(cue, i)) return i;
+    if (splitSeconds >= splitTimeAtSegment(cue, i)) return i;
   }
   return 0;
 }

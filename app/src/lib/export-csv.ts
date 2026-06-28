@@ -1,6 +1,11 @@
-import { secondsToTimecode } from "./timecode";
 import type { Cue, Project } from "../types";
-import { fileTimeToProgramTime, contentStartSeconds } from "./program-start";
+import {
+  nominalTimecodeFps,
+  projectFrameRate,
+  timecodeToTotalFrames,
+  totalFramesToTimecode,
+} from "./frame-time";
+import { cueExportFrame } from "./program-start";
 
 export type Delimiter = "\t" | ",";
 
@@ -39,32 +44,33 @@ function escapeField(value: string, delimiter: Delimiter): string {
   return value.replace(/[\t\r\n]+/g, " ");
 }
 
+/** Delivery SMPTE: start timecode + subtitle-relative cue time (clamped at zero). */
+function cueDeliveryTimecode(fileSeconds: number, project: Project): string {
+  const rate = projectFrameRate(project);
+  const tcFps = nominalTimecodeFps(rate);
+  const startFrames = timecodeToTotalFrames(project.startTimecode, tcFps);
+  return totalFramesToTimecode(
+    startFrames + cueExportFrame(fileSeconds, project),
+    tcFps,
+  );
+}
+
 /**
  * Build the delivery CSV/TSV. Each cue is one row with SMPTE timecodes
- * (project fps + offset) and " / "-joined shots/text for mixed-shot cues.
+ * (project fps + start timecode) and " / "-joined shots/text for mixed-shot cues.
  */
 export function exportCsv(
   project: Project,
   delimiter: Delimiter = "\t",
 ): string {
-  const { fps, timecodeOffset } = project;
-  const contentStart = contentStartSeconds(project);
   const rows: string[][] = [HEADER];
 
   project.cues.forEach((cue, i) => {
     const { info, subtitle } = joinSegments(cue);
     rows.push([
       String(i + 1),
-      secondsToTimecode(
-        fileTimeToProgramTime(cue.start, contentStart),
-        fps,
-        timecodeOffset,
-      ),
-      secondsToTimecode(
-        fileTimeToProgramTime(cue.end, contentStart),
-        fps,
-        timecodeOffset,
-      ),
+      cueDeliveryTimecode(cue.start, project),
+      cueDeliveryTimecode(cue.end, project),
       roleName(project, cue),
       info,
       subtitle,

@@ -30,12 +30,14 @@ import {
   type TimelinePeaksMeta,
 } from "../lib/timeline-zoom";
 import {
-  clampProgramStart,
-  contentStartSeconds,
-  PROGRAM_START_POINT_ID,
-  programStartLeaderWidthPx,
-  syncProgramStartPeaksPoint,
+  clampReferenceStart,
+  maxReferenceStartSeconds,
+  REFERENCE_START_POINT_ID,
+  referenceLeaderWidthPx,
+  syncReferenceStartPeaksPoint,
 } from "../lib/program-start";
+import { snapToFrame } from "../lib/cue-timing";
+import { fileSecondsToSubtitleTimecode } from "../lib/frame-time";
 
 interface Options {
   project: Project;
@@ -49,7 +51,13 @@ function buildPeaksOptions(
   zoomContainer: HTMLDivElement,
   scrollContainer: HTMLDivElement,
   videoEl: HTMLVideoElement,
+  getProject: () => Project,
 ): PeaksOptions {
+  const formatSubtitleTime = (fileSeconds: number) => {
+    const proj = getProject();
+    return fileSecondsToSubtitleTimecode(fileSeconds, proj);
+  };
+
   return {
     zoomview: {
       container: zoomContainer,
@@ -59,6 +67,8 @@ function buildPeaksOptions(
       playheadColor: "#ffffff",
       showPlayheadTime: true,
       playheadTextColor: "#ccc",
+      formatPlayheadTime: formatSubtitleTime,
+      formatAxisTime: formatSubtitleTime,
       axisGridlineColor: "#333",
       axisLabelColor: "#888",
       fontSize: 10,
@@ -125,9 +135,11 @@ export function useWaveformPeaksTimeline({
   const setCueTimes = useProject((s) => s.setCueTimes);
   const selectCue = useProject((s) => s.selectCue);
   const insertCueAtPlayhead = useProject((s) => s.insertCueAtPlayhead);
-  const setContentStartSeconds = useProject((s) => s.setContentStartSeconds);
+  const setReferenceStartSeconds = useProject(
+    (s) => s.setReferenceStartSeconds,
+  );
 
-  const contentStart = contentStartSeconds(project);
+  const referenceStartSeconds = project.referenceStartSeconds;
 
   const selectedCueIdRef = useRef(selectedCueId);
   selectedCueIdRef.current = selectedCueId;
@@ -136,16 +148,16 @@ export function useWaveformPeaksTimeline({
   const setCueTimesRef = useRef(setCueTimes);
   const selectCueRef = useRef(selectCue);
   const insertCueAtPlayheadRef = useRef(insertCueAtPlayhead);
-  const setContentStartSecondsRef = useRef(setContentStartSeconds);
+  const setReferenceStartSecondsRef = useRef(setReferenceStartSeconds);
   setCueStartRef.current = setCueStart;
   setCueEndRef.current = setCueEnd;
   setCueTimesRef.current = setCueTimes;
   selectCueRef.current = selectCue;
   insertCueAtPlayheadRef.current = insertCueAtPlayhead;
-  setContentStartSecondsRef.current = setContentStartSeconds;
+  setReferenceStartSecondsRef.current = setReferenceStartSeconds;
 
-  const contentStartRef = useRef(contentStart);
-  contentStartRef.current = contentStart;
+  const referenceStartSecondsRef = useRef(referenceStartSeconds);
+  referenceStartSecondsRef.current = referenceStartSeconds;
   const durationRef = useRef(duration);
   durationRef.current = duration;
   const metaRef = useRef<TimelinePeaksMeta | null>(null);
@@ -181,8 +193,8 @@ export function useWaveformPeaksTimeline({
     if (!zoomview || !container) return;
 
     setLeaderWidthPx(
-      programStartLeaderWidthPx(
-        contentStartRef.current,
+      referenceLeaderWidthPx(
+        referenceStartSecondsRef.current,
         zoomview.getStartTime(),
         zoomview.getEndTime(),
         container.clientWidth,
@@ -190,10 +202,10 @@ export function useWaveformPeaksTimeline({
     );
   }
 
-  function syncProgramStartPoint() {
+  function syncReferencePoint() {
     const peaks = peaksRef.current;
     if (!peaks) return;
-    syncProgramStartPeaksPoint(peaks, contentStartRef.current);
+    syncReferenceStartPeaksPoint(peaks, referenceStartSecondsRef.current);
     publishLeaderOverlay();
   }
 
@@ -342,6 +354,7 @@ export function useWaveformPeaksTimeline({
       zoomRef.current,
       scrollRef.current,
       videoEl,
+      () => projectRef.current,
     );
 
     Peaks.init(options, (err, peaks) => {
@@ -398,14 +411,16 @@ export function useWaveformPeaksTimeline({
       });
 
       peaks.on("points.dragend", (event) => {
-        if (event.point.id !== PROGRAM_START_POINT_ID) return;
-        const clamped = clampProgramStart(
-          event.point.time,
-          durationRef.current,
+        if (event.point.id !== REFERENCE_START_POINT_ID) return;
+        const proj = projectRef.current;
+        const maxSeconds = maxReferenceStartSeconds(proj, durationRef.current);
+        const seconds = clampReferenceStart(
+          snapToFrame(event.point.time, proj),
+          maxSeconds,
         );
-        setContentStartSecondsRef.current(clamped);
-        if (Math.abs(clamped - event.point.time) > 0.0001) {
-          event.point.update({ time: clamped });
+        setReferenceStartSecondsRef.current(seconds);
+        if (Math.abs(seconds - event.point.time) > 0.0001) {
+          event.point.update({ time: seconds });
         }
       });
 
@@ -425,7 +440,7 @@ export function useWaveformPeaksTimeline({
         }
       }
       peaks.views.getScrollbar()?.fitToContainer();
-      syncProgramStartPoint();
+      syncReferencePoint();
       setReady(true);
     });
 
@@ -449,9 +464,9 @@ export function useWaveformPeaksTimeline({
 
   useEffect(() => {
     if (!ready) return;
-    syncProgramStartPoint();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- syncProgramStartPoint uses refs
-  }, [contentStart, ready]);
+    syncReferencePoint();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- syncReferencePoint uses refs
+  }, [referenceStartSeconds, ready]);
 
   useEffect(() => {
     if (!ready) return;

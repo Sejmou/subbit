@@ -1,6 +1,7 @@
 import type { Cue } from "../types";
+import { cueEndSeconds, cueStartSeconds } from "./cue-timing";
 
-/** Cues overlapping the half-open time range [rangeStart, rangeEnd). */
+/** Cues overlapping the half-open time range [rangeStart, rangeEnd) in media seconds. */
 export function findCuesOverlappingRange(
   cues: Cue[],
   rangeStart: number,
@@ -8,8 +9,10 @@ export function findCuesOverlappingRange(
 ): Cue[] {
   const out: Cue[] = [];
   for (const cue of cues) {
-    if (cue.end <= rangeStart) continue;
-    if (cue.start >= rangeEnd) continue;
+    const start = cueStartSeconds(cue);
+    const end = cueEndSeconds(cue);
+    if (end <= rangeStart) continue;
+    if (start >= rangeEnd) continue;
     out.push(cue);
   }
   return out;

@@ -2,6 +2,7 @@ import type { Segment, SegmentOptions } from "peaks.js";
 import type { PeaksInstance } from "peaks.js";
 import type { Cue, Project } from "../types";
 import { findActiveCueId } from "./active-cue";
+import { cueEndSeconds, cueStartSeconds } from "./cue-timing";
 import { cueLabelTextShort } from "./cue-label";
 import {
   findCuesOverlappingRange,
@@ -71,8 +72,8 @@ export function buildCueSegmentAddOptions(
 ): SegmentOptions {
   return {
     id: cue.id,
-    startTime: cue.start,
-    endTime: cue.end,
+    startTime: cueStartSeconds(cue),
+    endTime: cueEndSeconds(cue),
     editable: true,
     markers: true,
     overlay: true,
@@ -90,8 +91,8 @@ export function buildCueSegmentUpdatePatch(
   "startTime" | "endTime" | "labelText" | "color" | "borderColor"
 > {
   return {
-    startTime: cue.start,
-    endTime: cue.end,
+    startTime: cueStartSeconds(cue),
+    endTime: cueEndSeconds(cue),
     ...segmentVisuals(project, cue, opts),
   };
 }

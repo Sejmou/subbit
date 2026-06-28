@@ -2,20 +2,17 @@ import { describe, expect, it } from "vitest";
 import { previewAtTime } from "./preview-subtitle";
 import { activeSegmentIndex } from "./segment-timing";
 import type { Cue, Project } from "../types";
-import {
-  DEFAULT_SHOTS,
-  DEFAULT_TIMECODE_OFFSET,
-  DEFAULT_FPS,
-  PROJECT_VERSION,
-} from "../types";
+import { DEFAULT_SHOTS, PROJECT_VERSION } from "../types";
 
 const baseProject = (cues: Cue[]): Project => ({
   version: PROJECT_VERSION,
   id: "00000000-0000-4000-8000-000000000001",
   name: "test",
   videoName: "test",
-  fps: DEFAULT_FPS,
-  timecodeOffset: DEFAULT_TIMECODE_OFFSET,
+  fpsNumerator: 25,
+  fpsDenominator: 1,
+  startTimecode: "00:00:00:00",
+  referenceStartSeconds: 0,
   defaultShot: "ON",
   shots: DEFAULT_SHOTS,
   speakers: [],
@@ -31,10 +28,11 @@ describe("activeSegmentIndex", () => {
       speakerId: null,
       segments: [{ text: "hello", shot: "ON" }],
     };
-    expect(activeSegmentIndex(cue, 2)).toBe(0);
+    expect(activeSegmentIndex(cue, 2, baseProject([]))).toBe(0);
   });
 
   it("picks segment by proportional timing when words are absent", () => {
+    const project = baseProject([]);
     const cue: Cue = {
       id: "a",
       start: 0,
@@ -45,8 +43,8 @@ describe("activeSegmentIndex", () => {
         { text: "bbbbbbbb", shot: "OFF" },
       ],
     };
-    expect(activeSegmentIndex(cue, 2)).toBe(0);
-    expect(activeSegmentIndex(cue, 8)).toBe(1);
+    expect(activeSegmentIndex(cue, 2, project)).toBe(0);
+    expect(activeSegmentIndex(cue, 8, project)).toBe(1);
   });
 });
 
