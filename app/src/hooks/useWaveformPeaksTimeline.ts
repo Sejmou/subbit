@@ -73,6 +73,7 @@ function buildPeaksOptions(
     keyboard: false,
     waveformCache: true,
     createPointMarker: createProgramStartPointMarker,
+    createSegmentLabel: () => null,
     zoomLevels: peaksZoomLevels(samplesPerPixel),
     segmentOptions: {
       markers: true,
