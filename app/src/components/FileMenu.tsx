@@ -79,6 +79,12 @@ export function FileMenu({
             className="file-menu-submenu"
             onMouseEnter={() => setAdvancedOpen(true)}
             onMouseLeave={() => setAdvancedOpen(false)}
+            onFocus={() => setAdvancedOpen(true)}
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setAdvancedOpen(false);
+              }
+            }}
           >
             <button
               type="button"
@@ -86,23 +92,21 @@ export function FileMenu({
               className="file-menu-submenu-trigger"
               aria-haspopup="menu"
               aria-expanded={advancedOpen}
-              onClick={() => setAdvancedOpen((v) => !v)}
             >
               Advanced…
             </button>
-            {advancedOpen && (
-              <div className="file-menu-submenu-panel" role="menu">
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => run(onShowWaveformPeaks)}
-                >
-                  {hasWaveformPeaks
-                    ? "Replace waveform data…"
-                    : "Import waveform data…"}
-                </button>
-              </div>
-            )}
+            <div className="file-menu-submenu-panel" role="menu">
+              <button
+                type="button"
+                role="menuitem"
+                className="file-menu-submenu-trigger"
+                onClick={() => run(onShowWaveformPeaks)}
+              >
+                {hasWaveformPeaks
+                  ? "Replace waveform data…"
+                  : "Import waveform data…"}
+              </button>
+            </div>
           </div>
           <hr />
           <button

@@ -208,13 +208,29 @@
   position: absolute;
   left: calc(100% + 4px);
   top: 0;
-  min-width: 200px;
+  width: 100%;
+  min-width: 180px;
+  padding: 0;
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 4px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   z-index: 51;
+  visibility: hidden;
+  pointer-events: none;
+}
+.file-menu-submenu:hover .file-menu-submenu-panel,
+.file-menu-submenu:focus-within .file-menu-submenu-panel {
+  visibility: visible;
+  pointer-events: auto;
+}
+.file-menu-submenu-panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 100%;
+  width: 12px;
 }
 .file-menu-submenu-panel button:disabled {
   opacity: 0.45;
