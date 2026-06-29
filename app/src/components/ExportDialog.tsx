@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  buildExport,
   DEFAULT_DIARIZED_EXPORT_OPTIONS,
   EXPORT_FORMATS,
   type ExportFormat,
@@ -28,10 +29,12 @@ export function ExportDialog({ open, onExport, onClose }: Props) {
   const [speakerColors, setSpeakerColors] = useState(
     DEFAULT_DIARIZED_EXPORT_OPTIONS.speakerColors,
   );
+  const [copyHint, setCopyHint] = useState<string | null>(null);
   const project = useProject((s) => s.project);
 
   useEffect(() => {
     if (!open) return;
+    setCopyHint(null);
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
         e.preventDefault();
@@ -41,6 +44,12 @@ export function ExportDialog({ open, onExport, onClose }: Props) {
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   }, [open, onClose]);
+
+  useEffect(() => {
+    if (!copyHint) return;
+    const id = window.setTimeout(() => setCopyHint(null), 2000);
+    return () => window.clearTimeout(id);
+  }, [copyHint]);
 
   const selected =
     EXPORT_FORMATS.find((f) => f.id === format) ?? EXPORT_FORMATS[0];
@@ -60,6 +69,22 @@ export function ExportDialog({ open, onExport, onClose }: Props) {
   }, [project, firstCue, selected.usesDeliveryOffset]);
 
   const hint = project ? exportFormatHint(selected, project) : selected.hint;
+
+  const exportRequest = (): ExportRequest => ({
+    format,
+    diarized: { speakerLabels, speakerColors },
+  });
+
+  const onCopy = async () => {
+    if (!project) return;
+    const { content } = buildExport(project, exportRequest());
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopyHint("Copied");
+    } catch {
+      setCopyHint("Could not copy");
+    }
+  };
 
   if (!open || !project) return null;
 
@@ -168,19 +193,26 @@ export function ExportDialog({ open, onExport, onClose }: Props) {
           </div>
         )}
 
-        <button
-          type="button"
-          className="primary wide export-action"
-          onClick={() => {
-            onExport({
-              format,
-              diarized: { speakerLabels, speakerColors },
-            });
-            onClose();
-          }}
-        >
-          Export .{selected.ext}
-        </button>
+        <div className="export-actions">
+          <button type="button" onClick={() => void onCopy()}>
+            Copy to clipboard
+          </button>
+          <button
+            type="button"
+            className="primary"
+            onClick={() => {
+              onExport(exportRequest());
+              onClose();
+            }}
+          >
+            Export .{selected.ext}
+          </button>
+        </div>
+        {copyHint && (
+          <p className="export-copy-hint" role="status">
+            {copyHint}
+          </p>
+        )}
       </div>
     </div>
   );

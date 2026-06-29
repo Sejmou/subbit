@@ -387,8 +387,20 @@
 .export-check input {
   margin: 0;
 }
-.export-action {
+.export-actions {
+  display: flex;
+  gap: 8px;
   margin-top: 8px;
+}
+.export-actions button {
+  flex: 1;
+  padding: 10px;
+}
+.export-copy-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--accent);
+  text-align: center;
 }
 .export-field {
   display: flex;
