@@ -74,6 +74,7 @@ this README:
 | Topic                                                | Location                                                                         |
 | ---------------------------------------------------- | -------------------------------------------------------------------------------- |
 | Domain model (cues, speakers, shots, project fields) | [`src/types.ts`](src/types.ts)                                                   |
+| Word list, line breaks, timing (planned)             | [`docs/word-model.md`](docs/word-model.md)                                       |
 | JSON schema & validation                             | [`src/lib/project-schema.ts`](src/lib/project-schema.ts)                         |
 | WhisperX import                                      | [`src/lib/import-whisperx.ts`](src/lib/import-whisperx.ts)                       |
 | Speaker inference at import                          | [`src/lib/infer-speaker.ts`](src/lib/infer-speaker.ts)                           |
