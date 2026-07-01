@@ -1,103 +1,86 @@
 # Subbit
 
-A zero-install, browser-based subtitle editor for editing subtitles of a local
-video while capturing two extra pieces of metadata per line:
+Browser-based subtitle editor for a **local video**. Each line can carry extra
+metadata beyond text and timing — especially **who speaks** and the **type of shot** —
+and the project keeps word-level alignment from WhisperX audio transcriptions so cues
+can be split and retimed without losing sync.
 
-1. **Rolle** - who speaks (mapped from whisperx diarization labels to real names)
-2. **Info** - the shot type (`ON` / `OFF` / `CONTRE`), including shot changes
-   that occur mid-subtitle
-
-It imports the rich whisperx `audio.json` (word-level timing + speakers), lets
-you fix text/timing fast with the keyboard, and exports a broadcast-style CSV.
+Nothing is uploaded: the video streams from disk via an object URL, and projects
+live in the browser until you export them.
 
 ## Why a web app
 
-- **Nothing to install** for non-technical users: open the hosted URL in
-  Chrome or Edge (Windows included).
-- **Large videos are fine**: the `<video>` element streams the local file from
-  disk via an object URL, so multi-GB files play without loading into memory.
-  Nothing is ever uploaded.
-- The same codebase can later be wrapped in Tauri for a native build.
+- **No install** for editors — open the hosted URL in a modern browser
+  (Chrome or Edge recommended on Windows).
+- **Large files are fine** — playback reads from disk; multi-GB sources are OK.
+- **Same codebase** can later be wrapped in Tauri for a native build.
 
-## Requirements for the video
+## Video format
 
-The browser plays the file directly, so it must be **H.264 video + AAC audio**
-in an mp4 (the common case). If a file won't play, remux/transcode once:
+The browser must be able to decode the file. **H.264 + AAC in MP4** is the
+usual case. If playback fails, remux or transcode once:
 
 ```bash
 ffmpeg -i input.mkv -c:v libx264 -c:a aac -movflags +faststart output.mp4
 ```
 
+WhisperX preprocessing (transcription, diarization, optional waveform peaks) is
+documented in [`../preprocessing/README.md`](../preprocessing/README.md).
+
 ## Develop
+
+From this directory:
 
 ```bash
 pnpm install
-pnpm dev        # start the dev server
-pnpm test       # run unit tests (timecode conversion)
-pnpm build      # production build into dist/
+pnpm dev          # dev server
+pnpm test         # unit tests (vitest)
+pnpm build        # production build → dist/
+pnpm lint         # oxlint
+pnpm format       # prettier
+pnpm format:check
 ```
 
-## Using it
+## Using the app
 
-1. **Video**: choose the `.mp4`.
-2. **Subtitles**: "New from whisperx JSON" (the `audio.json` from whisperx) for a
-   fresh project, or "Open project" to resume a saved `.subbit.json`.
-3. Edit. **Save project** writes a `.subbit.json` (your editable source of
-   truth). **Export delivery** writes the CSV/TSV; **Export .srt** writes plain
-   SRT for other tools.
+1. **Open a video** on the start screen (or restore a previous session when the
+   browser still has the file handle).
+2. **Create or open a project** — import WhisperX JSON, start from scratch,
+   pick a project stored in this browser, or import a project bundle (`.zip` containing `project.json` and optional waveform data).
+3. **Edit** — keyboard-first cue list, waveform timeline, role and shot fields.
+   Press **`?`** anytime for shortcuts and in-app help.
+4. **Save & export** — work autosaves to browser storage; use the toolbar and
+   File menu to export delivery files or a portable project bundle.
 
-On Chrome/Edge the app remembers the file handles, so "Reopen last session"
-restores the video + project without re-picking the 1+ GB file, and the project
-autosaves in place.
+Exact menu labels, export formats, and per-format options are shown in the UI
+(Export dialog hints). Prefer those over this README when they differ.
 
-### Data model
+### Persistence
 
-- A **cue** = one row in the delivery CSV.
-- A cue holds an ordered list of **segments** `{ text, shot }`. A single segment
-  is a normal subtitle; multiple segments represent a shot change inside one
-  subtitle and export by joining text and shot tokens with `" / "`
-  (e.g. `Info = "CONTRE / ON"`).
-- The project keeps whisperx word-level timing so cues can be split losslessly.
+| What                           | Where                                                                            |
+| ------------------------------ | -------------------------------------------------------------------------------- |
+| Day-to-day editing             | Browser storage (IndexedDB), with autosave                                       |
+| Share / backup / move machines | **Project bundle** (zip with `project.json` and optional waveform) via File menu |
+| Delivery to downstream tools   | Export dialog (ASS, WebVTT, SRT, TSV, CSV, …)                                    |
 
-### Speaker inference (whisperx import)
+On Chrome/Edge, cached file handles can reopen the same large video without
+re-picking it.
 
-WhisperX assigns a diarization label to each segment and (when available) to
-each word. Those labels come from overlap between ASR segments and a separate
-diarization pass — they are not a calibrated probability. The per-word `score`
-field is alignment confidence (how well the word fits the audio), not speaker
-confidence, so Subbit ignores it for role assignment.
+## Source of truth (for contributors)
 
-On import, Subbit picks a speaker using **duration-weighted plurality**: for
-each labeled word, add `(end − start)` to that speaker's tally; the winner's
-share of total labeled time becomes `inferredSpeaker.confidence`. Example: if
-speaker A holds 3s and B holds 1s, A wins with confidence 0.75.
+Behavior and on-disk shapes change; these files stay closer to the code than
+this README:
 
-- **`inferredSpeaker`** is stored on every cue where inference is possible
-  (`{ speakerId, confidence }`). It is a snapshot from import and is kept even
-  after you assign a role manually.
-- **`speakerId`** is set automatically only when confidence ≥ **0.75**. Below
-  that threshold the cue is left unassigned (`— Role —`); pick one with `A`.
-- If words lack speaker labels, Subbit falls back to the segment-level
-  `speaker` with confidence 1.
+| Topic                                                | Location                                                                         |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Domain model (cues, speakers, shots, project fields) | [`src/types.ts`](src/types.ts)                                                   |
+| JSON schema & validation                             | [`src/lib/project-schema.ts`](src/lib/project-schema.ts)                         |
+| WhisperX import                                      | [`src/lib/import-whisperx.ts`](src/lib/import-whisperx.ts)                       |
+| Speaker inference at import                          | [`src/lib/infer-speaker.ts`](src/lib/infer-speaker.ts)                           |
+| Export formats & columns                             | [`src/lib/export-format.ts`](src/lib/export-format.ts) and `src/lib/export-*.ts` |
+| Project bundle (zip) layout                          | [`src/lib/project-bundle.ts`](src/lib/project-bundle.ts)                         |
+| Subtitle SMPTE timeline & timecode                   | [`docs/timeline-timecode.md`](docs/timeline-timecode.md)                         |
+| Keyboard shortcuts                                   | [`src/lib/shortcuts/`](src/lib/shortcuts/) (also **`?`** in the app)             |
 
-The 0.75 cutoff avoids auto-assigning ambiguous cues (e.g. two speakers with
-similar talk time) while still filling in clear single-speaker lines. After
-timing edits, word arrays can drift from cue boundaries; inference is
-intentionally frozen at import — assign roles manually where the field is empty.
-
-### Delivery format
-
-Columns: `No, Timecode In, Timecode Out, Rolle, Info, Subtitle`.
-Timecodes are SMPTE `HH:MM:SS:FF` at the project's fps (25) with a configurable
-start offset (default `10:00:00:00`). Default delimiter is tab; comma-CSV is
-also available (fields are quoted per RFC 4180).
-
-Press **`?`** in the app anytime for the full keyboard shortcut list.
-
-### Timeline & timecode (planned redesign)
-
-The editor will move to a single **subtitle SMPTE** timeline (reference frame +
-start timecode), frame-accurate cue storage, and fps from the linked video. This
-is a **breaking** project-format change (no migration from older saves). See
-[`docs/timeline-timecode.md`](docs/timeline-timecode.md) for the design, caveats
-(NDF vs drop-frame, seek precision, WhisperX import), and implementation plan.
+When updating behavior, change the code (and tests) first; adjust this README
+only if the high-level workflow or developer setup changed.
