@@ -24,6 +24,7 @@ interface Props {
   findReplaceOpen: boolean;
   onToggleFindReplace: () => void;
   onImportProjectBundle: () => void;
+  onImportDeliverySpreadsheet: () => void;
   onExportProjectBundle: () => void;
   onNewBlankProject: () => void;
   onCloseProject: () => void;
@@ -114,6 +115,7 @@ export function Toolbar({
   findReplaceOpen,
   onToggleFindReplace,
   onImportProjectBundle,
+  onImportDeliverySpreadsheet,
   onExportProjectBundle,
   onNewBlankProject,
   onCloseProject,
@@ -157,6 +159,7 @@ export function Toolbar({
     <div className="toolbar">
       <FileMenu
         onImportProjectBundle={onImportProjectBundle}
+        onImportDeliverySpreadsheet={onImportDeliverySpreadsheet}
         onExportProjectBundle={onExportProjectBundle}
         onNewBlankProject={onNewBlankProject}
         onCloseProject={onCloseProject}

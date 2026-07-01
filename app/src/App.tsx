@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
 import { useProject } from "./store/project";
-import { buildExport, type ExportRequest } from "./lib/export-format";
+import { buildExportFile, type ExportRequest } from "./lib/export-format";
 import {
   parseSubtitleJsonText,
   projectFromWhisperxData,
@@ -59,6 +59,7 @@ import { CueList } from "./components/CueList";
 import { SpeakerPanel } from "./components/SpeakerPanel";
 import { Toolbar } from "./components/Toolbar";
 import { ExportDialog } from "./components/ExportDialog";
+import { ImportDeliveryDialog } from "./components/ImportDeliveryDialog";
 import { RolePicker } from "./components/RolePicker";
 import { HelpOverlay } from "./components/HelpOverlay";
 import { HistoryPanel } from "./components/HistoryPanel";
@@ -81,6 +82,12 @@ import {
 } from "./lib/waveform-peaks";
 import { usePlayback } from "./store/playback";
 import type { ReviewStatusFilter } from "./lib/cue-filters";
+import type { DeliveryColumnMapping } from "./lib/delivery-columns";
+import { importDeliveryExcel } from "./lib/delivery-excel";
+import {
+  POST_EXCEL_IMPORT_HISTORY_LABEL,
+  PRE_EXCEL_IMPORT_HISTORY_LABEL,
+} from "./lib/delivery-import-labels";
 import type { Project, VideoIdentity } from "./types";
 import {
   readPreviewEnabled,
@@ -123,6 +130,7 @@ export default function App() {
     INACTIVE_FIND_HIGHLIGHT,
   );
   const [exportOpen, setExportOpen] = useState(false);
+  const [importDeliveryOpen, setImportDeliveryOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [unsavedOpen, setUnsavedOpen] = useState(false);
   const [previewEnabled, setPreviewEnabled] = useState(readPreviewEnabled);
@@ -524,12 +532,46 @@ export default function App() {
     [markSaved],
   );
 
-  const doExport = useCallback((request: ExportRequest) => {
+  const doExport = useCallback(async (request: ExportRequest) => {
     const current = useProject.getState().project;
     if (!current) return;
-    const { content, ext, mime } = buildExport(current, request);
-    downloadText(suggestedExportFilename(current, ext), content, mime);
+    try {
+      const result = await buildExportFile(current, request);
+      const filename = suggestedExportFilename(current, result.ext);
+      if (result.kind === "text") {
+        downloadText(filename, result.content, result.mime);
+      } else {
+        downloadBlob(
+          filename,
+          new Blob([result.content], { type: result.mime }),
+        );
+      }
+    } catch (err) {
+      alert((err as Error).message);
+    }
   }, []);
+
+  const doImportDelivery = useCallback(
+    async (columns: DeliveryColumnMapping, file: File) => {
+      const current = useProject.getState().project;
+      if (!current) return;
+
+      const preText = serializeProject(current);
+      await addVersion(current, preText, {
+        label: PRE_EXCEL_IMPORT_HISTORY_LABEL,
+      });
+
+      const data = await file.arrayBuffer();
+      const next = await importDeliveryExcel(current, data, columns);
+      restoreProject(next);
+
+      const postText = serializeProject(next);
+      await addVersion(next, postText, {
+        label: POST_EXCEL_IMPORT_HISTORY_LABEL,
+      });
+    },
+    [restoreProject],
+  );
 
   const doExportProjectBundle = useCallback(() => {
     const current = useProject.getState().project;
@@ -894,6 +936,7 @@ export default function App() {
         findReplaceOpen={findReplaceOpen}
         onToggleFindReplace={() => setFindReplaceOpen((open) => !open)}
         onImportProjectBundle={() => void doImportProjectBundle()}
+        onImportDeliverySpreadsheet={() => setImportDeliveryOpen(true)}
         onExportProjectBundle={doExportProjectBundle}
         onNewBlankProject={() => void doNewBlankProject()}
         onCloseProject={() => void doCloseProject()}
@@ -911,8 +954,15 @@ export default function App() {
       />
       <ExportDialog
         open={exportOpen}
-        onExport={doExport}
+        onExport={(request) => void doExport(request)}
         onClose={() => setExportOpen(false)}
+      />
+      <ImportDeliveryDialog
+        open={importDeliveryOpen}
+        cueCount={project.cues.length}
+        onExportBackup={doExportProjectBundle}
+        onConfirmImport={doImportDelivery}
+        onClose={() => setImportDeliveryOpen(false)}
       />
       <UnsavedDialog
         open={unsavedOpen}

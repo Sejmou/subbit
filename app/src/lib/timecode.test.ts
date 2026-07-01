@@ -6,6 +6,7 @@ import {
   parseClock,
   secondsToClock,
   secondsToTimecode,
+  extractSmpteTimecode,
   timecodeToSeconds,
 } from "./timecode";
 
@@ -44,6 +45,24 @@ describe("timecodeToSeconds", () => {
 
   it("throws on malformed input", () => {
     expect(() => timecodeToSeconds("00:00:00", FPS)).toThrow();
+  });
+
+  it("extracts SMPTE from annotated delivery cells", () => {
+    expect(timecodeToSeconds("10:02:29:18 (29:12)", FPS)).toBeCloseTo(
+      timecodeToSeconds("10:02:29:18", FPS),
+      5,
+    );
+  });
+});
+
+describe("extractSmpteTimecode", () => {
+  it("returns the first HH:MM:SS:FF match", () => {
+    expect(extractSmpteTimecode("10:02:29:18 (29:12)")).toBe("10:02:29:18");
+  });
+
+  it("returns undefined when no SMPTE pattern is present", () => {
+    expect(extractSmpteTimecode("29:12")).toBeUndefined();
+    expect(extractSmpteTimecode("")).toBeUndefined();
   });
 });
 

@@ -353,6 +353,8 @@
 
 .export-modal {
   width: min(440px, 92vw);
+  max-height: min(90vh, 900px);
+  overflow: auto;
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -417,6 +419,51 @@
 .export-field select,
 .export-field input {
   flex: 1;
+}
+
+.delivery-columns {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+}
+
+.delivery-columns legend {
+  padding: 0 6px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.delivery-columns-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.delivery-column-field span {
+  min-width: 7.5rem;
+}
+
+.import-delivery-modal {
+  width: min(480px, 92vw);
+}
+
+.import-delivery-confirm .hint {
+  margin-bottom: 12px;
+  line-height: 1.45;
+}
+
+.import-delivery-confirm-backup {
+  margin-bottom: 16px;
+}
+
+.import-delivery-confirm-backup button {
+  width: 100%;
+  padding: 10px;
+}
+
+.import-delivery-confirm-backup .export-copy-hint {
+  margin-top: 8px;
+  text-align: center;
 }
 
 /* ---- layout ---- */

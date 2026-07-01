@@ -1,29 +1,9 @@
-import type { Cue, Project } from "../types";
-import {
-  nominalTimecodeFps,
-  projectFrameRate,
-  timecodeToTotalFrames,
-  totalFramesToTimecode,
-} from "./frame-time";
-import { cueExportFrame } from "./program-start";
-import { joinShotRanges } from "./export-shot-ranges";
+import type { Project } from "../types";
+import type { DeliveryColumnMapping } from "./delivery-columns";
+import { DEFAULT_DELIVERY_COLUMNS } from "./delivery-columns";
+import { buildDeliveryRows } from "./delivery-rows";
 
 export type Delimiter = "\t" | ",";
-
-const HEADER = [
-  "No",
-  "Timecode In",
-  "Timecode Out",
-  "Rolle",
-  "Info",
-  "Subtitle",
-];
-
-function roleName(project: Project, cue: Cue): string {
-  if (!cue.speakerId) return "";
-  const speaker = project.speakers.find((s) => s.id === cue.speakerId);
-  return speaker?.name?.trim() || cue.speakerId;
-}
 
 /** Quote a field for comma-CSV per RFC 4180; tab output is left as-is. */
 function escapeField(value: string, delimiter: Delimiter): string {
@@ -37,17 +17,6 @@ function escapeField(value: string, delimiter: Delimiter): string {
   return value.replace(/[\t\r\n]+/g, " ");
 }
 
-/** Delivery SMPTE: start timecode + subtitle-relative cue time (clamped at zero). */
-function cueDeliveryTimecode(fileSeconds: number, project: Project): string {
-  const rate = projectFrameRate(project);
-  const tcFps = nominalTimecodeFps(rate);
-  const startFrames = timecodeToTotalFrames(project.startTimecode, tcFps);
-  return totalFramesToTimecode(
-    startFrames + cueExportFrame(fileSeconds, project),
-    tcFps,
-  );
-}
-
 /**
  * Build the delivery CSV/TSV. Each cue is one row with SMPTE timecodes
  * (project fps + start timecode) and " / "-joined shots/text for mixed-shot cues.
@@ -55,20 +24,9 @@ function cueDeliveryTimecode(fileSeconds: number, project: Project): string {
 export function exportCsv(
   project: Project,
   delimiter: Delimiter = "\t",
+  columns: DeliveryColumnMapping = DEFAULT_DELIVERY_COLUMNS,
 ): string {
-  const rows: string[][] = [HEADER];
-
-  project.cues.forEach((cue, i) => {
-    const { info, subtitle } = joinShotRanges(cue);
-    rows.push([
-      String(i + 1),
-      cueDeliveryTimecode(cue.start, project),
-      cueDeliveryTimecode(cue.end, project),
-      roleName(project, cue),
-      info,
-      subtitle,
-    ]);
-  });
+  const rows = buildDeliveryRows(project, columns);
 
   return rows
     .map((row) => row.map((f) => escapeField(f, delimiter)).join(delimiter))

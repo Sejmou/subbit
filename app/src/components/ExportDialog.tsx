@@ -6,13 +6,16 @@ import {
   type ExportFormat,
   type ExportRequest,
 } from "../lib/export-format";
+import { DEFAULT_DELIVERY_COLUMNS } from "../lib/delivery-columns";
 import { exportFormatHint, exportPreviewSummary } from "../lib/export-hints";
 import {
   cuesBeforeReferenceStart,
   referenceStartTimecode,
 } from "../lib/program-start";
 import { fileSecondsToSubtitleTimecode } from "../lib/frame-time";
+import type { DeliveryColumnMapping } from "../lib/delivery-columns";
 import { useProject } from "../store/project";
+import { DeliveryColumnMappingFields } from "./DeliveryColumnMappingFields";
 
 interface Props {
   open: boolean;
@@ -29,12 +32,16 @@ export function ExportDialog({ open, onExport, onClose }: Props) {
   const [speakerColors, setSpeakerColors] = useState(
     DEFAULT_DIARIZED_EXPORT_OPTIONS.speakerColors,
   );
+  const [deliveryColumns, setDeliveryColumns] = useState<DeliveryColumnMapping>(
+    { ...DEFAULT_DELIVERY_COLUMNS },
+  );
   const [copyHint, setCopyHint] = useState<string | null>(null);
   const project = useProject((s) => s.project);
 
   useEffect(() => {
     if (!open) return;
     setCopyHint(null);
+    setDeliveryColumns({ ...DEFAULT_DELIVERY_COLUMNS });
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
         e.preventDefault();
@@ -73,10 +80,11 @@ export function ExportDialog({ open, onExport, onClose }: Props) {
   const exportRequest = (): ExportRequest => ({
     format,
     diarized: { speakerLabels, speakerColors },
+    deliveryColumns,
   });
 
   const onCopy = async () => {
-    if (!project) return;
+    if (!project || format === "xlsx") return;
     const { content } = buildExport(project, exportRequest());
     try {
       await navigator.clipboard.writeText(content);
@@ -172,6 +180,13 @@ export function ExportDialog({ open, onExport, onClose }: Props) {
           </div>
         )}
 
+        {selected.isDeliverySpreadsheet && (
+          <DeliveryColumnMappingFields
+            value={deliveryColumns}
+            onChange={setDeliveryColumns}
+          />
+        )}
+
         {selected.supportsDiarization && (
           <div className="export-options">
             <label className="export-check">
@@ -194,9 +209,11 @@ export function ExportDialog({ open, onExport, onClose }: Props) {
         )}
 
         <div className="export-actions">
-          <button type="button" onClick={() => void onCopy()}>
-            Copy to clipboard
-          </button>
+          {format !== "xlsx" && (
+            <button type="button" onClick={() => void onCopy()}>
+              Copy to clipboard
+            </button>
+          )}
           <button
             type="button"
             className="primary"

@@ -14,7 +14,8 @@ import {
 
 /** Parse "HH:MM:SS:FF" into a number of seconds, given fps for the frame part. */
 export function timecodeToSeconds(tc: string, fps: number): number {
-  const parts = tc.trim().split(":");
+  const normalized = extractSmpteTimecode(tc) ?? tc.trim();
+  const parts = normalized.split(":");
   if (parts.length !== 4) {
     throw new Error(`Invalid timecode "${tc}" (expected HH:MM:SS:FF)`);
   }
@@ -25,6 +26,12 @@ export function timecodeToSeconds(tc: string, fps: number): number {
     return n;
   });
   return h * 3600 + m * 60 + s + f / fps;
+}
+
+/** First HH:MM:SS:FF substring in a cell value (e.g. delivery sheets with notes). */
+export function extractSmpteTimecode(value: string): string | undefined {
+  const match = value.trim().match(/\d{1,2}:\d{2}:\d{2}:\d{2}/);
+  return match?.[0];
 }
 
 /**
