@@ -1,29 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { exportVtt } from "./export-vtt";
-import type { Project } from "../types";
+import { makeCue, makeProject } from "../test-fixtures";
 
-const project: Project = {
-  version: 2,
-  id: "00000000-0000-4000-8000-000000000001",
+const project = makeProject({
   name: "clip",
   videoName: "clip.mp4",
-  fpsNumerator: 25,
-  fpsDenominator: 1,
-  startTimecode: "00:00:00:00",
-  referenceStartSeconds: 0,
-  defaultShot: "ON",
-  shots: [{ id: "ON", label: "On-screen" }],
   speakers: [{ id: "SPEAKER_00", name: "Alice", color: "#e6194b" }],
   cues: [
-    {
-      id: "c1",
-      start: 1,
-      end: 4,
-      speakerId: "SPEAKER_00",
-      segments: [{ text: "Hello", shot: "ON" }],
-    },
+    makeCue({ id: "c1", start: 1, end: 4, speakerId: "SPEAKER_00" }, "Hello"),
   ],
-};
+});
 
 import { DEFAULT_DIARIZED_EXPORT_OPTIONS } from "./export-format";
 

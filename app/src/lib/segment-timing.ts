@@ -1,29 +1,28 @@
-import type { Cue, Project } from "../types";
+import type { Cue, Project, ShotRange } from "../types";
 import { snapToFrame } from "./cue-timing";
+import { effectiveShotRanges, shotRangeText } from "./word-model/render";
 
 const EPS = 0.001;
 
-/** Infer a split time at the boundary before `segIndex`, using words when available. */
-export function splitTimeAtSegment(cue: Cue, segIndex: number): number {
-  if (segIndex <= 0 || segIndex >= cue.segments.length) return cue.start;
+/** Infer a split time at the boundary before `rangeIndex`. */
+export function splitTimeAtShotRange(cue: Cue, rangeIndex: number): number {
+  const ranges = cue.shotRanges;
+  if (rangeIndex <= 0 || rangeIndex >= ranges.length) return cue.start;
 
-  const words = cue.words;
-  if (words && words.length > 0) {
-    const weights = cue.segments.map((s) => s.text.length || 1);
-    const totalWeight = weights.reduce((a, b) => a + b, 0);
-    let wordIdx = 0;
-    for (let s = 0; s < segIndex; s++) {
-      wordIdx += Math.round((weights[s] / totalWeight) * words.length);
-    }
-    wordIdx = Math.min(Math.max(wordIdx, 1), words.length);
-    const t = words[wordIdx - 1]?.end ?? words[wordIdx]?.start ?? cue.start;
+  const range = ranges[rangeIndex];
+  if (cue.words.length > 0 && range.fromWord > 0) {
+    const t =
+      cue.words[range.fromWord - 1]?.end ??
+      cue.words[range.fromWord]?.start ??
+      cue.start;
     return Math.max(cue.start + EPS, Math.min(t, cue.end - EPS));
   }
 
-  const totalChars = cue.segments.reduce((n, s) => n + s.text.length, 0) || 1;
-  const leftChars = cue.segments
-    .slice(0, segIndex)
-    .reduce((n, s) => n + s.text.length, 0);
+  const totalChars =
+    ranges.reduce((n, r) => n + shotRangeText(cue, r).length, 0) || 1;
+  const leftChars = ranges
+    .slice(0, rangeIndex)
+    .reduce((n, r) => n + shotRangeText(cue, r).length, 0);
   const ratio = leftChars / totalChars;
   return Math.max(
     cue.start + EPS,
@@ -31,16 +30,31 @@ export function splitTimeAtSegment(cue: Cue, segIndex: number): number {
   );
 }
 
-/** Index of the segment visible at playhead time within a cue. */
-export function activeSegmentIndex(
+/** Index of the shot range visible at playhead time within a cue. */
+export function activeShotRangeIndex(
   cue: Cue,
   t: number,
   project: Project,
 ): number {
-  if (cue.segments.length <= 1) return 0;
+  const ranges = effectiveShotRanges(cue, project.defaultShot);
+  if (ranges.length <= 1) return 0;
   const splitSeconds = snapToFrame(t, project);
-  for (let i = cue.segments.length - 1; i >= 0; i--) {
-    if (splitSeconds >= splitTimeAtSegment(cue, i)) return i;
+  for (let i = ranges.length - 1; i >= 0; i--) {
+    if (splitSeconds >= splitTimeAtShotRange(cue, i)) return i;
   }
   return 0;
+}
+
+/** @deprecated use activeShotRangeIndex */
+export const activeSegmentIndex = activeShotRangeIndex;
+
+/** @deprecated use splitTimeAtShotRange */
+export const splitTimeAtSegment = splitTimeAtShotRange;
+
+export function shotRangeAtIndex(
+  cue: Cue,
+  rangeIndex: number,
+  defaultShot: string,
+): ShotRange {
+  return effectiveShotRanges(cue, defaultShot)[rangeIndex];
 }

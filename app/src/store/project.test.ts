@@ -1,47 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { writeLockReviewedCues } from "../lib/lock-reviewed-settings";
+import { cueShotText, makeCue, makeProject } from "../test-fixtures";
 import { useLockReviewedStore } from "./lock-reviewed";
 import { useProject } from "./project";
-import type { Project } from "../types";
-import { PROJECT_VERSION } from "../types";
-
-function makeProject(): Project {
-  return {
-    version: PROJECT_VERSION,
-    id: "00000000-0000-4000-8000-000000000001",
-    name: "clip",
-    videoName: "clip.mp4",
-    fpsNumerator: 25,
-    fpsDenominator: 1,
-    startTimecode: "00:00:00:00",
-    referenceStartSeconds: 0,
-    defaultShot: "ON",
-    shots: [
-      { id: "ON", label: "On-screen" },
-      { id: "OFF", label: "Off-screen" },
-    ],
-    speakers: [{ id: "SPEAKER_00", name: "A", color: "#fff" }],
-    cues: [
-      {
-        id: "c1",
-        start: 0,
-        end: 2,
-        speakerId: "SPEAKER_00",
-        segments: [{ text: "hello", shot: "ON" }],
-      },
-      {
-        id: "c2",
-        start: 2,
-        end: 4,
-        speakerId: "SPEAKER_00",
-        segments: [{ text: "world", shot: "ON" }],
-      },
-    ],
-  };
-}
 
 const store = () => useProject.getState();
-const firstText = () => store().project!.cues[0].segments[0].text;
+const firstText = () => cueShotText(store().project!.cues[0]);
 const cueSeconds = (cueId: string, boundary: "start" | "end") => {
   const cue = store().project!.cues.find((c) => c.id === cueId)!;
   return boundary === "start" ? cue.start : cue.end;
@@ -246,8 +210,9 @@ describe("setStartTimecode", () => {
 
 describe("restoreProject", () => {
   it("replaces the project and is itself undoable", () => {
-    const restored = makeProject();
-    restored.cues[0].segments[0].text = "restored";
+    const restored = makeProject({
+      cues: [makeCue({ id: "c1", start: 0, end: 2 }, "restored")],
+    });
 
     store().setSegmentText("c1", 0, "edited");
     store().restoreProject(restored);
@@ -259,8 +224,9 @@ describe("restoreProject", () => {
 
   it("keeps a still-present selection but falls back to the first cue", () => {
     store().selectCue("c2");
-    const restored = makeProject();
-    restored.cues = restored.cues.filter((c) => c.id !== "c2");
+    const restored = makeProject({
+      cues: [makeCue({ id: "c1", start: 0, end: 2 })],
+    });
 
     store().restoreProject(restored);
     expect(store().selectedCueId).toBe("c1");
@@ -274,43 +240,38 @@ describe("replaceSegmentTexts", () => {
       { cueId: "c2", segIndex: 0, text: "earth" },
     ]);
     expect(firstText()).toBe("hey");
-    expect(store().project!.cues[1].segments[0].text).toBe("earth");
+    expect(cueShotText(store().project!.cues[1])).toBe("earth");
     expect(store().past).toHaveLength(1);
 
     store().undo();
     expect(firstText()).toBe("hello");
-    expect(store().project!.cues[1].segments[0].text).toBe("world");
+    expect(cueShotText(store().project!.cues[1])).toBe("world");
   });
 });
 
 describe("insertCueAtPlayhead / deleteCue", () => {
   it("inserts an empty cue in a gap and selects it", () => {
-    store().loadProject({
-      ...makeProject(),
-      cues: [
-        {
-          id: "c1",
-          start: 0,
-          end: 1,
-          speakerId: "SPEAKER_00",
-          segments: [{ text: "hello", shot: "ON" }],
-        },
-        {
-          id: "c2",
-          start: 4,
-          end: 6,
-          speakerId: "SPEAKER_00",
-          segments: [{ text: "world", shot: "ON" }],
-        },
-      ],
-    });
+    store().loadProject(
+      makeProject({
+        cues: [
+          makeCue(
+            { id: "c1", start: 0, end: 1, speakerId: "SPEAKER_00" },
+            "hello",
+          ),
+          makeCue(
+            { id: "c2", start: 4, end: 6, speakerId: "SPEAKER_00" },
+            "world",
+          ),
+        ],
+      }),
+    );
     const id = store().insertCueAtPlayhead(1.5);
     expect(store().project!.cues).toHaveLength(3);
     const inserted = store().project!.cues[1];
     expect(id).toBe(inserted.id);
     expect(cueSeconds(inserted.id, "start")).toBeCloseTo(1.5, 1);
     expect(cueSeconds(inserted.id, "end")).toBeCloseTo(3.5, 1);
-    expect(inserted.segments[0].text).toBe("");
+    expect(cueShotText(inserted)).toBe("");
     expect(store().selectedCueId).toBe(inserted.id);
   });
 
@@ -320,25 +281,20 @@ describe("insertCueAtPlayhead / deleteCue", () => {
   });
 
   it("shortens the cue when the next section is nearby", () => {
-    store().loadProject({
-      ...makeProject(),
-      cues: [
-        {
-          id: "c1",
-          start: 0,
-          end: 1,
-          speakerId: "SPEAKER_00",
-          segments: [{ text: "hello", shot: "ON" }],
-        },
-        {
-          id: "c2",
-          start: 2.52,
-          end: 4,
-          speakerId: "SPEAKER_00",
-          segments: [{ text: "world", shot: "ON" }],
-        },
-      ],
-    });
+    store().loadProject(
+      makeProject({
+        cues: [
+          makeCue(
+            { id: "c1", start: 0, end: 1, speakerId: "SPEAKER_00" },
+            "hello",
+          ),
+          makeCue(
+            { id: "c2", start: 2.52, end: 4, speakerId: "SPEAKER_00" },
+            "world",
+          ),
+        ],
+      }),
+    );
     store().insertCueAtPlayhead(1.2);
     const inserted = store().project!.cues[1];
     expect(cueSeconds(inserted.id, "start")).toBeCloseTo(1.2, 1);
@@ -362,7 +318,10 @@ describe("insertCueAtPlayhead / deleteCue", () => {
   });
 
   it("clears selection when the last cue is deleted", () => {
-    store().loadProject({ ...makeProject(), cues: [makeProject().cues[0]] });
+    store().loadProject({
+      ...makeProject(),
+      cues: [makeCue({ id: "c1", start: 0, end: 2 })],
+    });
     store().deleteCue("c1");
     expect(store().project!.cues).toHaveLength(0);
     expect(store().selectedCueId).toBeNull();
@@ -371,22 +330,15 @@ describe("insertCueAtPlayhead / deleteCue", () => {
 
 describe("speakers", () => {
   it("removes an unreferenced speaker", () => {
-    store().loadProject({
-      ...makeProject(),
-      speakers: [
-        { id: "A", name: "Alice", color: "#fff" },
-        { id: "B", name: "Bob", color: "#000" },
-      ],
-      cues: [
-        {
-          id: "c1",
-          start: 0,
-          end: 2,
-          speakerId: "A",
-          segments: [{ text: "hi", shot: "ON" }],
-        },
-      ],
-    });
+    store().loadProject(
+      makeProject({
+        speakers: [
+          { id: "A", name: "Alice", color: "#fff" },
+          { id: "B", name: "Bob", color: "#000" },
+        ],
+        cues: [makeCue({ id: "c1", start: 0, end: 2, speakerId: "A" }, "hi")],
+      }),
+    );
     expect(store().removeSpeaker("B")).toBe(true);
     expect(store().project!.speakers.map((s) => s.id)).toEqual(["A"]);
   });

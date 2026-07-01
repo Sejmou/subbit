@@ -1,22 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { findActiveCueId, findActiveCueIndex } from "./active-cue";
-import type { Cue } from "../types";
+import { makeCue } from "../test-fixtures";
 
-const cues: Cue[] = [
-  {
-    id: "a",
-    start: 0,
-    end: 2,
-    speakerId: null,
-    segments: [{ text: "one", shot: "ON" }],
-  },
-  {
-    id: "b",
-    start: 2,
-    end: 5,
-    speakerId: null,
-    segments: [{ text: "two", shot: "ON" }],
-  },
+const cues = [
+  makeCue({ id: "a", start: 0, end: 2, speakerId: null }, "one"),
+  makeCue({ id: "b", start: 2, end: 5, speakerId: null }, "two"),
 ];
 
 describe("findActiveCueIndex", () => {

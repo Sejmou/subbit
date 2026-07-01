@@ -7,7 +7,7 @@ import {
 } from "./infer-speaker";
 
 const word = (speaker: string, start: number, end: number): Word => ({
-  word: "x",
+  text: "x",
   start,
   end,
   speaker,

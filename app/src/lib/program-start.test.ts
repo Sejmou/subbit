@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import type { Project } from "../types";
 import {
   cuesBeforeReferenceStart,
   cueExportFrame,
@@ -11,36 +10,18 @@ import { exportCsv } from "./export-csv";
 import { exportSrt } from "./export-srt";
 import { exportAss } from "./export-ass";
 import { DEFAULT_DIARIZED_EXPORT_OPTIONS } from "./export-format";
+import { makeCue, makeProject } from "../test-fixtures";
 
-const base: Project = {
-  version: 2,
-  id: "00000000-0000-4000-8000-000000000001",
+const base = makeProject({
   name: "clip",
   videoName: "clip.mp4",
-  fpsNumerator: 25,
-  fpsDenominator: 1,
   startTimecode: "10:00:00:00",
-  referenceStartSeconds: 0,
-  defaultShot: "ON",
-  shots: [{ id: "ON", label: "On-screen" }],
   speakers: [],
   cues: [
-    {
-      id: "c1",
-      start: 65,
-      end: 68,
-      speakerId: null,
-      segments: [{ text: "Hello", shot: "ON" }],
-    },
-    {
-      id: "c2",
-      start: 10,
-      end: 12,
-      speakerId: null,
-      segments: [{ text: "Leader", shot: "ON" }],
-    },
+    makeCue({ id: "c1", start: 65, end: 68, speakerId: null }, "Hello"),
+    makeCue({ id: "c2", start: 10, end: 12, speakerId: null }, "Leader"),
   ],
-};
+});
 
 describe("reference start helpers", () => {
   it("defaults reference start to zero", () => {

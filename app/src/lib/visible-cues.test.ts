@@ -4,30 +4,12 @@ import {
   padViewRange,
   withPriorityCues,
 } from "./visible-cues";
-import type { Cue } from "../types";
+import { makeCue } from "../test-fixtures";
 
-const cues: Cue[] = [
-  {
-    id: "a",
-    start: 0,
-    end: 2,
-    speakerId: null,
-    segments: [{ text: "a", shot: "ON" }],
-  },
-  {
-    id: "b",
-    start: 2,
-    end: 5,
-    speakerId: null,
-    segments: [{ text: "b", shot: "ON" }],
-  },
-  {
-    id: "c",
-    start: 10,
-    end: 12,
-    speakerId: null,
-    segments: [{ text: "c", shot: "ON" }],
-  },
+const cues = [
+  makeCue({ id: "a", start: 0, end: 2, speakerId: null }, "a"),
+  makeCue({ id: "b", start: 2, end: 5, speakerId: null }, "b"),
+  makeCue({ id: "c", start: 10, end: 12, speakerId: null }, "c"),
 ];
 
 describe("findCuesOverlappingRange", () => {

@@ -13,6 +13,7 @@ import {
   replaceMatchInText,
   type TextMatch,
 } from "../lib/find-replace";
+import { effectiveShotRanges, shotRangeText } from "../lib/word-model/render";
 import { useTip } from "./Tooltip";
 import { isReviewedCueLocked } from "../lib/cue-lock";
 import {
@@ -82,8 +83,12 @@ export function FindReplaceDialog({
   ]);
 
   const matches = useMemo(
-    () => findTextMatches(searchCues, findText, { caseSensitive }),
-    [searchCues, findText, caseSensitive],
+    () =>
+      findTextMatches(searchCues, findText, {
+        caseSensitive,
+        defaultShot: project.defaultShot,
+      }),
+    [searchCues, findText, caseSensitive, project.defaultShot],
   );
 
   const replaceableMatches = useMemo(
@@ -164,7 +169,12 @@ export function FindReplaceDialog({
   const replaceAll = useCallback(() => {
     if (replaceableMatches.length === 0) return;
     replaceSegmentTexts(
-      buildReplaceAllUpdates(project.cues, replaceableMatches, replaceText),
+      buildReplaceAllUpdates(
+        project.cues,
+        replaceableMatches,
+        replaceText,
+        project.defaultShot,
+      ),
     );
     setMatchIndex(-1);
   }, [replaceableMatches, project.cues, replaceText, replaceSegmentTexts]);
@@ -234,8 +244,11 @@ export function FindReplaceDialog({
       goRelative(1);
       return;
     }
+    const ranges = effectiveShotRanges(cue, project.defaultShot);
+    const range = ranges[match.segIndex];
+    if (!range) return;
     const text = replaceMatchInText(
-      cue.segments[match.segIndex].text,
+      shotRangeText(cue, range),
       match,
       replaceText,
     );
@@ -250,6 +263,7 @@ export function FindReplaceDialog({
     replaceText,
     replaceSegmentTexts,
     goRelative,
+    project.defaultShot,
   ]);
 
   if (!open) return null;

@@ -1,20 +1,14 @@
 import { describe, expect, it } from "vitest";
-import type { Cue } from "../types";
 import {
   activeFilterCount,
   cueMatchesListFilters,
   cueMatchesReviewStatusFilter,
   hasActiveFilters,
 } from "./cue-filters";
+import { makeCue } from "../test-fixtures";
 
-const cue = (reviewed: boolean): Cue => ({
-  id: "c1",
-  start: 0,
-  end: 1,
-  speakerId: "A",
-  reviewed,
-  segments: [{ text: "x", shot: "ON" }],
-});
+const cue = (reviewed: boolean) =>
+  makeCue({ id: "c1", start: 0, end: 1, speakerId: "A", reviewed }, "x");
 
 describe("cue filters", () => {
   it("filters by review status", () => {

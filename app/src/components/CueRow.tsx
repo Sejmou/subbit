@@ -18,6 +18,12 @@ import {
   INACTIVE_FIND_HIGHLIGHT,
 } from "../lib/find-highlight";
 import type { TextMatch } from "../lib/find-replace";
+import { effectiveShotRanges, shotRangeText } from "../lib/word-model/render";
+import {
+  cueHasValidationIssues,
+  formatCueValidationTooltip,
+  validateCue,
+} from "../lib/word-model/validation";
 
 interface Props {
   cue: Cue;
@@ -187,6 +193,9 @@ function CueRowImpl({
 
   const speaker = project.speakers.find((s) => s.id === cue.speakerId);
   const invalid = isCueBeforeReferenceStart(cue, project);
+  const validationIssues = useMemo(() => validateCue(cue), [cue]);
+  const validationTip = formatCueValidationTooltip(validationIssues);
+  const shotRanges = effectiveShotRanges(cue, project.defaultShot);
   const cls = [
     "cue-row",
     selected && "selected",
@@ -215,6 +224,15 @@ function CueRowImpl({
             )}
           >
             !
+          </span>
+        )}
+        {!invalid && cueHasValidationIssues(cue) && (
+          <span
+            className="cue-validation-badge"
+            aria-label="Timing validation warning"
+            {...tip(validationTip)}
+          >
+            ⚠
           </span>
         )}
         <input
@@ -279,7 +297,7 @@ function CueRowImpl({
       </span>
 
       <div className="cue-segments">
-        {cue.segments.map((seg, i) => (
+        {shotRanges.map((range, i) => (
           <div key={i} className="segment">
             <span
               className="tooltip-wrap"
@@ -291,7 +309,7 @@ function CueRowImpl({
             >
               <select
                 className="shot-select"
-                value={seg.shot}
+                value={range.shot}
                 disabled={locked}
                 onChange={(e) => setSegmentShot(cue.id, i, e.target.value)}
               >
@@ -306,7 +324,7 @@ function CueRowImpl({
               inputRef={i === 0 ? firstTextarea : undefined}
               cueId={cue.id}
               segIndex={i}
-              value={seg.text}
+              value={shotRangeText(cue, range)}
               readOnly={locked}
               findHighlight={findHighlight}
               segmentMatches={

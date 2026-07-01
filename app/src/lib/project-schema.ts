@@ -1,19 +1,24 @@
 import { z } from "zod";
 import type { Project } from "../types";
-import { isV1ProjectData, prepareProjectData } from "./migrate-project-v1";
+import { PROJECT_VERSION } from "../types";
 
 const wordSchema = z.object({
-  word: z.string(),
+  text: z.string(),
   start: z.number(),
   end: z.number(),
   speaker: z.string().nullable().optional(),
   score: z.number().optional(),
 });
 
-const segmentSchema = z.object({
-  text: z.string(),
-  shot: z.string(),
-});
+const shotRangeSchema = z
+  .object({
+    fromWord: z.number().int().nonnegative(),
+    toWord: z.number().int().nonnegative(),
+    shot: z.string(),
+  })
+  .refine((r) => r.toWord >= r.fromWord, {
+    message: "toWord must be >= fromWord",
+  });
 
 const inferredSpeakerSchema = z.object({
   speakerId: z.string(),
@@ -26,14 +31,18 @@ const cueSchema = z
     start: z.number().nonnegative(),
     end: z.number().nonnegative(),
     speakerId: z.union([z.string(), z.null()]).default(null),
-    segments: z.array(segmentSchema).min(1),
+    words: z.array(wordSchema).default([]),
+    lineBreakAfterWordIndices: z
+      .array(z.number().int().nonnegative())
+      .default([]),
+    shotRanges: z.array(shotRangeSchema).default([]),
     reviewed: z.boolean().optional(),
     inferredSpeaker: inferredSpeakerSchema.nullable().optional(),
-    words: z.array(wordSchema).optional(),
   })
   .refine((c) => c.end > c.start, {
     message: "end must be greater than start",
-  });
+  })
+  .strict();
 
 const speakerSchema = z.object({
   id: z.string(),
@@ -53,8 +62,6 @@ const videoIdentitySchema = z
     frameRateNumerator: z.number().int().positive().optional(),
     frameRateDenominator: z.number().int().positive().optional(),
     fileSize: z.number().int().nonnegative().optional(),
-    fingerprint: z.string().optional(),
-    fingerprintVersion: z.number().int().positive().optional(),
   })
   .superRefine((val, ctx) => {
     const hasNum = val.frameRateNumerator !== undefined;
@@ -81,7 +88,7 @@ const videoIdentitySchema = z
   }));
 
 export const projectSchema = z.object({
-  version: z.number(),
+  version: z.literal(PROJECT_VERSION),
   id: z.uuid(),
   name: z.string().min(1),
   videoName: z.string(),
@@ -102,21 +109,20 @@ function formatValidationError(error: z.ZodError): string {
   return `Not a valid Subbit project file. ${path}${issue.message}`;
 }
 
-/** Validate parsed JSON as a Subbit project (v2 native, or legacy upgraded on load). */
+/** Validate parsed JSON as a Subbit project (v1). */
 export function parseProjectData(data: unknown): Project {
-  const normalized = prepareProjectData(data);
-  const result = projectSchema.safeParse(normalized);
+  const result = projectSchema.safeParse(data);
   if (!result.success) throw new Error(formatValidationError(result.error));
-  return result.data;
+  return result.data as Project;
 }
 
 /** True when the value looks like a saved Subbit project (not whisperx). */
 export function isSubbitProject(data: unknown): boolean {
-  if (isV1ProjectData(data)) return true;
-  try {
-    parseProjectData(data);
-    return true;
-  } catch {
-    return false;
-  }
+  if (typeof data !== "object" || data === null) return false;
+  const obj = data as Record<string, unknown>;
+  return (
+    obj.version === PROJECT_VERSION &&
+    Array.isArray(obj.cues) &&
+    Array.isArray(obj.speakers)
+  );
 }

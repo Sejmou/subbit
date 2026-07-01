@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Project } from "../types";
 
 const db = new Map<string, unknown>();
 
@@ -21,42 +20,29 @@ import {
   saveStoredProject,
   setActiveProjectId,
 } from "./project-storage";
+import { makeCue, makeProject } from "../test-fixtures";
 
 const PROJECT_ID_A = "00000000-0000-4000-8000-000000000001";
 const PROJECT_ID_B = "00000000-0000-4000-8000-000000000002";
 const PROJECT_ID_LEGACY = "00000000-0000-4000-8000-000000000099";
 
-const project: Project = {
-  version: 2,
+const project = makeProject({
   id: PROJECT_ID_A,
   name: "Episode 1",
   videoName: "ep01.mp4",
-  fpsNumerator: 25,
-  fpsDenominator: 1,
   startTimecode: "10:00:00:00",
-  referenceStartSeconds: 0,
-  defaultShot: "ON",
-  shots: [{ id: "ON", label: "On-screen" }],
   speakers: [],
   cues: [
-    {
-      id: "c1",
-      start: 0,
-      end: 1,
-      speakerId: null,
-      reviewed: true,
-      segments: [{ text: "Hi", shot: "ON" }],
-    },
-    {
-      id: "c2",
-      start: 1,
-      end: 2,
-      speakerId: null,
-      reviewed: false,
-      segments: [{ text: "Bye", shot: "ON" }],
-    },
+    makeCue(
+      { id: "c1", start: 0, end: 1, speakerId: null, reviewed: true },
+      "Hi",
+    ),
+    makeCue(
+      { id: "c2", start: 1, end: 2, speakerId: null, reviewed: false },
+      "Bye",
+    ),
   ],
-};
+});
 
 describe("project-storage", () => {
   beforeEach(() => {

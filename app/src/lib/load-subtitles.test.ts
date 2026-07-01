@@ -3,29 +3,17 @@ import {
   parseSubtitleJsonText,
   projectFromSubtitleData,
 } from "./load-subtitles";
+import { cueShotText, makeCue, makeProject } from "../test-fixtures";
+import { PROJECT_VERSION } from "../types";
 
-const subbitFixture = {
-  version: 2,
+const subbitFixture = makeProject({
   id: "00000000-0000-4000-8000-000000000001",
   name: "clip.mp4",
   videoName: "clip.mp4",
-  fpsNumerator: 25,
-  fpsDenominator: 1,
-  startTimecode: "00:00:00:00",
-  referenceStartSeconds: 0,
-  defaultShot: "ON",
-  shots: [{ id: "ON", label: "On-screen" }],
-  speakers: [{ id: "SPEAKER_00", name: "A", color: "#fff" }],
   cues: [
-    {
-      id: "c1",
-      start: 0,
-      end: 2,
-      speakerId: "SPEAKER_00",
-      segments: [{ text: "hello", shot: "ON" }],
-    },
+    makeCue({ id: "c1", start: 0, end: 2, speakerId: "SPEAKER_00" }, "hello"),
   ],
-};
+});
 
 const whisperxFixture = {
   segments: [
@@ -51,7 +39,7 @@ describe("parseSubtitleJsonText", () => {
 describe("projectFromSubtitleData", () => {
   it("loads a valid Subbit project", () => {
     const project = projectFromSubtitleData(subbitFixture, "clip.mp4");
-    expect(project.version).toBe(2);
+    expect(project.version).toBe(PROJECT_VERSION);
     expect(project.cues[0].start).toBe(0);
     expect(project.cues[0].end).toBe(2);
   });
@@ -59,7 +47,7 @@ describe("projectFromSubtitleData", () => {
   it("loads valid whisperx JSON", () => {
     const project = projectFromSubtitleData(whisperxFixture, "clip.mp4");
     expect(project.cues).toHaveLength(1);
-    expect(project.cues[0].segments[0].text).toBe("hello");
+    expect(cueShotText(project.cues[0])).toBe("hello");
     expect(project.id).toBeTruthy();
     expect(project.name).toBe("clip.mp4");
   });

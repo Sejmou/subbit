@@ -1,30 +1,26 @@
 /**
- * Core domain model for Subbit.
+ * Core domain model for Subbit (schema version 1).
  *
- * The editable source of truth is a {@link Project} — a superset of whisperx
- * output with word-level timing so cues can be re-split without losing alignment.
- * Saved as `.subbit.json`; exported to delivery CSV, SRT, VTT, ASS, etc.
- *
- * Cue `start`/`end` are stored as file-relative seconds (playback / WhisperX
- * axis). Subtitle SMPTE in the UI is derived from `startTimecode`,
- * `referenceStartSeconds`, and the project frame rate.
+ * Cues are word lists with timed tokens, shot ranges, and optional line breaks.
+ * Display text and exports are derived from words — see `lib/word-model`.
  */
 
 export type ShotId = string;
 
-/** A contiguous slice of a cue that shares a single shot type. */
-export interface Segment {
-  text: string;
-  shot: ShotId;
-}
-
-/** Word-level timing from whisperx; file-relative seconds. */
+/** Timed token within a cue. */
 export interface Word {
-  word: string;
+  text: string;
   start: number;
   end: number;
   speaker?: string | null;
   score?: number;
+}
+
+/** Contiguous word indices sharing one shot type (CSV "Info" slice). */
+export interface ShotRange {
+  fromWord: number;
+  toWord: number;
+  shot: ShotId;
 }
 
 /** Diarization guess from whisperx import; kept even after manual role assignment. */
@@ -36,8 +32,7 @@ export interface InferredSpeaker {
 
 /**
  * One editable subtitle. Maps 1:1 to a row in the delivery CSV.
- * A cue with multiple segments represents a shot change mid-subtitle; on export
- * the segment texts join with " / " and their shots join with " / ".
+ * Text is derived from {@link Word} tokens; shot ranges map to CSV " / " slices.
  */
 export interface Cue {
   id: string;
@@ -47,12 +42,13 @@ export interface Cue {
   end: number;
   /** Diarization label (e.g. SPEAKER_07) or a custom id; null = unassigned. */
   speakerId: string | null;
-  segments: Segment[];
+  words: Word[];
+  lineBreakAfterWordIndices: number[];
+  shotRanges: ShotRange[];
   /** Manually confirmed by the user (helps track editing progress). */
   reviewed?: boolean;
   /** Import-time diarization guess; confidence drives auto-assign at import. */
   inferredSpeaker?: InferredSpeaker | null;
-  words?: Word[];
 }
 
 export interface Speaker {
@@ -82,7 +78,7 @@ export interface VideoIdentity {
   frameRateDenominator?: number;
   /** Byte size hint for display; ignored when comparing video identity. */
   fileSize?: number;
-  /** @deprecated Legacy sparse-hash identity — stripped on load and save. */
+  /** Legacy sparse-hash fields; ignored on load and when comparing identity. */
   fingerprint?: string;
   fingerprintVersion?: number;
 }
@@ -111,7 +107,7 @@ export interface Project {
   cues: Cue[];
 }
 
-export const PROJECT_VERSION = 2;
+export const PROJECT_VERSION = 1;
 
 export const DEFAULT_SHOTS: ShotType[] = [
   { id: "ON", label: "On-screen" },

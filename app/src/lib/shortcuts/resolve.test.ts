@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Cue, Project } from "../../types";
 import type { ShortcutContext } from "./context";
 import { createKeyLabeler } from "../keyboard-layout";
 import { setFindReplaceOpen } from "../find-replace-dialog";
@@ -7,6 +6,7 @@ import { setHelpOverlayOpen } from "../help-overlay";
 import { shortcutGroups } from "./groups";
 import { SHORTCUTS } from "./registry";
 import { resolveShortcut, handleShortcut } from "./resolve";
+import { makeCue, makeProject } from "../../test-fixtures";
 
 function makeKeyEvent(
   keyVal: string,
@@ -35,28 +35,18 @@ function modKey(
   return makeKeyEvent(keyVal, { metaKey: true, ...init });
 }
 
-const cue: Cue = {
-  id: "cue-1",
-  start: 1,
-  end: 5,
-  speakerId: "SPEAKER_00",
-  segments: [{ text: "hello", shot: "ON" }],
-};
+const cue = makeCue(
+  { id: "cue-1", start: 1, end: 5, speakerId: "SPEAKER_00" },
+  "hello",
+);
 
-const project: Project = {
-  version: 2,
+const project = makeProject({
   id: "00000000-0000-4000-8000-000000000001",
   name: "test",
   videoName: "test",
-  fpsNumerator: 25,
-  fpsDenominator: 1,
-  startTimecode: "00:00:00:00",
-  referenceStartSeconds: 0,
-  defaultShot: "ON",
   shots: [{ id: "ON", label: "On-screen" }],
-  speakers: [{ id: "SPEAKER_00", name: "A", color: "#fff" }],
   cues: [cue],
-};
+});
 
 function ctx(overrides: Partial<ShortcutContext> = {}): ShortcutContext {
   const ps = {

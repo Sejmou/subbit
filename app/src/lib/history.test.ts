@@ -17,34 +17,22 @@ import {
   getVersionText,
   listVersions,
 } from "./history";
+import { makeCue, makeProject } from "../test-fixtures";
 
-function makeProject(
+function projectWithText(
   text = "hello",
   id = "00000000-0000-4000-8000-000000000001",
 ): Project {
-  return {
-    version: 2,
+  return makeProject({
     id,
-    name: "clip",
-    videoName: "clip.mp4",
-    fpsNumerator: 25,
-    fpsDenominator: 1,
     startTimecode: "10:00:00:00",
-    referenceStartSeconds: 0,
-    defaultShot: "ON",
-    shots: [{ id: "ON", label: "On-screen" }],
-    speakers: [{ id: "SPEAKER_00", name: "A", color: "#fff" }],
     cues: [
-      {
-        id: "c1",
-        start: 0,
-        end: 2,
-        speakerId: null,
-        segments: [{ text, shot: "ON" }],
-        reviewed: true,
-      },
+      makeCue(
+        { id: "c1", start: 0, end: 2, speakerId: null, reviewed: true },
+        text,
+      ),
     ],
-  };
+  });
 }
 
 const serialize = (p: Project) => JSON.stringify(p);
@@ -55,7 +43,7 @@ beforeEach(() => {
 
 describe("version history", () => {
   it("adds a version and reads it back", async () => {
-    const p = makeProject();
+    const p = projectWithText();
     await addVersion(p, serialize(p));
 
     const list = await listVersions(p);
@@ -69,14 +57,14 @@ describe("version history", () => {
   });
 
   it("skips a consecutive identical snapshot", async () => {
-    const p = makeProject();
+    const p = projectWithText();
     await addVersion(p, serialize(p), { auto: true });
     await addVersion(p, serialize(p), { auto: true });
     expect(await listVersions(p)).toHaveLength(1);
   });
 
   it("still records an identical snapshot when it is explicitly labeled", async () => {
-    const p = makeProject();
+    const p = projectWithText();
     await addVersion(p, serialize(p));
     await addVersion(p, serialize(p), { label: "milestone" });
 
@@ -86,8 +74,8 @@ describe("version history", () => {
   });
 
   it("records distinct snapshots newest-first", async () => {
-    const a = makeProject("one");
-    const b = makeProject("two", a.id);
+    const a = projectWithText("one");
+    const b = projectWithText("two", a.id);
     await addVersion(a, serialize(a));
     await addVersion(b, serialize(b));
 
@@ -98,8 +86,8 @@ describe("version history", () => {
   });
 
   it("deletes a single version and its blob", async () => {
-    const a = makeProject("one");
-    const b = makeProject("two", a.id);
+    const a = projectWithText("one");
+    const b = projectWithText("two", a.id);
     await addVersion(a, serialize(a));
     const afterB = await addVersion(b, serialize(b));
     const removeId = afterB[1].id;
@@ -110,8 +98,8 @@ describe("version history", () => {
   });
 
   it("clears all versions for a project", async () => {
-    const a = makeProject("one");
-    const b = makeProject("two", a.id);
+    const a = projectWithText("one");
+    const b = projectWithText("two", a.id);
     await addVersion(a, serialize(a));
     await addVersion(b, serialize(b));
 

@@ -1,11 +1,9 @@
 import type { Cue } from "../types";
+import { cueDisplayText } from "./word-model/render";
 
 /** Plain subtitle text for timeline labels and exports. */
 export function cueLabelText(cue: Cue): string {
-  return cue.segments
-    .map((s) => s.text.trim())
-    .filter(Boolean)
-    .join(" ");
+  return cueDisplayText(cue).replace(/\n/g, " ").trim();
 }
 
 /** Truncate for narrow timeline overlays. */

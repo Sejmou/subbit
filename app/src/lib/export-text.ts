@@ -1,14 +1,12 @@
-import type { Cue, Project, Speaker } from "../types";
+import type { Cue, Project } from "../types";
+import { cueDisplayText } from "./word-model/render";
 
 /** Plain dialogue text for subtitle exports (no shot metadata). */
 export function cuePlainText(cue: Cue): string {
-  return cue.segments
-    .map((s) => s.text.trim())
-    .join(" ")
-    .trim();
+  return cueDisplayText(cue).replace(/\n/g, " ").trim();
 }
 
-export function speakerForCue(project: Project, cue: Cue): Speaker | undefined {
+export function speakerForCue(project: Project, cue: Cue) {
   if (!cue.speakerId) return undefined;
   return project.speakers.find((s) => s.id === cue.speakerId);
 }

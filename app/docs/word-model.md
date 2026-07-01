@@ -281,9 +281,15 @@ Cue bounds remain authoritative for the card; words may extend outside cue bound
 
 ## 6. Reading speed, ε, and interpolation
 
-There are **no per-word In/Out handles in v1**. If carving room for a new word
-would leave any involved word shorter than the minimum readable duration, show a
-validation warning and tell the user to **lengthen the cue** (adjust cue In/Out).
+There are **no per-word In/Out handles in v1**. Per-word `requiredDuration` (§6.1)
+is used when **inserting or carving** word timings during edits — not for the
+readability badge. If carving room for a new word would violate those edit-time
+constraints, block or warn and tell the user to **lengthen the cue** (adjust cue
+In/Out).
+
+**Readability in the UI** uses the **whole cue display window** only (§6.1, §7):
+viewers parse the full line while the cue is on screen; WhisperX per-word slots
+are internal timing hints, not separate reading deadlines.
 
 ### 6.1 CPS and reading-time constants
 
@@ -302,7 +308,7 @@ This matches stripping whitespace from display text (`cueDisplayText(cue)` with
 all `\s` removed) but is simpler and does not depend on join rules.
 
 Per-word `requiredDuration` already uses `w.text.length` (tokens are `\S+`), so
-word-level and cue-level CPS use the **same notion of “character”.**
+edit-time math and cue-level readability use the **same notion of “character”.**
 
 Professional targets (general adult audience):
 
@@ -312,17 +318,20 @@ Professional targets (general adult audience):
 | Upper limit            | ~**20**     | Harder but still studied (Szarkowska et al., 2018, PLOS ONE)               |
 | Minimum cue visibility | ~**0.83 s** | Full-card registration time (often ~20 frames @ 24 fps); **not** used as ε |
 
-Subbit uses two derived constants for **timing math** and **validation**:
+Subbit uses two constants in `src/lib/word-model/constants.ts`:
 
-| Constant      | Value     | Rationale                                                                                                                                                                                                                                                                                                                                                                        |
-| ------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MIN_PARSE_S` | **0.2 s** | Lower bound for **identifying a single short word** in time. Shorter than full-cue visibility (~0.83 s), which applies to an entire card. Eye-movement reading work often finds fixations on the order of **~200 ms** for short lexical access; we round to 0.2 s as a practical engineering floor. Used as **ε** (touching threshold) and as the minimum in `requiredDuration`. |
-| `MAX_CPS`     | **20**    | Upper comfortable **reading** speed in characters per second. Aligns with Netflix adult cap and fast-subtitle eye-tracking conditions. Used to compute how long each **word token** should minimally occupy, and to warn when a **whole cue** packs too much text into its display window.                                                                                       |
+| Constant      | Value     | Rationale                                                                                                                                                                                                                                                 |
+| ------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MIN_PARSE_S` | **0.2 s** | Engineering floor: **ε** (touching threshold for insert/carve), minimum in per-word `requiredDuration` during **edits**, and minimum **whole-cue** display time when the cue has any text (see `requiredCueDuration`).                                    |
+| `MAX_CPS`     | **20**    | Upper comfortable **reading** speed (characters per second). Used for cue readability validation and for per-word `requiredDuration` during **edits**. Aligns with Netflix adult cap and fast-subtitle eye-tracking conditions (Szarkowska et al., 2018). |
 
-**Required duration** for one word (minimum time that token should occupy):
+#### Per-word `requiredDuration` (edit-time only)
+
+When **splitting, inserting, or carving** word intervals, each token needs a
+minimum slot to make the math well-defined:
 
 ```
-requiredDuration(w) = max(MIN_PARSE_S, w.text.length / MAX_CPS)
+requiredDuration(text) = max(MIN_PARSE_S, text.length / MAX_CPS)
 ```
 
 Examples:
@@ -334,16 +343,34 @@ Examples:
 | `beautiful` | 9     | 0.45 s                                   |
 | `Ginny,`    | 6     | 0.3 s (punctuation counts toward length) |
 
+This is **not** shown as a per-word amber badge. Tight WhisperX word slots are
+normal; the user reads the **entire cue** in one glance.
+
 **ε (touching threshold):** `ε = MIN_PARSE_S` (0.2 s). If `B.start - A.end <= ε`,
 neighbors are **touching** — no usable gap; insert uses symmetric carve (§6.2 C).
 
-#### Cue-level CPS (whole card)
+#### Cue readability (UI validation)
 
-Yes — `MAX_CPS` also drives a **separate cue-level warning**:
+The amber row badge asks: **is the cue on screen long enough to read all of its
+text?** Use the cue In/Out window — not individual word timings:
 
 ```
+cueReadableChars(cue) = sum(w.text.length for w in cue.words)
+cueSeconds            = cue.end - cue.start
+requiredCueDuration   = max(MIN_PARSE_S, cueReadableChars / MAX_CPS)
+
+warn if cueSeconds > 0 and cueReadableChars > 0 and cueSeconds < requiredCueDuration
+```
+
+Equivalently (when `cueReadableChars / MAX_CPS >= MIN_PARSE_S`):
+
+```
+cueCPS = cueReadableChars / cueSeconds
 warn if cueCPS > MAX_CPS
 ```
+
+For very short cues (e.g. one letter), `MIN_PARSE_S` can require a longer display
+time than CPS alone would (1 char → need 0.2 s even though 1 ÷ 20 = 0.05 s).
 
 **Example — too fast:**
 
@@ -354,8 +381,7 @@ readable chars = 45
 cueCPS = 45 / 3 = 15   → OK
 
 cue [10, 12]  (2 s), same words
-cueCPS = 45 / 2 = 22.5 → WARN: "Too many characters for cue duration (22.5 CPS) —
-lengthen cue Out or shorten text."
+cueCPS = 45 / 2 = 22.5 → WARN (need ≥ 2.25 s at 20 CPS)
 ```
 
 (Spaces between words in the display are **not** included in the 45.)
@@ -363,21 +389,22 @@ lengthen cue Out or shorten text."
 **Example — two lines:**
 
 ```
-words total 38 readable chars, cue 1.8 s → 21.1 CPS → cue-level WARN
+words total 38 readable chars, cue 1.8 s → 21.1 CPS → WARN
 The "\n" between lines is not counted; neither are inter-word spaces.
 ```
 
-Cue CPS and per-word `requiredDuration` are **complementary**:
+**Example — ample cue, tight WhisperX slots (no WARN):**
 
-| Check                       | Question                                                       |
-| --------------------------- | -------------------------------------------------------------- |
-| Per-word `requiredDuration` | Is this **token’s slot** long enough to parse that word?       |
-| Cue CPS                     | Is the **whole card** too dense to read in the display window? |
+```
+cue [10, 13]  (3 s), text "one two three"
+words timed [10, 10.05], [10.05, 10.1], [10.1, 10.15]  ← fine internally
+cueCPS = 11 / 3 ≈ 3.7 → OK — user has 3 s for the whole line
+```
 
 References: subtitling.net / Netflix-style guides (~17 CPS target, 20 CPS cap);
 Szarkowska, Krejtz, et al. (2018) _PLOS ONE_ (12 / 16 / 20 CPS eye-tracking);
 broadcast min cue duration ~0.83 s for **full subtitle registration** (distinct
-from per-word ε).
+from `MIN_PARSE_S`).
 
 ### 6.2 Insert between neighbors A and B
 
@@ -482,8 +509,8 @@ for each word w:
 
 Single-word cue respread: entire `[cue.start, cue.end]` → that word.
 
-After respread, run requiredDuration check on each word; flag if any below minimum
-(suggest lengthening cue).
+After respread, run the **cue readability** check (§6.1); suggest lengthening the
+cue if `cueSeconds < requiredCueDuration`.
 
 ### 6.7 Paste / LCS partial respread
 
@@ -514,22 +541,47 @@ token string without interior space unless user typed it).
 
 ## 7. Validation (derived, not stored)
 
-Compute on read (never persisted):
+Compute on read (never persisted). Implementation: `src/lib/word-model/validation.ts`.
 
-| Issue                  | Condition                                                       | Tooltip (v1)                                                                   |
-| ---------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Word too short         | `word.end - word.start < requiredDuration(word)`                | “Word ‘…’ may be too short to read — lengthen cue In/Out.”                     |
-| Cue CPS too high       | `cueCPS > MAX_CPS` (§6.1)                                       | “Too many characters for cue duration (N CPS) — lengthen cue or shorten text.” |
-| Words outside cue      | word interval not within `[cue.start, cue.end]`                 | “Word timing outside cue In/Out.”                                              |
-| Word overlap           | `word[i].end > word[i+1].start + ε`                             | “Word timings overlap.”                                                        |
-| Carve / insert failure | symmetric or prefix/suffix carve would violate requiredDuration | “Not enough time for words — lengthen cue In/Out.”                             |
-| Invalid breaks         | Fails `normalizeLineBreaks`                                     | Should not occur after normalize                                               |
+| Issue                  | Condition                                                                        | Tooltip (v1)                                                                                                                                   |
+| ---------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cue too fast to read   | `cueSeconds < requiredCueDuration` (§6.1) — whole cue window, not per-word slots | “Cue may be too short to read (N characters per second, need ≤ 28 characters per second — lengthen In/Out to at least X.XXs or shorten text).” |
+| Words outside cue      | word interval not within `[cue.start, cue.end]`                                  | “Word timing outside cue In/Out.”                                                                                                              |
+| Word overlap           | `word[i].end > word[i+1].start + ε`                                              | _(detected only — see Suppressed below)_                                                                                                       |
+| Carve / insert failure | symmetric or prefix/suffix carve would violate `requiredDuration` (§6.2–6.4)     | “Not enough time for words — lengthen cue In/Out.” (edit-time; not the row badge unless surfaced elsewhere)                                    |
+| Invalid breaks         | Fails `normalizeLineBreaks`                                                      | Should not occur after normalize                                                                                                               |
 
-**UI (v1):** amber badge on cue row; tooltip lists all issues for that cue. No
-filter, no export dialog summary, no persistence in JSON. No per-word timing
+**Detection vs display:** `detectCueValidationIssues()` runs every check. The cue-row
+badge uses `validateCue()`, which omits kinds listed in
+`SUPPRESSED_VALIDATION_ISSUES` (`src/lib/word-model/validation.ts`).
+
+| Suppressed in v1 UI | Why                                                                  |
+| ------------------- | -------------------------------------------------------------------- |
+| `word_overlap`      | Common after WhisperX import; no user action in v1 to fix word slots |
+
+**Not validated in the UI (v1):** per-word slot duration vs `requiredDuration` —
+WhisperX timings may be much tighter than readable fixations; the user reads the
+full cue in the display interval.
+
+**UI (v1):** amber badge on cue row; tooltip lists **visible** issues for that cue.
+No filter, no export dialog summary, no persistence in JSON. No per-word timing
 handles in v1.
 
 **Optional later (not v1):** soft target at **17 CPS** (informational only).
+
+### TODO (v2): word timing hygiene
+
+- [ ] **Respread or normalize word intervals on import** so adjacent tokens do not
+      overlap (or overlap only within ε).
+- [ ] **“Redistribute word timings”** cue action (or auto-fix on demand) when
+      `word_overlap` is detected.
+- [ ] **Re-enable `word_overlap` in the row badge** once users can fix it, or show
+      it in a separate diagnostics panel instead of the main amber badge.
+- [ ] Consider surfacing **`word_outside_cue`** with the same pattern if In/Out
+      edits cannot resolve it automatically.
+
+Until then, keep detecting overlaps via `detectCueValidationIssues()` for tests
+and future tooling; leave `word_overlap` in `SUPPRESSED_VALIDATION_ISSUES`.
 
 ---
 
@@ -546,23 +598,23 @@ handles in v1.
 
 ## 9. Locked decisions checklist
 
-| Topic                   | Decision                                                     |
-| ----------------------- | ------------------------------------------------------------ |
-| Cue move                | +δ on cue and all words                                      |
-| In/Out edit             | Proportional remap (§5.2)                                    |
-| Tokenization            | `\S+` after Unicode whitespace collapse (§2)                 |
-| Large edit              | LCS; < 50% match → full respread                             |
-| Typo / replace one word | Keep slot timing                                             |
-| Line breaks             | Global indices; CSV per-shot rebase                          |
-| Break ambiguity         | Prompt with previews (§4.5)                                  |
-| Migration               | None — new schema only                                       |
-| Validation              | Derived; row badge + tooltip                                 |
-| ε / min duration        | `MIN_PARSE_S = 0.2`, `MAX_CPS = 20` (§6.1)                   |
-| Touching insert         | Symmetric carve from A and B (§6.2 C)                        |
-| Full respread           | Character-weighted (§6.6)                                    |
-| Word timing UI          | None in v1 — lengthen cue                                    |
-| Prefix / suffix insert  | P-fill then P-carve / S-fill then S-carve (§6.3–6.4)         |
-| Cue CPS warning         | `sum(words[].text.length) / (cue.end - cue.start) > MAX_CPS` |
+| Topic                   | Decision                                                           |
+| ----------------------- | ------------------------------------------------------------------ |
+| Cue move                | +δ on cue and all words                                            |
+| In/Out edit             | Proportional remap (§5.2)                                          |
+| Tokenization            | `\S+` after Unicode whitespace collapse (§2)                       |
+| Large edit              | LCS; < 50% match → full respread                                   |
+| Typo / replace one word | Keep slot timing                                                   |
+| Line breaks             | Global indices; CSV per-shot rebase                                |
+| Break ambiguity         | Prompt with previews (§4.5)                                        |
+| Migration               | None — new schema only                                             |
+| Validation              | Derived; row badge + tooltip                                       |
+| ε / min duration        | `MIN_PARSE_S = 0.2`, `MAX_CPS = 20` (§6.1)                         |
+| Touching insert         | Symmetric carve from A and B (§6.2 C)                              |
+| Full respread           | Character-weighted (§6.6)                                          |
+| Word timing UI          | None in v1 — lengthen cue                                          |
+| Prefix / suffix insert  | P-fill then P-carve / S-fill then S-carve (§6.3–6.4)               |
+| Cue readability (UI)    | `cueSeconds < max(MIN_PARSE_S, cueReadableChars / MAX_CPS)` (§6.1) |
 
 ---
 

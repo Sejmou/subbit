@@ -5,14 +5,10 @@ import {
   cueReferencesSpeaker,
   isSpeakerReferenced,
 } from "./speaker-refs";
+import { makeCue } from "../test-fixtures";
 
-const cue = (overrides: Partial<Cue> & Pick<Cue, "id">): Cue => ({
-  start: 0,
-  end: 1,
-  speakerId: null,
-  segments: [{ text: "x", shot: "ON" }],
-  ...overrides,
-});
+const cue = (overrides: Partial<Cue> & Pick<Cue, "id">) =>
+  makeCue({ start: 0, end: 1, speakerId: null, ...overrides }, "x");
 
 describe("speaker refs", () => {
   it("detects cue-level speaker references", () => {

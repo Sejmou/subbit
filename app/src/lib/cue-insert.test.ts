@@ -1,26 +1,14 @@
 import { describe, expect, it } from "vitest";
-import type { Cue } from "../types";
 import {
   TIMELINE_NEW_CUE_DURATION,
   computeInsertCueRange,
   findInsertCueIndex,
 } from "./cue-insert";
+import { makeCue } from "../test-fixtures";
 
-const cues: Cue[] = [
-  {
-    id: "a",
-    start: 0,
-    end: 2,
-    speakerId: null,
-    segments: [{ text: "a", shot: "ON" }],
-  },
-  {
-    id: "b",
-    start: 5,
-    end: 7,
-    speakerId: null,
-    segments: [{ text: "b", shot: "ON" }],
-  },
+const cues = [
+  makeCue({ id: "a", start: 0, end: 2, speakerId: null }, "a"),
+  makeCue({ id: "b", start: 5, end: 7, speakerId: null }, "b"),
 ];
 
 describe("computeInsertCueRange", () => {
@@ -54,21 +42,9 @@ describe("computeInsertCueRange", () => {
   });
 
   it("rejects when the remaining gap is too small", () => {
-    const tight: Cue[] = [
-      {
-        id: "a",
-        start: 0,
-        end: 1,
-        speakerId: null,
-        segments: [{ text: "a", shot: "ON" }],
-      },
-      {
-        id: "b",
-        start: 1,
-        end: 2,
-        speakerId: null,
-        segments: [{ text: "b", shot: "ON" }],
-      },
+    const tight = [
+      makeCue({ id: "a", start: 0, end: 1, speakerId: null }, "a"),
+      makeCue({ id: "b", start: 1, end: 2, speakerId: null }, "b"),
     ];
     expect(
       computeInsertCueRange(tight, 1, TIMELINE_NEW_CUE_DURATION, Infinity),

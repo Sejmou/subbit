@@ -1,5 +1,6 @@
 import type { Cue } from "../types";
 import { isReviewedCueLocked } from "./cue-lock";
+import { effectiveShotRanges, shotRangeText } from "./word-model/render";
 
 export interface TextMatch {
   cueId: string;
@@ -12,20 +13,22 @@ export interface FindReplaceOptions {
   caseSensitive?: boolean;
 }
 
-/** All non-overlapping literal matches in cue segment text, in cue order. */
+/** All non-overlapping literal matches in cue shot-range text, in cue order. */
 export function findTextMatches(
   cues: readonly Cue[],
   query: string,
-  opts: FindReplaceOptions = {},
+  opts: FindReplaceOptions & { defaultShot?: string } = {},
 ): TextMatch[] {
   if (!query) return [];
 
   const matches: TextMatch[] = [];
   const caseSensitive = opts.caseSensitive ?? false;
+  const defaultShot = opts.defaultShot ?? "ON";
 
   for (const cue of cues) {
-    for (let segIndex = 0; segIndex < cue.segments.length; segIndex++) {
-      const text = cue.segments[segIndex].text;
+    const ranges = effectiveShotRanges(cue, defaultShot);
+    for (let segIndex = 0; segIndex < ranges.length; segIndex++) {
+      const text = shotRangeText(cue, ranges[segIndex]);
       const haystack = caseSensitive ? text : text.toLowerCase();
       const needle = caseSensitive ? query : query.toLowerCase();
       let from = 0;
@@ -92,6 +95,7 @@ export function buildReplaceAllUpdates(
   cues: readonly Cue[],
   matches: readonly TextMatch[],
   replacement: string,
+  defaultShot = "ON",
 ): SegmentTextUpdate[] {
   const bySegment = new Map<string, TextMatch[]>();
   for (const match of matches) {
@@ -107,8 +111,11 @@ export function buildReplaceAllUpdates(
     const segIndex = Number(segIndexStr);
     const cue = cues.find((c) => c.id === cueId);
     if (!cue) continue;
+    const shotRanges = effectiveShotRanges(cue, defaultShot);
+    const range = shotRanges[segIndex];
+    if (!range) continue;
     const text = replaceMatchesInText(
-      cue.segments[segIndex].text,
+      shotRangeText(cue, range),
       ranges,
       replacement,
     );

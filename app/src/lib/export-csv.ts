@@ -6,6 +6,7 @@ import {
   totalFramesToTimecode,
 } from "./frame-time";
 import { cueExportFrame } from "./program-start";
+import { joinShotRanges } from "./export-shot-ranges";
 
 export type Delimiter = "\t" | ",";
 
@@ -17,14 +18,6 @@ const HEADER = [
   "Info",
   "Subtitle",
 ];
-
-/** Join a cue's segments for the "Info" (shots) and "Subtitle" (texts) columns. */
-function joinSegments(cue: Cue): { info: string; subtitle: string } {
-  return {
-    info: cue.segments.map((s) => s.shot).join(" / "),
-    subtitle: cue.segments.map((s) => s.text.trim()).join(" / "),
-  };
-}
 
 function roleName(project: Project, cue: Cue): string {
   if (!cue.speakerId) return "";
@@ -66,7 +59,7 @@ export function exportCsv(
   const rows: string[][] = [HEADER];
 
   project.cues.forEach((cue, i) => {
-    const { info, subtitle } = joinSegments(cue);
+    const { info, subtitle } = joinShotRanges(cue);
     rows.push([
       String(i + 1),
       cueDeliveryTimecode(cue.start, project),

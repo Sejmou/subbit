@@ -15,6 +15,9 @@ import {
   type Word,
 } from "../types";
 import { newProjectId, resolveProjectName } from "./project-meta";
+import { singleShotRange } from "./word-model/render";
+import { tokenize } from "./word-model/tokenize";
+import { respreadCharacterWeighted } from "./word-model/timing";
 
 const whisperxWordSchema = z.object({
   word: z.string(),
@@ -79,23 +82,35 @@ function newId(): string {
     : Math.random().toString(36).slice(2);
 }
 
+function wordsFromWhisperxSegment(seg: WhisperxSegment): Word[] {
+  if (seg.words && seg.words.length > 0) {
+    return seg.words.map((w) => ({
+      text: w.word,
+      start: w.start ?? seg.start,
+      end: w.end ?? seg.end,
+      speaker: w.speaker ?? null,
+      score: w.score,
+    }));
+  }
+  const tokens = tokenize(seg.text);
+  if (tokens.length === 0) return [];
+  return respreadCharacterWeighted(
+    tokens.map((text) => ({ text, start: seg.start, end: seg.end })),
+    seg.start,
+    seg.end,
+  );
+}
+
 /**
  * Build a fresh Project from whisperx JSON.
- * Each segment becomes one cue with a single (default-shot) segment; word timing
- * is preserved and roles are inferred from diarization labels on words.
+ * Each whisperx segment becomes one cue with words and a single default shot range.
  */
 export function importWhisperx(json: WhisperxJson, videoName: string): Project {
   const segments = json.segments ?? [];
   const defaultShot = DEFAULT_SHOTS[0].id;
 
   const cues: Cue[] = segments.map((seg) => {
-    const words: Word[] | undefined = seg.words?.map((w) => ({
-      word: w.word,
-      start: w.start ?? seg.start,
-      end: w.end ?? seg.end,
-      speaker: w.speaker ?? null,
-      score: w.score,
-    }));
+    const words = wordsFromWhisperxSegment(seg);
 
     const { speakerId, inferredSpeaker } = resolveSpeakerFromInference(
       inferSpeakerFromWords(words, seg.speaker ?? null),
@@ -107,9 +122,11 @@ export function importWhisperx(json: WhisperxJson, videoName: string): Project {
       end: seg.end,
       speakerId,
       inferredSpeaker,
-      segments: [{ text: seg.text.trim(), shot: defaultShot }],
-      reviewed: false,
       words,
+      lineBreakAfterWordIndices: [],
+      shotRanges:
+        words.length > 0 ? singleShotRange(words.length, defaultShot) : [],
+      reviewed: false,
     };
   });
 

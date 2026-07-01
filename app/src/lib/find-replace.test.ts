@@ -7,23 +7,19 @@ import {
   replaceMatchInText,
   replaceMatchesInText,
 } from "./find-replace";
+import { makeCue } from "../test-fixtures";
 
 const cues: Cue[] = [
+  makeCue({ id: "a", start: 0, end: 1, speakerId: null }, "hello hello"),
   {
-    id: "a",
-    start: 0,
-    end: 1,
-    speakerId: null,
-    segments: [{ text: "hello hello", shot: "ON" }],
-  },
-  {
-    id: "b",
-    start: 1,
-    end: 2,
-    speakerId: null,
-    segments: [
-      { text: "Hello", shot: "ON" },
-      { text: "world", shot: "OFF" },
+    ...makeCue({ id: "b", start: 1, end: 2, speakerId: null }, ""),
+    words: [
+      { text: "Hello", start: 1, end: 1.5 },
+      { text: "world", start: 1.5, end: 2 },
+    ],
+    shotRanges: [
+      { fromWord: 0, toWord: 0, shot: "ON" },
+      { fromWord: 1, toWord: 1, shot: "OFF" },
     ],
   },
 ];
