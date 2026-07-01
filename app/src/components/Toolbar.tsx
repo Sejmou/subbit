@@ -248,7 +248,10 @@ export function Toolbar({
         >
           Find…
         </button>
-        <span className="tooltip-wrap" {...tip(`Save project (${saveLabel})`)}>
+        <span
+          className="tooltip-wrap"
+          {...tip(`Save to browser storage (${saveLabel})`)}
+        >
           <button
             className={dirty ? "primary save-btn" : "save-btn"}
             onClick={onSave}
@@ -257,7 +260,19 @@ export function Toolbar({
             Save
           </button>
         </span>
-        <button onClick={onExport}>Export…</button>
+        <button
+          type="button"
+          onClick={onExportProjectBundle}
+          {...tip("Download a full project backup (.zip) to your computer")}
+        >
+          Back up
+        </button>
+        <button
+          onClick={onExport}
+          {...tip("Export subtitle files for delivery (ASS, VTT, CSV, …)")}
+        >
+          Export subs…
+        </button>
         <button
           className="help-btn"
           onClick={onHelp}

@@ -43,7 +43,7 @@ function blobKey(pk: string, id: string): string {
 }
 
 /** Fast 32-bit FNV-1a hash, hex-encoded. Good enough to dedupe identical saves. */
-function hashText(text: string): string {
+export function hashProjectText(text: string): string {
   let h = 0x811c9dc5;
   for (let i = 0; i < text.length; i++) {
     h ^= text.charCodeAt(i);
@@ -68,7 +68,7 @@ export async function addVersion(
 ): Promise<VersionMeta[]> {
   const pk = projectKey(project);
   const existing = (await get<VersionMeta[]>(pk)) ?? [];
-  const hash = hashText(text);
+  const hash = hashProjectText(text);
 
   if (!opts.label && existing[0]?.hash === hash) return existing;
 

@@ -32,10 +32,11 @@ function HelpTutorial() {
             yourself.
           </li>
           <li>
-            Use <strong>Save project</strong> when you want to save explicitly.
-            Use <strong>Export</strong> when you need finished subtitles for
-            delivery. <strong>History</strong> lets you roll back to an earlier
-            save if needed.
+            Use <strong>Save</strong> to persist in this browser (autosave runs
+            in the background). Use <strong>Back up</strong> for a full project
+            copy on disk, and <strong>Export subs</strong> when you need
+            finished subtitle files for delivery. <strong>History</strong> lets
+            you roll back to an earlier save if needed.
           </li>
         </ol>
       </section>

@@ -100,7 +100,7 @@ export function ExportDialog({ open, onExport, onClose }: Props) {
     <div className="help-backdrop" onMouseDown={onClose}>
       <div className="export-modal" onMouseDown={(e) => e.stopPropagation()}>
         <div className="export-head">
-          <h2>Export</h2>
+          <h2>Export subtitles</h2>
           <button type="button" onClick={onClose}>
             Close
           </button>
@@ -230,6 +230,10 @@ export function ExportDialog({ open, onExport, onClose }: Props) {
             {copyHint}
           </p>
         )}
+        <p className="hint export-backup-hint">
+          Need a full project copy on disk? Use <strong>Back up</strong> in the
+          toolbar or <strong>Back up project</strong> in the menu.
+        </p>
       </div>
     </div>
   );

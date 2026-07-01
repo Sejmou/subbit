@@ -82,6 +82,12 @@ export async function loadStoredProject(
   return parseProjectData(JSON.parse(text));
 }
 
+export async function loadStoredProjectMeta(
+  id: string,
+): Promise<StoredProjectMeta | null> {
+  return loadOrBuildMeta(id);
+}
+
 async function loadOrBuildMeta(id: string): Promise<StoredProjectMeta | null> {
   const cached = await get<StoredProjectMeta>(projectMetaKey(id));
   if (cached) return cached;

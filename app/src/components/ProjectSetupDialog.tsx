@@ -243,11 +243,11 @@ export function ProjectSetupDialog({
               <SetupChoice
                 tint="project"
                 icon={<SetupFolderIcon />}
-                title="Import an existing project"
+                title="Open a backup"
                 description={
                   <>
-                    Open a subbit project bundle (<code>.zip</code>) for your
-                    video.
+                    Open a backup you saved earlier (<code>.subbit.zip</code>{" "}
+                    from <strong>Back up project</strong>).
                   </>
                 }
                 disabled={disabled}

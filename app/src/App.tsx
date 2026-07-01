@@ -15,6 +15,13 @@ import {
   projectFromBundleText,
   parseWaveformFromBundle,
 } from "./lib/import-project-bundle";
+import { detectBundleImportConflict } from "./lib/bundle-import-conflict";
+import {
+  postBackupCopyHistoryLabel,
+  postBackupRestoreHistoryLabel,
+  PRE_BACKUP_RESTORE_HISTORY_LABEL,
+  BACKUP_FILE_PICKER_LABEL,
+} from "./lib/bundle-import-labels";
 import {
   downloadBlob,
   downloadText,
@@ -24,6 +31,7 @@ import {
   pickFileAsFile,
   readHandleAsFile,
   serializeProject,
+  parseProjectData,
   type FsFileHandle,
 } from "./lib/project-io";
 import {
@@ -35,6 +43,7 @@ import {
   getActiveProjectId,
   listStoredProjectSummaries,
   loadStoredProject,
+  loadStoredProjectText,
   saveStoredProject,
   setActiveProjectId,
   deleteStoredProject,
@@ -44,6 +53,7 @@ import { addVersion } from "./lib/history";
 import { createEmptyProject } from "./lib/create-empty-project";
 import {
   resolveProjectName,
+  newProjectId,
   suggestedExportFilename,
   suggestedProjectBundleFilename,
 } from "./lib/project-meta";
@@ -60,6 +70,7 @@ import { SpeakerPanel } from "./components/SpeakerPanel";
 import { Toolbar } from "./components/Toolbar";
 import { ExportDialog } from "./components/ExportDialog";
 import { ImportDeliveryDialog } from "./components/ImportDeliveryDialog";
+import { ImportBundleConflictDialog } from "./components/ImportBundleConflictDialog";
 import { RolePicker } from "./components/RolePicker";
 import { HelpOverlay } from "./components/HelpOverlay";
 import { HistoryPanel } from "./components/HistoryPanel";
@@ -106,6 +117,17 @@ const WAVEFORM_ACCEPT = {
   "application/json": [".json", ".waveform.json"],
 };
 
+type BundleImportMode = "open" | "replace" | "copy";
+
+interface PendingBundleImport {
+  data: Uint8Array;
+  fileName: string;
+  projectName: string;
+  cueCount: number;
+  savedAt: number | null;
+  openedAt: number;
+}
+
 export default function App() {
   const project = useProject((s) => s.project);
   const dirty = useProject((s) => s.dirty);
@@ -131,6 +153,9 @@ export default function App() {
   );
   const [exportOpen, setExportOpen] = useState(false);
   const [importDeliveryOpen, setImportDeliveryOpen] = useState(false);
+  const [pendingBundleImport, setPendingBundleImport] =
+    useState<PendingBundleImport | null>(null);
+  const [bundleImportBusy, setBundleImportBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [unsavedOpen, setUnsavedOpen] = useState(false);
   const [previewEnabled, setPreviewEnabled] = useState(readPreviewEnabled);
@@ -248,13 +273,45 @@ export default function App() {
   );
 
   const loadProjectBundleBytes = useCallback(
-    async (data: Uint8Array) => {
+    async (
+      data: Uint8Array,
+      opts: {
+        fileName: string;
+        mode: BundleImportMode;
+        recordHistory?: boolean;
+      },
+    ) => {
       const bundle = parseProjectBundleZip(data);
-      const next = projectFromBundleText(
+      let next = projectFromBundleText(
         bundle.projectText,
         videoFileName ?? "video",
       );
+
+      if (opts.mode === "copy") {
+        next = { ...next, id: newProjectId() };
+      }
+
+      if (opts.mode === "replace") {
+        const storedText = await loadStoredProjectText(next.id);
+        if (storedText) {
+          const storedProject = parseProjectData(JSON.parse(storedText));
+          await addVersion(storedProject, storedText, {
+            label: PRE_BACKUP_RESTORE_HISTORY_LABEL,
+          });
+        }
+      }
+
       await activateProject(next);
+
+      if (opts.recordHistory !== false) {
+        const postText = serializeProject(next);
+        const label =
+          opts.mode === "copy"
+            ? postBackupCopyHistoryLabel(opts.fileName)
+            : postBackupRestoreHistoryLabel(opts.fileName);
+        await addVersion(next, postText, { label });
+      }
+
       if (bundle.waveform) {
         const videoDuration = usePlayback.getState().duration;
         const parsed = await parseWaveformFromBundle(bundle.waveform);
@@ -276,11 +333,63 @@ export default function App() {
     [activateProject, videoFile, videoFileName],
   );
 
+  const importProjectBundleFromFile = useCallback(
+    async (file: File) => {
+      const data = new Uint8Array(await file.arrayBuffer());
+      const bundle = parseProjectBundleZip(data);
+      const conflict = await detectBundleImportConflict(bundle.projectText);
+
+      if (conflict) {
+        setPendingBundleImport({
+          data,
+          fileName: file.name,
+          projectName: conflict.projectName,
+          cueCount: conflict.cueCount,
+          savedAt: conflict.savedAt,
+          openedAt: Date.now(),
+        });
+        return;
+      }
+
+      const imported = parseProjectData(JSON.parse(bundle.projectText));
+      const storedText = await loadStoredProjectText(imported.id);
+      await loadProjectBundleBytes(data, {
+        fileName: file.name,
+        mode: "open",
+        recordHistory: !storedText,
+      });
+    },
+    [loadProjectBundleBytes],
+  );
+
   const pickProjectBundle = useCallback(async () => {
-    const file = await pickFileAsFile(ZIP_ACCEPT, "Subbit project bundle");
-    if (!file) return null;
-    return new Uint8Array(await file.arrayBuffer());
+    return pickFileAsFile(ZIP_ACCEPT, BACKUP_FILE_PICKER_LABEL);
   }, []);
+
+  const resolvePendingBundleImport = useCallback(
+    async (mode: "replace" | "copy" | "cancel") => {
+      const pending = pendingBundleImport;
+      if (!pending || mode === "cancel") {
+        setPendingBundleImport(null);
+        return;
+      }
+
+      setBundleImportBusy(true);
+      try {
+        await loadProjectBundleBytes(pending.data, {
+          fileName: pending.fileName,
+          mode,
+          recordHistory: true,
+        });
+        setPendingBundleImport(null);
+      } catch (err) {
+        alert((err as Error).message);
+      } finally {
+        setBundleImportBusy(false);
+      }
+    },
+    [pendingBundleImport, loadProjectBundleBytes],
+  );
 
   /** New-user path: video first, empty project, then setup dialog. */
   const beginNewSessionWithVideo = useCallback(
@@ -630,13 +739,13 @@ export default function App() {
   const doImportProjectBundle = useCallback(async () => {
     if (!(await guardUnsaved())) return;
     try {
-      const bytes = await pickProjectBundle();
-      if (!bytes) return;
-      await loadProjectBundleBytes(bytes);
+      const file = await pickProjectBundle();
+      if (!file) return;
+      await importProjectBundleFromFile(file);
     } catch (err) {
       alert((err as Error).message);
     }
-  }, [guardUnsaved, pickProjectBundle, loadProjectBundleBytes]);
+  }, [guardUnsaved, pickProjectBundle, importProjectBundleFromFile]);
 
   const importWaveformFile = useCallback(async (): Promise<boolean> => {
     const current = useProject.getState().project;
@@ -708,16 +817,16 @@ export default function App() {
   const onSetupImportProject = useCallback(async () => {
     setSetupBusy("Opening project…");
     try {
-      const bytes = await pickProjectBundle();
-      if (!bytes) return;
-      await loadProjectBundleBytes(bytes);
+      const file = await pickProjectBundle();
+      if (!file) return;
+      await importProjectBundleFromFile(file);
       closeSetup();
     } catch (err) {
       alert((err as Error).message);
     } finally {
       setSetupBusy(null);
     }
-  }, [pickProjectBundle, loadProjectBundleBytes, closeSetup]);
+  }, [pickProjectBundle, importProjectBundleFromFile, closeSetup]);
 
   const doNewBlankProject = useCallback(async () => {
     if (!(await guardUnsaved())) return;
@@ -963,6 +1072,18 @@ export default function App() {
         onExportBackup={doExportProjectBundle}
         onConfirmImport={doImportDelivery}
         onClose={() => setImportDeliveryOpen(false)}
+      />
+      <ImportBundleConflictDialog
+        open={pendingBundleImport !== null}
+        projectName={pendingBundleImport?.projectName ?? ""}
+        bundleFileName={pendingBundleImport?.fileName ?? ""}
+        cueCount={pendingBundleImport?.cueCount ?? 0}
+        savedAt={pendingBundleImport?.savedAt ?? null}
+        busy={bundleImportBusy}
+        openedAt={pendingBundleImport?.openedAt ?? 0}
+        onReplace={() => void resolvePendingBundleImport("replace")}
+        onOpenCopy={() => void resolvePendingBundleImport("copy")}
+        onCancel={() => void resolvePendingBundleImport("cancel")}
       />
       <UnsavedDialog
         open={unsavedOpen}

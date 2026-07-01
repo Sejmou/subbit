@@ -466,6 +466,16 @@
   text-align: center;
 }
 
+.import-bundle-conflict .hint {
+  margin-bottom: 16px;
+  line-height: 1.45;
+}
+
+.import-bundle-conflict-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 /* ---- layout ---- */
 .main {
   flex: 1;

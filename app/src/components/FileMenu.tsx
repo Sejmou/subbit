@@ -58,23 +58,24 @@ export function FileMenu({
           <button
             type="button"
             role="menuitem"
-            onClick={() => run(onImportDeliverySpreadsheet)}
+            onClick={() => run(onExportProjectBundle)}
           >
-            Import delivery spreadsheet…
+            Back up project…
           </button>
           <button
             type="button"
             role="menuitem"
             onClick={() => run(onImportProjectBundle)}
           >
-            Import project bundle…
+            Open backup…
           </button>
+          <hr />
           <button
             type="button"
             role="menuitem"
-            onClick={() => run(onExportProjectBundle)}
+            onClick={() => run(onImportDeliverySpreadsheet)}
           >
-            Export project bundle…
+            Import delivery spreadsheet…
           </button>
           <button
             type="button"

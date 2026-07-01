@@ -46,22 +46,24 @@ pnpm format:check
 1. **Open a video** on the start screen (or restore a previous session when the
    browser still has the file handle).
 2. **Create or open a project** — import WhisperX JSON, start from scratch,
-   pick a project stored in this browser, or import a project bundle (`.zip` containing `project.json` and optional waveform data).
+   pick a project stored in this browser, or open a backup (`.subbit.zip`
+   containing `project.json` and optional waveform data).
 3. **Edit** — keyboard-first cue list, waveform timeline, role and shot fields.
    Press **`?`** anytime for shortcuts and in-app help.
-4. **Save & export** — work autosaves to browser storage; use the toolbar and
-   File menu to export delivery files or a portable project bundle.
+4. **Save & export** — work autosaves to browser storage; use **Back up** for
+   a full project copy on disk, or **Export subs** for delivery files (ASS,
+   VTT, CSV, …).
 
 Exact menu labels, export formats, and per-format options are shown in the UI
-(Export dialog hints). Prefer those over this README when they differ.
+(Export subtitles dialog hints). Prefer those over this README when they differ.
 
 ### Persistence
 
-| What                           | Where                                                                            |
-| ------------------------------ | -------------------------------------------------------------------------------- |
-| Day-to-day editing             | Browser storage (IndexedDB), with autosave                                       |
-| Share / backup / move machines | **Project bundle** (zip with `project.json` and optional waveform) via File menu |
-| Delivery to downstream tools   | Export dialog (ASS, WebVTT, SRT, TSV, CSV, …)                                    |
+| What                           | Where                                                                |
+| ------------------------------ | -------------------------------------------------------------------- |
+| Day-to-day editing             | Browser storage (IndexedDB), with autosave                           |
+| Share / backup / move machines | **Back up project** — a `.subbit.zip` backup via the menu or toolbar |
+| Delivery to downstream tools   | **Export subs** dialog (ASS, WebVTT, SRT, TSV, CSV, …)               |
 
 On Chrome/Edge, cached file handles can reopen the same large video without
 re-picking it.

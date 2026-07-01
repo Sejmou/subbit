@@ -73,16 +73,18 @@ export function ImportDeliveryConfirmDialog({
           is discarded, too.
         </p>
         <p className="hint">
-          We recommend saving a backup of the previous state as a project bundle
-          (.zip) below (browser storage can be cleared randomly by your browser
-          if you run low on space). The toolbar <strong>History</strong> button
-          also saves <strong>pre-excel-import</strong> and{" "}
+          We recommend backing up the project before importing. A backup is a{" "}
+          <code>.subbit.zip</code> file with your full project (use{" "}
+          <strong>Back up project</strong> in the menu or{" "}
+          <strong>Back up</strong> on the toolbar). Browser storage can be
+          cleared if you run low on space. The toolbar <strong>History</strong>{" "}
+          button also saves <strong>pre-excel-import</strong> and{" "}
           <strong>excel-import (cues overwritten)</strong> for restore.
         </p>
 
         <div className="import-delivery-confirm-backup">
           <button type="button" onClick={onExportBackup} disabled={busy}>
-            Save project backup on filesystem (.zip)
+            Back up project
           </button>
           {backupHint && (
             <p className="export-copy-hint" role="status">
