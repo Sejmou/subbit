@@ -1133,7 +1133,11 @@ export default function App() {
           ) : (
             <div className="video-wrap empty">No video loaded</div>
           )}
-          <SpeakerPanel project={project} />
+          <SpeakerPanel
+            project={project}
+            speakerFilter={speakerFilter}
+            onToggleSpeakerFilter={toggleSpeakerFilter}
+          />
         </div>
         <div className="cue-column">
           <FindReplaceDialog

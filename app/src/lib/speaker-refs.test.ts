@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Cue, Project } from "../types";
 import {
+  countCueAppearancesBySpeaker,
+  countCuesForSpeaker,
   cueMatchesSpeakerFilter,
   cueReferencesSpeaker,
   isSpeakerReferenced,
@@ -26,6 +28,28 @@ describe("speaker refs", () => {
     } as Project;
     expect(isSpeakerReferenced(project, "A")).toBe(true);
     expect(isSpeakerReferenced(project, "B")).toBe(false);
+  });
+
+  it("counts cue appearances per speaker", () => {
+    const project = {
+      cues: [
+        cue({ id: "c1", speakerId: "A" }),
+        cue({ id: "c2", speakerId: "A" }),
+        cue({ id: "c3", speakerId: "B" }),
+        cue({ id: "c4", speakerId: null }),
+      ],
+    } as Project;
+
+    expect(countCuesForSpeaker(project, "A")).toBe(2);
+    expect(countCuesForSpeaker(project, "B")).toBe(1);
+    expect(countCuesForSpeaker(project, "C")).toBe(0);
+
+    expect(countCueAppearancesBySpeaker(project)).toEqual(
+      new Map([
+        ["A", 2],
+        ["B", 1],
+      ]),
+    );
   });
 
   it("filters cues by one or more speakers", () => {
