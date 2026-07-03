@@ -69,7 +69,7 @@ import { CueList } from "./components/CueList";
 import { SpeakerPanel } from "./components/SpeakerPanel";
 import { Toolbar } from "./components/Toolbar";
 import { ExportDialog } from "./components/ExportDialog";
-import { ImportDeliveryDialog } from "./components/ImportDeliveryDialog";
+import { ImportSubsDialog } from "./components/ImportSubsDialog";
 import { ImportBundleConflictDialog } from "./components/ImportBundleConflictDialog";
 import { RolePicker } from "./components/RolePicker";
 import { HelpOverlay } from "./components/HelpOverlay";
@@ -93,11 +93,11 @@ import {
 } from "./lib/waveform-peaks";
 import { usePlayback } from "./store/playback";
 import type { ReviewStatusFilter } from "./lib/cue-filters";
-import type { DeliveryColumnMapping } from "./lib/delivery-columns";
-import { importDeliveryExcel } from "./lib/delivery-excel";
+import type { ImportRequest } from "./lib/import-format";
+import { importSubtitleFile } from "./lib/import-format";
 import {
-  POST_EXCEL_IMPORT_HISTORY_LABEL,
-  PRE_EXCEL_IMPORT_HISTORY_LABEL,
+  POST_SUBS_IMPORT_HISTORY_LABEL,
+  PRE_SUBS_IMPORT_HISTORY_LABEL,
 } from "./lib/delivery-import-labels";
 import type { Project, VideoIdentity } from "./types";
 import {
@@ -152,7 +152,7 @@ export default function App() {
     INACTIVE_FIND_HIGHLIGHT,
   );
   const [exportOpen, setExportOpen] = useState(false);
-  const [importDeliveryOpen, setImportDeliveryOpen] = useState(false);
+  const [importSubsOpen, setImportSubsOpen] = useState(false);
   const [pendingBundleImport, setPendingBundleImport] =
     useState<PendingBundleImport | null>(null);
   const [bundleImportBusy, setBundleImportBusy] = useState(false);
@@ -660,23 +660,26 @@ export default function App() {
     }
   }, []);
 
-  const doImportDelivery = useCallback(
-    async (columns: DeliveryColumnMapping, file: File) => {
+  const doImportSubs = useCallback(
+    async (request: ImportRequest, file: File) => {
       const current = useProject.getState().project;
       if (!current) return;
 
       const preText = serializeProject(current);
       await addVersion(current, preText, {
-        label: PRE_EXCEL_IMPORT_HISTORY_LABEL,
+        label: PRE_SUBS_IMPORT_HISTORY_LABEL,
       });
 
-      const data = await file.arrayBuffer();
-      const next = await importDeliveryExcel(current, data, columns);
+      const data =
+        request.format === "xlsx"
+          ? await file.arrayBuffer()
+          : await file.text();
+      const next = await importSubtitleFile(current, request, data);
       restoreProject(next);
 
       const postText = serializeProject(next);
       await addVersion(next, postText, {
-        label: POST_EXCEL_IMPORT_HISTORY_LABEL,
+        label: POST_SUBS_IMPORT_HISTORY_LABEL,
       });
     },
     [restoreProject],
@@ -1045,7 +1048,7 @@ export default function App() {
         findReplaceOpen={findReplaceOpen}
         onToggleFindReplace={() => setFindReplaceOpen((open) => !open)}
         onImportProjectBundle={() => void doImportProjectBundle()}
-        onImportDeliverySpreadsheet={() => setImportDeliveryOpen(true)}
+        onImportSubs={() => setImportSubsOpen(true)}
         onExportProjectBundle={doExportProjectBundle}
         onNewBlankProject={() => void doNewBlankProject()}
         onCloseProject={() => void doCloseProject()}
@@ -1066,12 +1069,12 @@ export default function App() {
         onExport={(request) => void doExport(request)}
         onClose={() => setExportOpen(false)}
       />
-      <ImportDeliveryDialog
-        open={importDeliveryOpen}
+      <ImportSubsDialog
+        open={importSubsOpen}
         cueCount={project.cues.length}
         onExportBackup={doExportProjectBundle}
-        onConfirmImport={doImportDelivery}
-        onClose={() => setImportDeliveryOpen(false)}
+        onConfirmImport={doImportSubs}
+        onClose={() => setImportSubsOpen(false)}
       />
       <ImportBundleConflictDialog
         open={pendingBundleImport !== null}

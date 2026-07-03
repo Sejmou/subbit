@@ -4,6 +4,8 @@ import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
 interface Props {
   open: boolean;
   fileName: string;
+  formatLabel: string;
+  isDeliverySpreadsheet: boolean;
   cueCount: number;
   busy?: boolean;
   error?: string | null;
@@ -16,9 +18,11 @@ interface Props {
 }
 
 /** Warn before replacing cues; optional filesystem backup first. */
-export function ImportDeliveryConfirmDialog({
+export function ImportSubsConfirmDialog({
   open,
   fileName,
+  formatLabel,
+  isDeliverySpreadsheet,
   cueCount,
   busy = false,
   error = null,
@@ -59,18 +63,19 @@ export function ImportDeliveryConfirmDialog({
         className="confirm-modal import-delivery-confirm"
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="import-delivery-confirm-title"
+        aria-labelledby="import-subs-confirm-title"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <h2 id="import-delivery-confirm-title">Replace all cues?</h2>
+        <h2 id="import-subs-confirm-title">Replace all cues?</h2>
         <p>
-          Importing <strong>{fileName}</strong> will replace all{" "}
+          Importing <strong>{fileName}</strong> ({formatLabel}) will replace all{" "}
           <strong>
             {cueCount} existing {cueLabel}
           </strong>{" "}
-          in this project. Speaker roles from the spreadsheet are matched by
-          name; any timing information from previously imported transcriptions
-          is discarded, too.
+          in this project.
+          {isDeliverySpreadsheet
+            ? " Speaker roles from the spreadsheet are matched by name; any timing information from previously imported transcriptions is discarded, too."
+            : " Speaker labels in the file are matched by name when present."}
         </p>
         <p className="hint">
           We recommend backing up the project before importing. A backup is a{" "}
@@ -78,8 +83,8 @@ export function ImportDeliveryConfirmDialog({
           <strong>Back up project</strong> in the menu or{" "}
           <strong>Back up</strong> on the toolbar). Browser storage can be
           cleared if you run low on space. The toolbar <strong>History</strong>{" "}
-          button also saves <strong>pre-excel-import</strong> and{" "}
-          <strong>excel-import (cues overwritten)</strong> for restore.
+          button also saves <strong>pre-subs-import</strong> and{" "}
+          <strong>subs-import (cues overwritten)</strong> for restore.
         </p>
 
         <div className="import-delivery-confirm-backup">

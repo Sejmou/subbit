@@ -1,13 +1,18 @@
 import { useEffect, useRef, useState } from "react";
+import { EXPORT_FORMATS, type ExportFormat } from "../lib/export-format";
 import {
-  DEFAULT_DELIVERY_COLUMNS,
-  type DeliveryColumnMapping,
-} from "../lib/delivery-columns";
+  defaultImportRequest,
+  importAcceptForFormat,
+  type ImportRequest,
+} from "../lib/import-format";
+import { exportFormatInfo } from "../lib/export-format";
 import { DeliveryColumnMappingFields } from "./DeliveryColumnMappingFields";
-import { ImportDeliveryConfirmDialog } from "./ImportDeliveryConfirmDialog";
+import { ImportSubsConfirmDialog } from "./ImportSubsConfirmDialog";
+import type { DeliveryColumnMapping } from "../lib/delivery-columns";
+import { DEFAULT_DELIVERY_COLUMNS } from "../lib/delivery-columns";
 
 interface PendingImport {
-  columns: DeliveryColumnMapping;
+  request: ImportRequest;
   file: File;
 }
 
@@ -15,33 +20,34 @@ interface Props {
   open: boolean;
   cueCount: number;
   onExportBackup: () => void;
-  onConfirmImport: (
-    columns: DeliveryColumnMapping,
-    file: File,
-  ) => Promise<void>;
+  onConfirmImport: (request: ImportRequest, file: File) => Promise<void>;
   onClose: () => void;
 }
 
-/** Pick columns/file, then confirm before replacing cues. */
-export function ImportDeliveryDialog({
+/** Pick format/file, then confirm before replacing cues. */
+export function ImportSubsDialog({
   open,
   cueCount,
   onExportBackup,
   onConfirmImport,
   onClose,
 }: Props) {
-  const [columns, setColumns] = useState<DeliveryColumnMapping>({
-    ...DEFAULT_DELIVERY_COLUMNS,
-  });
+  const [format, setFormat] = useState<ExportFormat>("ass");
+  const [deliveryColumns, setDeliveryColumns] = useState<DeliveryColumnMapping>(
+    { ...DEFAULT_DELIVERY_COLUMNS },
+  );
   const [pending, setPending] = useState<PendingImport | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [backupHint, setBackupHint] = useState<string | null>(null);
   const confirmOpenedAt = useRef(0);
 
+  const selected = exportFormatInfo(format);
+
   useEffect(() => {
     if (!open) return;
-    setColumns({ ...DEFAULT_DELIVERY_COLUMNS });
+    setFormat("ass");
+    setDeliveryColumns({ ...DEFAULT_DELIVERY_COLUMNS });
     setPending(null);
     setBusy(false);
     setError(null);
@@ -66,19 +72,23 @@ export function ImportDeliveryDialog({
     return () => window.clearTimeout(id);
   }, [backupHint]);
 
+  const buildRequest = (): ImportRequest => ({
+    ...defaultImportRequest(format),
+    deliveryColumns,
+  });
+
   const onPickFile = () => {
     setError(null);
     const input = document.createElement("input");
     input.type = "file";
-    input.accept =
-      ".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    input.accept = importAcceptForFormat(format);
     input.hidden = true;
     input.addEventListener("change", () => {
       const file = input.files?.[0];
       input.remove();
       if (!file) return;
       confirmOpenedAt.current = Date.now();
-      setPending({ columns: { ...columns }, file });
+      setPending({ request: buildRequest(), file });
     });
     document.body.appendChild(input);
     input.click();
@@ -95,7 +105,7 @@ export function ImportDeliveryDialog({
     setBusy(true);
     setError(null);
     try {
-      await onConfirmImport(pending.columns, pending.file);
+      await onConfirmImport(pending.request, pending.file);
       setPending(null);
       onClose();
     } catch (err) {
@@ -121,37 +131,52 @@ export function ImportDeliveryDialog({
             onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="export-head">
-              <h2>Import delivery spreadsheet</h2>
+              <h2>Import subtitles</h2>
               <button type="button" onClick={onClose}>
                 Close
               </button>
             </div>
 
-            <p className="hint export-hint">
-              Choose an Excel file with delivery columns. You can map header
-              names on the next step before confirming the import.
-            </p>
+            <label className="export-field">
+              Format
+              <select
+                value={format}
+                onChange={(e) => setFormat(e.target.value as ExportFormat)}
+              >
+                {EXPORT_FORMATS.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-            <DeliveryColumnMappingFields
-              value={columns}
-              onChange={setColumns}
-            />
+            <p className="hint export-hint">{selected.hint}</p>
+
+            {selected.isDeliverySpreadsheet && (
+              <DeliveryColumnMappingFields
+                value={deliveryColumns}
+                onChange={setDeliveryColumns}
+              />
+            )}
 
             <div className="export-actions">
               <button type="button" onClick={onClose}>
                 Cancel
               </button>
               <button type="button" className="primary" onClick={onPickFile}>
-                Choose .xlsx file…
+                Choose .{selected.ext} file…
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <ImportDeliveryConfirmDialog
+      <ImportSubsConfirmDialog
         open={pending != null}
         fileName={pending?.file.name ?? ""}
+        formatLabel={selected.label}
+        isDeliverySpreadsheet={selected.isDeliverySpreadsheet}
         cueCount={cueCount}
         busy={busy}
         error={error}

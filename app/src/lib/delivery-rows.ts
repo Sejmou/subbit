@@ -133,7 +133,7 @@ function normalizeShotSlices(
   return { shotLabels, textSlices };
 }
 
-function wordsFromDeliveryText(
+export function wordsFromDeliveryText(
   textSlices: string[],
   shotLabels: string[],
   start: number,

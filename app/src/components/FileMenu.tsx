@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 interface Props {
   onImportProjectBundle: () => void;
-  onImportDeliverySpreadsheet: () => void;
+  onImportSubs: () => void;
   onExportProjectBundle: () => void;
   onNewBlankProject: () => void;
   onCloseProject: () => void;
@@ -12,7 +12,7 @@ interface Props {
 
 export function FileMenu({
   onImportProjectBundle,
-  onImportDeliverySpreadsheet,
+  onImportSubs,
   onExportProjectBundle,
   onNewBlankProject,
   onCloseProject,
@@ -73,9 +73,9 @@ export function FileMenu({
           <button
             type="button"
             role="menuitem"
-            onClick={() => run(onImportDeliverySpreadsheet)}
+            onClick={() => run(onImportSubs)}
           >
-            Import delivery spreadsheet…
+            Import subs…
           </button>
           <button
             type="button"
