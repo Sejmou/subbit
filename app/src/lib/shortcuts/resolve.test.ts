@@ -71,6 +71,7 @@ function ctx(overrides: Partial<ShortcutContext> = {}): ShortcutContext {
     togglePlay: vi.fn(),
     playFrom: vi.fn(),
     seek: vi.fn(),
+    stepPlaybackRate: vi.fn(),
     currentTime: 2,
     playing: false,
   };
@@ -163,6 +164,12 @@ describe("resolveShortcut", () => {
     expect(
       resolveShortcut(makeKeyEvent(" ", { shiftKey: true }), empty),
     ).toBeNull();
+    expect(
+      resolveShortcut(makeKeyEvent(",", { code: "Comma" }), empty)?.id,
+    ).toBe("playback-slower");
+    expect(
+      resolveShortcut(makeKeyEvent(".", { code: "Period" }), empty)?.id,
+    ).toBe("playback-faster");
   });
 
   it("marks cue In/Out at the playhead for I and O", () => {

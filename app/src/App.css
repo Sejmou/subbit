@@ -575,6 +575,30 @@
   border-right: 1px solid var(--border);
   flex-shrink: 0;
 }
+.playback-speed-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 6px;
+  border-left: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.playback-speed-label {
+  font-size: 10px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.playback-speed-step-btn {
+  min-width: 20px;
+  width: 20px;
+  padding: 0;
+  font-size: 11px;
+  line-height: 1;
+}
+.playback-speed-select {
+  min-width: 52px;
+  font-variant-numeric: tabular-nums;
+}
 .cue-transport-heading {
   font-size: 10px;
   color: var(--text-dim);

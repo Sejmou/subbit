@@ -1,6 +1,7 @@
 import type { Project } from "../types";
 import { formatSubtitleTimelineRange } from "../lib/timecode";
 import { CueTransport } from "./CueTransport";
+import { PlaybackSpeedControl } from "./PlaybackSpeedControl";
 import { TimeMappingPanel } from "./TimeMappingPanel";
 import { useTip } from "./Tooltip";
 import { useWaveformPeaksTimeline } from "../hooks/useWaveformPeaksTimeline";
@@ -39,6 +40,7 @@ export function WaveformTimeline({
       <div className="waveform-toolbar">
         <span className="waveform-toolbar-label">Timeline</span>
         <TimeMappingPanel project={project} ready={ready} />
+        <PlaybackSpeedControl />
         <CueTransport project={project} />
         <span className="waveform-toolbar-actions">
           <span

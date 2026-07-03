@@ -227,6 +227,24 @@ export const SHORTCUTS: ShortcutDef[] = [
     preventDefault: true,
   },
   {
+    id: "playback-slower",
+    group: "Playback & navigation",
+    label: (_, k) => k.code("Comma"),
+    description: "Decrease playback speed",
+    match: (e, ctx) => canPlayback(e, ctx) && e.code === "Comma",
+    run: (ctx) => ctx.pb.stepPlaybackRate(-1),
+    preventDefault: true,
+  },
+  {
+    id: "playback-faster",
+    group: "Playback & navigation",
+    label: (_, k) => k.code("Period"),
+    description: "Increase playback speed",
+    match: (e, ctx) => canPlayback(e, ctx) && e.code === "Period",
+    run: (ctx) => ctx.pb.stepPlaybackRate(1),
+    preventDefault: true,
+  },
+  {
     id: "next-cue",
     group: "Playback & navigation",
     label: (_, k) =>
