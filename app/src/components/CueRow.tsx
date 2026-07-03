@@ -1,4 +1,11 @@
-import { memo, useEffect, useMemo, useRef, type RefObject } from "react";
+import {
+  memo,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import type { Cue, Project } from "../types";
 import { useProject } from "../store/project";
 import { useLockReviewedStore } from "../store/lock-reviewed";
@@ -81,6 +88,14 @@ function SegmentTextarea({
   const localRef = useRef<HTMLTextAreaElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const ref = inputRef ?? localRef;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => {
+    if (!editing) setDraft(value);
+  }, [value, editing]);
+
+  const displayValue = editing ? draft : value;
 
   const showHighlights = findHighlight.active && segmentMatches.length > 0;
 
@@ -92,10 +107,10 @@ function SegmentTextarea({
 
   const chunks = useMemo(() => {
     if (!showHighlights) return null;
-    return buildHighlightChunks(value, segmentMatches, currentMatch);
-  }, [showHighlights, value, segmentMatches, currentMatch]);
+    return buildHighlightChunks(displayValue, segmentMatches, currentMatch);
+  }, [showHighlights, displayValue, segmentMatches, currentMatch]);
 
-  useAutosizeTextarea(ref, value, showHighlights ? wrapRef : undefined);
+  useAutosizeTextarea(ref, displayValue, showHighlights ? wrapRef : undefined);
 
   const textarea = (
     <textarea
@@ -108,10 +123,19 @@ function SegmentTextarea({
       data-cue-id={cueId}
       data-seg-index={segIndex}
       rows={1}
-      value={value}
+      value={displayValue}
       readOnly={readOnly}
-      onFocus={onFocus}
-      onChange={(e) => onChange(e.target.value)}
+      onFocus={() => {
+        setDraft(value);
+        setEditing(true);
+        onFocus();
+      }}
+      onBlur={() => setEditing(false)}
+      onChange={(e) => {
+        const next = e.target.value;
+        setDraft(next);
+        onChange(next);
+      }}
     />
   );
 
