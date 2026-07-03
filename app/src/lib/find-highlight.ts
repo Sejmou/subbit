@@ -43,7 +43,9 @@ function isSameRange(
   return b != null && a.start === b.start && a.end === b.end;
 }
 
-/** Split segment text into plain and highlighted spans for the mirror layer. */
+/** Split segment text into plain and highlighted spans for the display layer.
+ * See docs/find-highlight-ui.md for why this exists.
+ */
 export function buildHighlightChunks(
   text: string,
   ranges: readonly Pick<TextMatch, "start" | "end">[],

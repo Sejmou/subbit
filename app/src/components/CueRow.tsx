@@ -74,6 +74,13 @@ interface SegmentTextareaProps {
   segmentMatches?: TextMatch[];
 }
 
+/**
+ * Editable shot-range text. While focused, keeps a local draft so trailing
+ * spaces survive until the next word is typed (the word model strips them on
+ * store round-trip).
+ *
+ * Find highlights use a mirror layer; see docs/find-highlight-ui.md.
+ */
 function SegmentTextarea({
   inputRef,
   cueId,
@@ -86,6 +93,7 @@ function SegmentTextarea({
   segmentMatches = [],
 }: SegmentTextareaProps) {
   const localRef = useRef<HTMLTextAreaElement>(null);
+  /** Shared container for the highlight overlay stack (see docs/find-highlight-ui.md). */
   const wrapRef = useRef<HTMLDivElement>(null);
   const ref = inputRef ?? localRef;
   const [editing, setEditing] = useState(false);

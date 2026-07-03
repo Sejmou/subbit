@@ -84,6 +84,7 @@ this README:
 | Export formats & columns                             | [`src/lib/export-format.ts`](src/lib/export-format.ts) and `src/lib/export-*.ts` |
 | Project bundle (zip) layout                          | [`src/lib/project-bundle.ts`](src/lib/project-bundle.ts)                         |
 | Subtitle SMPTE timeline & timecode                   | [`docs/timeline-timecode.md`](docs/timeline-timecode.md)                         |
+| Find & replace in-cue highlights                     | [`docs/find-highlight-ui.md`](docs/find-highlight-ui.md)                         |
 | Keyboard shortcuts                                   | [`src/lib/shortcuts/`](src/lib/shortcuts/) (also **`?`** in the app)             |
 
 When updating behavior, change the code (and tests) first; adjust this README

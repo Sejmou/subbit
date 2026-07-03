@@ -11,7 +11,11 @@ export function autosizeTextarea(
   if (wrap) wrap.style.minHeight = height;
 }
 
-/** Grow a textarea to fit its content (single-line minimum). */
+/** Grow a textarea to fit its content (single-line minimum).
+ *
+ * @param wrapRef Optional container around a highlight overlay — kept the same
+ *   height as the input so both layers stay aligned (cf. docs/find-highlight-ui.md).
+ */
 export function useAutosizeTextarea(
   ref: RefObject<HTMLTextAreaElement | null>,
   value: string,
