@@ -2,6 +2,8 @@ import { MOD_LABEL } from "./mod-label";
 import type { ShortcutContext } from "./context";
 import { focusCueForEdit } from "../focus-cue";
 import { isReviewedCueLocked } from "../cue-lock";
+import { adjacentFilteredCueId } from "../cue-filters";
+import { useCueListFiltersStore } from "../../store/cue-list-filters";
 import { openRolePicker } from "../role-picker";
 import { createKeyLabeler, type KeyLabeler } from "../keyboard-layout";
 import { cueEndSeconds, cueStartSeconds, snapToFrame } from "../cue-timing";
@@ -264,10 +266,18 @@ export const SHORTCUTS: ShortcutDef[] = [
       ctx.project.cues.length > 0 &&
       (e.key === "ArrowDown" || e.key === "j"),
     run: (ctx) => {
-      const { project, cueIndex, ps } = ctx;
-      ps.selectCue(
-        project!.cues[Math.min(cueIndex + 1, project!.cues.length - 1)].id,
+      const { project, ps } = ctx;
+      const { speakerFilter, statusFilter, shotFilter } =
+        useCueListFiltersStore.getState();
+      const id = adjacentFilteredCueId(
+        project!.cues,
+        ps.selectedCueId,
+        1,
+        speakerFilter,
+        statusFilter,
+        shotFilter,
       );
+      if (id) ps.selectCue(id);
     },
     preventDefault: true,
   },
@@ -285,8 +295,18 @@ export const SHORTCUTS: ShortcutDef[] = [
       ctx.project.cues.length > 0 &&
       (e.key === "ArrowUp" || e.key === "k"),
     run: (ctx) => {
-      const { project, cueIndex, ps } = ctx;
-      ps.selectCue(project!.cues[Math.max(cueIndex - 1, 0)].id);
+      const { project, ps } = ctx;
+      const { speakerFilter, statusFilter, shotFilter } =
+        useCueListFiltersStore.getState();
+      const id = adjacentFilteredCueId(
+        project!.cues,
+        ps.selectedCueId,
+        -1,
+        speakerFilter,
+        statusFilter,
+        shotFilter,
+      );
+      if (id) ps.selectCue(id);
     },
     preventDefault: true,
   },

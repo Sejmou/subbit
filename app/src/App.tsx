@@ -93,7 +93,7 @@ import {
   parseWaveformPeaksFile,
 } from "./lib/waveform-peaks";
 import { usePlayback } from "./store/playback";
-import type { ReviewStatusFilter } from "./lib/cue-filters";
+import { useCueListFiltersStore } from "./store/cue-list-filters";
 import type { DeliveryColumnMapping } from "./lib/delivery-columns";
 import { importDeliveryExcel } from "./lib/delivery-excel";
 import {
@@ -168,9 +168,21 @@ export default function App() {
   const dismissReferenceStartNotice = useReferenceStartNoticeStore(
     (s) => s.dismiss,
   );
-  const [speakerFilter, setSpeakerFilter] = useState<string[]>([]);
-  const [shotFilter, setShotFilter] = useState<string[]>([]);
-  const [statusFilter, setStatusFilter] = useState<ReviewStatusFilter[]>([]);
+  const speakerFilter = useCueListFiltersStore((s) => s.speakerFilter);
+  const shotFilter = useCueListFiltersStore((s) => s.shotFilter);
+  const statusFilter = useCueListFiltersStore((s) => s.statusFilter);
+  const toggleSpeakerFilter = useCueListFiltersStore(
+    (s) => s.toggleSpeakerFilter,
+  );
+  const toggleShotFilter = useCueListFiltersStore((s) => s.toggleShotFilter);
+  const toggleStatusFilter = useCueListFiltersStore(
+    (s) => s.toggleStatusFilter,
+  );
+  const clearFilters = useCueListFiltersStore((s) => s.clearFilters);
+  const pruneSpeakerFilter = useCueListFiltersStore(
+    (s) => s.pruneSpeakerFilter,
+  );
+  const pruneShotFilter = useCueListFiltersStore((s) => s.pruneShotFilter);
   const [rolePickerCueId, setRolePickerCueId] = useState<string | null>(null);
   const [setupOpen, setSetupOpen] = useState(false);
   const [setupBusy, setSetupBusy] = useState<string | null>(null);
@@ -875,54 +887,18 @@ export default function App() {
     });
   }, []);
 
-  const toggleSpeakerFilter = useCallback((speakerId: string) => {
-    setSpeakerFilter((prev) =>
-      prev.includes(speakerId)
-        ? prev.filter((id) => id !== speakerId)
-        : [...prev, speakerId],
-    );
-  }, []);
-
-  const toggleShotFilter = useCallback((shotId: string) => {
-    setShotFilter((prev) =>
-      prev.includes(shotId)
-        ? prev.filter((id) => id !== shotId)
-        : [...prev, shotId],
-    );
-  }, []);
-
-  const toggleStatusFilter = useCallback((status: ReviewStatusFilter) => {
-    setStatusFilter((prev) =>
-      prev.includes(status)
-        ? prev.filter((s) => s !== status)
-        : [...prev, status],
-    );
-  }, []);
-
-  const clearFilters = useCallback(() => {
-    setSpeakerFilter([]);
-    setShotFilter([]);
-    setStatusFilter([]);
-  }, []);
-
   const speakers = project?.speakers;
   const shots = project?.shots;
 
   useEffect(() => {
     if (!speakers) return;
-    setSpeakerFilter((prev) => {
-      const valid = prev.filter((id) => speakers.some((s) => s.id === id));
-      return valid.length === prev.length ? prev : valid;
-    });
-  }, [speakers]);
+    pruneSpeakerFilter(speakers.map((s) => s.id));
+  }, [speakers, pruneSpeakerFilter]);
 
   useEffect(() => {
     if (!shots) return;
-    setShotFilter((prev) => {
-      const valid = prev.filter((id) => shots.some((s) => s.id === id));
-      return valid.length === prev.length ? prev : valid;
-    });
-  }, [shots]);
+    pruneShotFilter(shots.map((s) => s.id));
+  }, [shots, pruneShotFilter]);
 
   useEffect(() => {
     function onRolePickerOpen(e: Event) {

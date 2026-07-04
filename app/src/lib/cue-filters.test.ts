@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import type { Project } from "../types";
 import {
   activeFilterCount,
+  adjacentFilteredCueId,
   countCueAppearancesByShotWithFilters,
   countCueAppearancesBySpeakerWithFilters,
   cueMatchesListFilters,
   cueMatchesReviewStatusFilter,
+  filteredCueNavBounds,
   hasActiveFilters,
+  listFilteredCueEntries,
 } from "./cue-filters";
 import { makeCue } from "../test-fixtures";
 
@@ -133,5 +136,33 @@ describe("cue filters", () => {
         ["OFF", 1],
       ]),
     );
+  });
+
+  it("navigates adjacent cues within active filters", () => {
+    const cues = [
+      { ...cue(true), id: "c1", speakerId: "A" },
+      { ...cue(false), id: "c2", speakerId: "B" },
+      { ...cue(true), id: "c3", speakerId: "A" },
+    ];
+
+    expect(
+      listFilteredCueEntries(cues, ["A"], [], []).map((e) => e.cue.id),
+    ).toEqual(["c1", "c3"]);
+
+    expect(adjacentFilteredCueId(cues, "c1", 1, ["A"], [], [])).toBe("c3");
+    expect(adjacentFilteredCueId(cues, "c3", -1, ["A"], [], [])).toBe("c1");
+    expect(adjacentFilteredCueId(cues, "c3", 1, ["A"], [], [])).toBeNull();
+    expect(adjacentFilteredCueId(cues, "c2", 1, ["A"], [], [])).toBe("c1");
+    expect(adjacentFilteredCueId(cues, null, 1, [], [], [])).toBe("c1");
+    expect(adjacentFilteredCueId(cues, null, -1, [], [], [])).toBe("c1");
+
+    expect(filteredCueNavBounds(cues, "c1", ["A"], [], [])).toEqual({
+      canPrev: false,
+      canNext: true,
+    });
+    expect(filteredCueNavBounds(cues, "c2", ["A"], [], [])).toEqual({
+      canPrev: true,
+      canNext: true,
+    });
   });
 });

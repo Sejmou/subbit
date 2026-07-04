@@ -5,8 +5,8 @@ import { useProject } from "../store/project";
 import { usePlayback } from "../store/playback";
 import { findActiveCueIndex } from "../lib/active-cue";
 import {
-  cueMatchesListFilters,
   hasActiveFilters,
+  listFilteredCueEntries,
   type ReviewStatusFilter,
 } from "../lib/cue-filters";
 import { useShortcutLabel } from "../hooks/useShortcutLabel";
@@ -53,13 +53,16 @@ export function CueList({
   const [activeIndex, setActiveIndex] = useState(-1);
   const isEmpty = project.cues.length === 0;
 
-  const entries = useMemo(() => {
-    const all = project.cues.map((cue, index) => ({ cue, index }));
-    if (!hasActiveFilters(speakerFilter, statusFilter, shotFilter)) return all;
-    return all.filter(({ cue }) =>
-      cueMatchesListFilters(cue, speakerFilter, statusFilter, shotFilter),
-    );
-  }, [project.cues, speakerFilter, statusFilter, shotFilter]);
+  const entries = useMemo(
+    () =>
+      listFilteredCueEntries(
+        project.cues,
+        speakerFilter,
+        statusFilter,
+        shotFilter,
+      ),
+    [project.cues, speakerFilter, statusFilter, shotFilter],
+  );
 
   const filterActive = hasActiveFilters(
     speakerFilter,

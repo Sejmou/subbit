@@ -7,6 +7,7 @@ import { shortcutGroups } from "./groups";
 import { SHORTCUTS } from "./registry";
 import { resolveShortcut, handleShortcut } from "./resolve";
 import { makeCue, makeProject } from "../../test-fixtures";
+import { useCueListFiltersStore } from "../../store/cue-list-filters";
 
 function makeKeyEvent(
   keyVal: string,
@@ -338,6 +339,41 @@ describe("resolveShortcut", () => {
     const c2 = ctx();
     resolveShortcut(makeKeyEvent("s"), c2)?.run(c2, makeKeyEvent("s"));
     expect(c2.ps.cycleSegmentShot).toHaveBeenCalledWith("cue-1", 0);
+  });
+
+  it("navigates filtered cues on j and k", () => {
+    const cue2 = makeCue(
+      { id: "cue-2", start: 5, end: 10, speakerId: "SPEAKER_01" },
+      "world",
+    );
+    const cue3 = makeCue(
+      { id: "cue-3", start: 10, end: 15, speakerId: "SPEAKER_00" },
+      "again",
+    );
+    const threeCues = ctx({
+      cue,
+      cueIndex: 0,
+      project: { ...project, cues: [cue, cue2, cue3] },
+      ps: {
+        ...ctx().ps,
+        selectedCueId: "cue-1",
+      } as ShortcutContext["ps"],
+    });
+    useCueListFiltersStore.setState({
+      speakerFilter: ["SPEAKER_00"],
+      statusFilter: [],
+      shotFilter: [],
+    });
+    resolveShortcut(makeKeyEvent("j"), threeCues)?.run(
+      threeCues,
+      makeKeyEvent("j"),
+    );
+    expect(threeCues.ps.selectCue).toHaveBeenCalledWith("cue-3");
+    useCueListFiltersStore.setState({
+      speakerFilter: [],
+      statusFilter: [],
+      shotFilter: [],
+    });
   });
 
   it("links or unlinks the selected cue on mod+j", () => {

@@ -2,6 +2,12 @@ import type { Cue, Project } from "../types";
 import { cueMatchesSpeakerFilter } from "./speaker-refs";
 import { cueMatchesShotFilter } from "./shot-refs";
 
+export interface CueListEntry {
+  cue: Cue;
+  /** Index in the full project cue list. */
+  index: number;
+}
+
 export type ReviewStatusFilter = "reviewed" | "not-reviewed";
 
 export const REVIEW_STATUS_OPTIONS: {
@@ -66,6 +72,78 @@ export function hasActiveFilters(
   return (
     speakerFilter.length > 0 || statusFilter.length > 0 || shotFilter.length > 0
   );
+}
+
+export function listFilteredCueEntries(
+  cues: readonly Cue[],
+  speakerFilter: readonly string[],
+  statusFilter: readonly ReviewStatusFilter[],
+  shotFilter: readonly string[] = [],
+): CueListEntry[] {
+  const all = cues.map((cue, index) => ({ cue, index }));
+  if (!hasActiveFilters(speakerFilter, statusFilter, shotFilter)) return all;
+  return all.filter(({ cue }) =>
+    cueMatchesListFilters(cue, speakerFilter, statusFilter, shotFilter),
+  );
+}
+
+/** Next/previous cue id within the filtered list, or null at the end. */
+export function adjacentFilteredCueId(
+  cues: readonly Cue[],
+  selectedCueId: string | null,
+  direction: -1 | 1,
+  speakerFilter: readonly string[],
+  statusFilter: readonly ReviewStatusFilter[],
+  shotFilter: readonly string[] = [],
+): string | null {
+  const entries = listFilteredCueEntries(
+    cues,
+    speakerFilter,
+    statusFilter,
+    shotFilter,
+  );
+  if (entries.length === 0) return null;
+
+  const visibleIdx = selectedCueId
+    ? entries.findIndex((e) => e.cue.id === selectedCueId)
+    : -1;
+
+  if (visibleIdx < 0) {
+    return entries[0].cue.id;
+  }
+
+  const nextIdx = visibleIdx + direction;
+  if (nextIdx < 0 || nextIdx >= entries.length) return null;
+  return entries[nextIdx].cue.id;
+}
+
+export function filteredCueNavBounds(
+  cues: readonly Cue[],
+  selectedCueId: string | null,
+  speakerFilter: readonly string[],
+  statusFilter: readonly ReviewStatusFilter[],
+  shotFilter: readonly string[] = [],
+): { canPrev: boolean; canNext: boolean } {
+  return {
+    canPrev:
+      adjacentFilteredCueId(
+        cues,
+        selectedCueId,
+        -1,
+        speakerFilter,
+        statusFilter,
+        shotFilter,
+      ) !== null,
+    canNext:
+      adjacentFilteredCueId(
+        cues,
+        selectedCueId,
+        1,
+        speakerFilter,
+        statusFilter,
+        shotFilter,
+      ) !== null,
+  };
 }
 
 /** Role counts for cues matching status and shot filters (speaker filter excluded). */

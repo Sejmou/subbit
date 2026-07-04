@@ -2,6 +2,11 @@ import type { Project } from "../types";
 import { useProject } from "../store/project";
 import { usePlayback } from "../store/playback";
 import { useLockReviewedStore } from "../store/lock-reviewed";
+import { useCueListFiltersStore } from "../store/cue-list-filters";
+import {
+  adjacentFilteredCueId,
+  filteredCueNavBounds,
+} from "../lib/cue-filters";
 import { useShortcutLabel, useKeyLabel } from "../hooks/useShortcutLabel";
 import { isReviewedCueLocked } from "../lib/cue-lock";
 import { cueStartSeconds, cueEndSeconds } from "../lib/cue-timing";
@@ -59,6 +64,9 @@ export function CueTransport({ project }: { project: Project }) {
   const setInLabel = useShortcutLabel("set-in");
   const setOutLabel = useShortcutLabel("set-out");
   useLockReviewedStore((s) => s.enabled);
+  const speakerFilter = useCueListFiltersStore((s) => s.speakerFilter);
+  const statusFilter = useCueListFiltersStore((s) => s.statusFilter);
+  const shotFilter = useCueListFiltersStore((s) => s.shotFilter);
 
   const cues = project.cues;
   const cueIndex = selectedCueId
@@ -67,8 +75,13 @@ export function CueTransport({ project }: { project: Project }) {
   const cue = cueIndex >= 0 ? cues[cueIndex] : null;
   const hasCue = cue !== null;
   const cueLocked = cue ? isReviewedCueLocked(cue) : false;
-  const canPrev = hasCue && cueIndex > 0;
-  const canNext = hasCue && cueIndex < cues.length - 1;
+  const { canPrev, canNext } = filteredCueNavBounds(
+    cues,
+    selectedCueId,
+    speakerFilter,
+    statusFilter,
+    shotFilter,
+  );
 
   const cueIn = cue ? cueStartSeconds(cue) : 0;
   const cueOut = cue ? cueEndSeconds(cue) : 0;
@@ -90,13 +103,27 @@ export function CueTransport({ project }: { project: Project }) {
     : undefined;
 
   const selectPrev = () => {
-    if (!canPrev) return;
-    selectCue(cues[cueIndex - 1].id);
+    const id = adjacentFilteredCueId(
+      cues,
+      selectedCueId,
+      -1,
+      speakerFilter,
+      statusFilter,
+      shotFilter,
+    );
+    if (id) selectCue(id);
   };
 
   const selectNext = () => {
-    if (!canNext) return;
-    selectCue(cues[cueIndex + 1].id);
+    const id = adjacentFilteredCueId(
+      cues,
+      selectedCueId,
+      1,
+      speakerFilter,
+      statusFilter,
+      shotFilter,
+    );
+    if (id) selectCue(id);
   };
 
   return (
