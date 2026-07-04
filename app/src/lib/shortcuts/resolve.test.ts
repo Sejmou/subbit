@@ -58,6 +58,7 @@ function ctx(overrides: Partial<ShortcutContext> = {}): ShortcutContext {
     nudgeCueStart: vi.fn(),
     nudgeCueEnd: vi.fn(),
     toggleReviewed: vi.fn(),
+    toggleJoinedToPrev: vi.fn(),
     setCueSpeaker: vi.fn(),
     setSegmentShot: vi.fn(),
     cycleSegmentShot: vi.fn(),
@@ -337,6 +338,24 @@ describe("resolveShortcut", () => {
     const c2 = ctx();
     resolveShortcut(makeKeyEvent("s"), c2)?.run(c2, makeKeyEvent("s"));
     expect(c2.ps.cycleSegmentShot).toHaveBeenCalledWith("cue-1", 0);
+  });
+
+  it("links or unlinks the selected cue on mod+j", () => {
+    const cue2 = makeCue(
+      { id: "cue-2", start: 5, end: 10, speakerId: "SPEAKER_00" },
+      "world",
+    );
+    const twoCues = ctx({
+      cue: cue2,
+      cueIndex: 1,
+      project: { ...project, cues: [cue, cue2] },
+    });
+    expect(resolveShortcut(modKey("j"), twoCues)?.id).toBe("toggle-cue-join");
+    resolveShortcut(modKey("j"), twoCues)?.run(twoCues, modKey("j"));
+    expect(twoCues.ps.toggleJoinedToPrev).toHaveBeenCalledWith("cue-2");
+
+    expect(resolveShortcut(modKey("j"), ctx({ cueIndex: 0 }))).toBeNull();
+    expect(resolveShortcut(makeKeyEvent("j"), twoCues)?.id).toBe("next-cue");
   });
 
   it("handles reference frame shortcuts on 0 and legacy Home/End keys", () => {

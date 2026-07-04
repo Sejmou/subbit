@@ -252,6 +252,7 @@ function CueRowImpl({
   const deleteCueLabel = useShortcutLabel("delete-cue");
   const assignRoleLabel = useShortcutLabel("assign-role");
   const toggleReviewedLabel = useShortcutLabel("toggle-reviewed");
+  const toggleCueJoinLabel = useShortcutLabel("toggle-cue-join");
   const tip = useTip();
   useLockReviewedStore((s) => s.enabled);
   const locked = isReviewedCueLocked(cue);
@@ -313,8 +314,8 @@ function CueRowImpl({
             joinLocked
               ? "Reviewed (locked) — uncheck to change joining"
               : joined
-                ? "Unjoin from previous cue — In and Out stop staying in sync"
-                : "Join with previous cue — the boundary snaps between the two nearest words and their In/Out then move together",
+                ? `Unjoin from previous cue (${toggleCueJoinLabel}) — In and Out stop staying in sync`
+                : `Join with previous cue (${toggleCueJoinLabel}) — the boundary snaps between the two nearest words and their In/Out then move together`,
           )}
         >
           <button

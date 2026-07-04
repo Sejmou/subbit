@@ -38,6 +38,13 @@ function canEditSelectedCue(ctx: ShortcutContext): boolean {
   return !!ctx.cue && !ctx.cueLocked;
 }
 
+function canToggleCueJoin(ctx: ShortcutContext): boolean {
+  if (!ctx.cue || !ctx.project || ctx.cueIndex <= 0) return false;
+  if (ctx.cueLocked) return false;
+  const prev = ctx.project.cues[ctx.cueIndex - 1];
+  return !isReviewedCueLocked(prev);
+}
+
 function caretCueLocked(ctx: ShortcutContext): boolean {
   const caret = ctx.caret;
   if (!caret || !ctx.project) return false;
@@ -484,6 +491,21 @@ export const SHORTCUTS: ShortcutDef[] = [
       const id = ctx.ps.insertCueAtPlayhead(ctx.pb.currentTime);
       if (id) focusCueForEdit(id);
     },
+    preventDefault: true,
+  },
+  {
+    id: "toggle-cue-join",
+    group: "Text & structure",
+    label: (m, k) => k.join([m, k.code("KeyJ")]),
+    description: "Link / unlink with previous cue",
+    match: (e, ctx) =>
+      !!ctx.project &&
+      mod(e) &&
+      !e.shiftKey &&
+      !ctx.editing &&
+      canToggleCueJoin(ctx) &&
+      (e.key === "j" || e.key === "J"),
+    run: (ctx) => ctx.ps.toggleJoinedToPrev(ctx.cue!.id),
     preventDefault: true,
   },
   {
