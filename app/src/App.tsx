@@ -67,6 +67,7 @@ import { ProjectSetupDialog } from "./components/ProjectSetupDialog";
 import { VideoPlayer } from "./components/VideoPlayer";
 import { CueList } from "./components/CueList";
 import { SpeakerPanel } from "./components/SpeakerPanel";
+import { ShotPanel } from "./components/ShotPanel";
 import { Toolbar } from "./components/Toolbar";
 import { ExportDialog } from "./components/ExportDialog";
 import { ImportDeliveryDialog } from "./components/ImportDeliveryDialog";
@@ -168,6 +169,7 @@ export default function App() {
     (s) => s.dismiss,
   );
   const [speakerFilter, setSpeakerFilter] = useState<string[]>([]);
+  const [shotFilter, setShotFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<ReviewStatusFilter[]>([]);
   const [rolePickerCueId, setRolePickerCueId] = useState<string | null>(null);
   const [setupOpen, setSetupOpen] = useState(false);
@@ -881,6 +883,14 @@ export default function App() {
     );
   }, []);
 
+  const toggleShotFilter = useCallback((shotId: string) => {
+    setShotFilter((prev) =>
+      prev.includes(shotId)
+        ? prev.filter((id) => id !== shotId)
+        : [...prev, shotId],
+    );
+  }, []);
+
   const toggleStatusFilter = useCallback((status: ReviewStatusFilter) => {
     setStatusFilter((prev) =>
       prev.includes(status)
@@ -891,10 +901,12 @@ export default function App() {
 
   const clearFilters = useCallback(() => {
     setSpeakerFilter([]);
+    setShotFilter([]);
     setStatusFilter([]);
   }, []);
 
   const speakers = project?.speakers;
+  const shots = project?.shots;
 
   useEffect(() => {
     if (!speakers) return;
@@ -903,6 +915,14 @@ export default function App() {
       return valid.length === prev.length ? prev : valid;
     });
   }, [speakers]);
+
+  useEffect(() => {
+    if (!shots) return;
+    setShotFilter((prev) => {
+      const valid = prev.filter((id) => shots.some((s) => s.id === id));
+      return valid.length === prev.length ? prev : valid;
+    });
+  }, [shots]);
 
   useEffect(() => {
     function onRolePickerOpen(e: Event) {
@@ -1057,8 +1077,10 @@ export default function App() {
         onToggleLockReviewed={toggleLockReviewed}
         speakerFilter={speakerFilter}
         statusFilter={statusFilter}
+        shotFilter={shotFilter}
         onToggleSpeakerFilter={toggleSpeakerFilter}
         onToggleStatusFilter={toggleStatusFilter}
+        onToggleShotFilter={toggleShotFilter}
         onClearFilters={clearFilters}
       />
       <ExportDialog
@@ -1068,6 +1090,7 @@ export default function App() {
       />
       <ImportDeliveryDialog
         open={importDeliveryOpen}
+        project={project}
         cueCount={project.cues.length}
         onExportBackup={doExportProjectBundle}
         onConfirmImport={doImportDelivery}
@@ -1133,11 +1156,18 @@ export default function App() {
           ) : (
             <div className="video-wrap empty">No video loaded</div>
           )}
-          <SpeakerPanel
-            project={project}
-            speakerFilter={speakerFilter}
-            onToggleSpeakerFilter={toggleSpeakerFilter}
-          />
+          <div className="side-panels">
+            <SpeakerPanel
+              project={project}
+              speakerFilter={speakerFilter}
+              onToggleSpeakerFilter={toggleSpeakerFilter}
+            />
+            <ShotPanel
+              project={project}
+              shotFilter={shotFilter}
+              onToggleShotFilter={toggleShotFilter}
+            />
+          </div>
         </div>
         <div className="cue-column">
           <FindReplaceDialog
@@ -1147,11 +1177,13 @@ export default function App() {
             project={project}
             speakerFilter={speakerFilter}
             statusFilter={statusFilter}
+            shotFilter={shotFilter}
           />
           <CueList
             project={project}
             speakerFilter={speakerFilter}
             statusFilter={statusFilter}
+            shotFilter={shotFilter}
             findHighlight={findHighlight}
           />
         </div>

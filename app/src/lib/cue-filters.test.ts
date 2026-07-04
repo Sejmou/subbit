@@ -43,21 +43,31 @@ describe("cue filters", () => {
     ).toBe(true);
   });
 
-  it("combines role and status filters", () => {
-    const reviewedA = { ...cue(true), speakerId: "A" };
-    const unreviewedB = { ...cue(false), speakerId: "B" };
+  it("combines role, shot, and status filters", () => {
+    const reviewedA = { ...cue(true), speakerId: "A", shot: "ON" };
+    const unreviewedB = { ...cue(false), speakerId: "B", shot: "OFF" };
 
-    expect(cueMatchesListFilters(reviewedA, ["A"], ["reviewed"])).toBe(true);
-    expect(cueMatchesListFilters(unreviewedB, ["A"], ["reviewed"])).toBe(false);
-    expect(cueMatchesListFilters(unreviewedB, ["B"], ["reviewed"])).toBe(false);
-    expect(cueMatchesListFilters(unreviewedB, ["B"], ["not-reviewed"])).toBe(
+    expect(cueMatchesListFilters(reviewedA, ["A"], ["reviewed"], [])).toBe(
       true,
     );
+    expect(cueMatchesListFilters(unreviewedB, ["A"], ["reviewed"], [])).toBe(
+      false,
+    );
+    expect(cueMatchesListFilters(unreviewedB, ["B"], ["reviewed"], [])).toBe(
+      false,
+    );
+    expect(
+      cueMatchesListFilters(unreviewedB, ["B"], ["not-reviewed"], []),
+    ).toBe(true);
+    expect(cueMatchesListFilters(reviewedA, [], [], ["ON"])).toBe(true);
+    expect(cueMatchesListFilters(unreviewedB, [], [], ["ON"])).toBe(false);
+    expect(cueMatchesListFilters(unreviewedB, [], [], ["OFF"])).toBe(true);
   });
 
   it("counts active filters", () => {
-    expect(activeFilterCount([], [])).toBe(0);
-    expect(activeFilterCount(["A"], ["reviewed"])).toBe(2);
-    expect(hasActiveFilters([], ["not-reviewed"])).toBe(true);
+    expect(activeFilterCount([], [], [])).toBe(0);
+    expect(activeFilterCount(["A"], ["reviewed"], ["ON"])).toBe(3);
+    expect(hasActiveFilters([], ["not-reviewed"], [])).toBe(true);
+    expect(hasActiveFilters([], [], ["VO"])).toBe(true);
   });
 });

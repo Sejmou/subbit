@@ -1,5 +1,6 @@
 import type { Cue } from "../types";
 import { cueMatchesSpeakerFilter } from "./speaker-refs";
+import { cueMatchesShotFilter } from "./shot-refs";
 
 export type ReviewStatusFilter = "reviewed" | "not-reviewed";
 
@@ -26,10 +27,17 @@ export function cueMatchesListFilters(
   cue: Cue,
   speakerFilter: readonly string[],
   statusFilter: readonly ReviewStatusFilter[],
+  shotFilter: readonly string[] = [],
 ): boolean {
   if (
     speakerFilter.length > 0 &&
     !cueMatchesSpeakerFilter(cue, new Set(speakerFilter))
+  ) {
+    return false;
+  }
+  if (
+    shotFilter.length > 0 &&
+    !cueMatchesShotFilter(cue, new Set(shotFilter))
   ) {
     return false;
   }
@@ -45,13 +53,17 @@ export function cueMatchesListFilters(
 export function activeFilterCount(
   speakerFilter: readonly string[],
   statusFilter: readonly ReviewStatusFilter[],
+  shotFilter: readonly string[] = [],
 ): number {
-  return speakerFilter.length + statusFilter.length;
+  return speakerFilter.length + statusFilter.length + shotFilter.length;
 }
 
 export function hasActiveFilters(
   speakerFilter: readonly string[],
   statusFilter: readonly ReviewStatusFilter[],
+  shotFilter: readonly string[] = [],
 ): boolean {
-  return speakerFilter.length > 0 || statusFilter.length > 0;
+  return (
+    speakerFilter.length > 0 || statusFilter.length > 0 || shotFilter.length > 0
+  );
 }

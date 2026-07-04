@@ -34,6 +34,7 @@ interface Props {
   project: Project;
   speakerFilter?: string[];
   statusFilter?: ReviewStatusFilter[];
+  shotFilter?: string[];
   findHighlight?: FindHighlightState;
 }
 
@@ -41,6 +42,7 @@ export function CueList({
   project,
   speakerFilter = [],
   statusFilter = [],
+  shotFilter = [],
   findHighlight = INACTIVE_FIND_HIGHLIGHT,
 }: Props) {
   const parentRef = useRef<HTMLDivElement>(null);
@@ -53,13 +55,17 @@ export function CueList({
 
   const entries = useMemo(() => {
     const all = project.cues.map((cue, index) => ({ cue, index }));
-    if (!hasActiveFilters(speakerFilter, statusFilter)) return all;
+    if (!hasActiveFilters(speakerFilter, statusFilter, shotFilter)) return all;
     return all.filter(({ cue }) =>
-      cueMatchesListFilters(cue, speakerFilter, statusFilter),
+      cueMatchesListFilters(cue, speakerFilter, statusFilter, shotFilter),
     );
-  }, [project.cues, speakerFilter, statusFilter]);
+  }, [project.cues, speakerFilter, statusFilter, shotFilter]);
 
-  const filterActive = hasActiveFilters(speakerFilter, statusFilter);
+  const filterActive = hasActiveFilters(
+    speakerFilter,
+    statusFilter,
+    shotFilter,
+  );
   const filteredEmpty = filterActive && entries.length === 0;
 
   const segmentMatchIndex = useMemo(

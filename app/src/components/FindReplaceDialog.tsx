@@ -31,6 +31,7 @@ interface Props {
   project: Project;
   speakerFilter: string[];
   statusFilter: ReviewStatusFilter[];
+  shotFilter: string[];
 }
 
 function revealMatch(match: TextMatch, focus: boolean) {
@@ -53,6 +54,7 @@ export function FindReplaceDialog({
   project,
   speakerFilter,
   statusFilter,
+  shotFilter,
 }: Props) {
   const tip = useTip();
   const replaceSegmentTexts = useProject((s) => s.replaceSegmentTexts);
@@ -67,12 +69,16 @@ export function FindReplaceDialog({
   const [matchIndex, setMatchIndex] = useState(-1);
   const findReplaceLabel = useShortcutLabel("find-replace");
 
-  const filtersActive = hasActiveFilters(speakerFilter, statusFilter);
+  const filtersActive = hasActiveFilters(
+    speakerFilter,
+    statusFilter,
+    shotFilter,
+  );
 
   const searchCues = useMemo(() => {
     if (!searchFilteredOnly || !filtersActive) return project.cues;
     return project.cues.filter((cue) =>
-      cueMatchesListFilters(cue, speakerFilter, statusFilter),
+      cueMatchesListFilters(cue, speakerFilter, statusFilter, shotFilter),
     );
   }, [
     project.cues,
@@ -80,6 +86,7 @@ export function FindReplaceDialog({
     filtersActive,
     speakerFilter,
     statusFilter,
+    shotFilter,
   ]);
 
   const matches = useMemo(

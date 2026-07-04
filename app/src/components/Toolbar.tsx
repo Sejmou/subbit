@@ -36,8 +36,10 @@ interface Props {
   onToggleLockReviewed: () => void;
   speakerFilter: string[];
   statusFilter: ReviewStatusFilter[];
+  shotFilter: string[];
   onToggleSpeakerFilter: (speakerId: string) => void;
   onToggleStatusFilter: (status: ReviewStatusFilter) => void;
+  onToggleShotFilter: (shotId: string) => void;
   onClearFilters: () => void;
 }
 
@@ -129,8 +131,10 @@ export function Toolbar({
   onToggleLockReviewed,
   speakerFilter,
   statusFilter,
+  shotFilter,
   onToggleSpeakerFilter,
   onToggleStatusFilter,
+  onToggleShotFilter,
   onClearFilters,
 }: Props) {
   const tip = useTip();
@@ -181,8 +185,10 @@ export function Toolbar({
         project={project}
         speakerFilter={speakerFilter}
         statusFilter={statusFilter}
+        shotFilter={shotFilter}
         onToggleSpeakerFilter={onToggleSpeakerFilter}
         onToggleStatusFilter={onToggleStatusFilter}
+        onToggleShotFilter={onToggleShotFilter}
         onClearFilters={onClearFilters}
       />
       <ReviewProgress reviewed={reviewed} total={total} groups={groups} />

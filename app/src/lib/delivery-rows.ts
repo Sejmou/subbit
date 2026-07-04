@@ -1,4 +1,9 @@
-import type { Cue, Project, ShotId, Speaker } from "../types";
+import type { Cue, Project, ShotId, ShotType, Speaker } from "../types";
+import {
+  ensureShotTypes,
+  resolveShotLabel,
+  syncShotTypesFromCues,
+} from "./delivery-shot";
 import {
   nominalTimecodeFps,
   projectFrameRate,
@@ -114,13 +119,16 @@ function normalizeShotSlices(
   info: string,
   subtitle: string,
   defaultShot: ShotId,
+  shots: readonly ShotType[],
 ): { shotLabels: string[]; textSlices: string[] } {
   const textSlices = splitDeliverySlices(subtitle);
   if (textSlices.length === 0) {
     return { shotLabels: [defaultShot], textSlices: [""] };
   }
 
-  let shotLabels = splitDeliverySlices(info);
+  let shotLabels = splitDeliverySlices(info).map((raw) =>
+    resolveShotLabel(raw, shots, defaultShot),
+  );
   if (shotLabels.length === 0) {
     shotLabels = textSlices.map(() => defaultShot);
   } else if (shotLabels.length === 1 && textSlices.length > 1) {
@@ -274,6 +282,7 @@ export function cuesFromDeliveryRows(
       row.info,
       subtitle,
       project.defaultShot,
+      project.shots,
     );
     const { speakerId, speakers: nextSpeakers } = resolveSpeakerId(
       row.role,
@@ -287,11 +296,35 @@ export function cuesFromDeliveryRows(
   return { cues, speakers };
 }
 
+export function collectRawShotLabelsFromRows(
+  rows: DeliveryRowValues[],
+): string[] {
+  const labels: string[] = [];
+  for (const row of rows) {
+    for (const part of splitDeliverySlices(row.info)) {
+      const trimmed = part.trim();
+      if (trimmed) labels.push(trimmed);
+    }
+  }
+  return labels;
+}
+
+/** Shot types that would be added when importing these rows. */
+export function previewAddedShots(
+  project: Project,
+  rows: DeliveryRowValues[],
+): ShotType[] {
+  return ensureShotTypes(project, collectRawShotLabelsFromRows(rows))
+    .addedShots;
+}
+
 /** Replace project cues/speakers from delivery spreadsheet rows. */
 export function applyDeliveryImport(
   project: Project,
   rows: DeliveryRowValues[],
 ): Project {
-  const { cues, speakers } = cuesFromDeliveryRows(project, rows);
-  return { ...project, cues, speakers };
+  const rawLabels = collectRawShotLabelsFromRows(rows);
+  const { project: withShots } = ensureShotTypes(project, rawLabels);
+  const { cues, speakers } = cuesFromDeliveryRows(withShots, rows);
+  return syncShotTypesFromCues({ ...withShots, cues, speakers });
 }

@@ -464,6 +464,30 @@ describe("speakers", () => {
   });
 });
 
+describe("shot types", () => {
+  it("adds and renames a custom shot type", () => {
+    expect(store().addShot("VO", "Voice-over")).toBe("VO");
+    expect(store().project!.shots).toHaveLength(4);
+    store().renameShotLabel("VO", "Narration");
+    expect(store().project!.shots.find((s) => s.id === "VO")?.label).toBe(
+      "Narration",
+    );
+  });
+
+  it("removes an unreferenced custom shot type", () => {
+    store().addShot("VO", "Voice-over");
+    expect(store().removeShot("VO")).toBe(true);
+    expect(store().project!.shots.map((s) => s.id)).not.toContain("VO");
+  });
+
+  it("refuses to remove built-in or referenced shot types", () => {
+    expect(store().removeShot("ON")).toBe(false);
+    store().addShot("VO", "Voice-over");
+    store().setSegmentShot("c1", 0, "VO");
+    expect(store().removeShot("VO")).toBe(false);
+  });
+});
+
 describe("reviewed cue lock", () => {
   beforeEach(() => {
     writeLockReviewedCues(true);

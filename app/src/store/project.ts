@@ -8,6 +8,12 @@ import {
   minCueStartSeconds,
 } from "../lib/program-start";
 import { isSpeakerReferenced } from "../lib/speaker-refs";
+import {
+  isDefaultShotId,
+  ensureShotTypes,
+  syncShotTypesFromCues,
+} from "../lib/delivery-shot";
+import { isShotReferenced } from "../lib/shot-refs";
 import { resolveProjectName } from "../lib/project-meta";
 import {
   applyCueBlockMove,
@@ -135,6 +141,11 @@ interface ProjectState {
   setSpeakerColor: (id: string, color: string) => void;
   addSpeaker: (name: string) => Speaker;
   removeSpeaker: (id: string) => boolean;
+
+  // shot types
+  addShot: (id: string, label: string) => ShotId | null;
+  renameShotLabel: (id: string, label: string) => void;
+  removeShot: (id: string) => boolean;
 
   // settings
   setProjectName: (name: string) => void;
@@ -335,9 +346,10 @@ export const useProject = create<ProjectState>((set, getState) => {
 
     loadProject: (project) => {
       lastTag = null;
+      const synced = syncShotTypesFromCues(project);
       set({
-        project,
-        selectedCueId: project.cues[0]?.id ?? null,
+        project: synced,
+        selectedCueId: synced.cues[0]?.id ?? null,
         selectedSegment: 0,
         dirty: false,
         lastSavedAt: null,
@@ -391,14 +403,15 @@ export const useProject = create<ProjectState>((set, getState) => {
       set((state) => {
         if (!state.project) return state;
         lastTag = null;
-        const keep = project.cues.some((c) => c.id === state.selectedCueId);
+        const synced = syncShotTypesFromCues(project);
+        const keep = synced.cues.some((c) => c.id === state.selectedCueId);
         const past = [...state.past, snapshot(state)];
         if (past.length > HISTORY_LIMIT) past.shift();
         return {
-          project,
+          project: synced,
           selectedCueId: keep
             ? state.selectedCueId
-            : (project.cues[0]?.id ?? null),
+            : (synced.cues[0]?.id ?? null),
           selectedSegment: 0,
           past,
           future: [],
@@ -565,7 +578,12 @@ export const useProject = create<ProjectState>((set, getState) => {
     setSegmentShot: (cueId, _segIndex, shot) => {
       const p = getState().project;
       if (!p || cueIsLocked(p, cueId)) return;
-      update((proj) => mapCue(proj, cueId, (c) => setCueShot(c, shot)));
+      update((proj) => {
+        const withShot = proj.shots.some((s) => s.id === shot)
+          ? proj
+          : ensureShotTypes(proj, [shot]).project;
+        return mapCue(withShot, cueId, (c) => setCueShot(c, shot));
+      });
     },
     cycleSegmentShot: (cueId, _segIndex) => {
       const p = getState().project;
@@ -761,6 +779,43 @@ export const useProject = create<ProjectState>((set, getState) => {
       update((p) => ({
         ...p,
         speakers: p.speakers.filter((s) => s.id !== id),
+      }));
+      return true;
+    },
+
+    addShot: (id, label) => {
+      const trimmedId = id.trim();
+      const trimmedLabel = label.trim() || trimmedId;
+      if (!trimmedId) return null;
+      const project = getState().project;
+      if (!project) return null;
+      if (
+        project.shots.some(
+          (s) => s.id.toLowerCase() === trimmedId.toLowerCase(),
+        )
+      ) {
+        return null;
+      }
+      update((p) => ({
+        ...p,
+        shots: [...p.shots, { id: trimmedId, label: trimmedLabel }],
+      }));
+      return trimmedId;
+    },
+    renameShotLabel: (id, label) =>
+      update((p) => ({
+        ...p,
+        shots: p.shots.map((s) =>
+          s.id === id ? { ...s, label: label.trim() || s.id } : s,
+        ),
+      })),
+    removeShot: (id) => {
+      const project = getState().project;
+      if (!project || !project.shots.some((s) => s.id === id)) return false;
+      if (isDefaultShotId(id) || isShotReferenced(project, id)) return false;
+      update((p) => ({
+        ...p,
+        shots: p.shots.filter((s) => s.id !== id),
       }));
       return true;
     },

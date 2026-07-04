@@ -6,14 +6,17 @@ import {
   REVIEW_STATUS_OPTIONS,
   type ReviewStatusFilter,
 } from "../lib/cue-filters";
+import { shotDisplayLabel } from "../lib/shot-display";
 import { useTip } from "./Tooltip";
 
 interface Props {
   project: Project;
   speakerFilter: string[];
   statusFilter: ReviewStatusFilter[];
+  shotFilter: string[];
   onToggleSpeakerFilter: (speakerId: string) => void;
   onToggleStatusFilter: (status: ReviewStatusFilter) => void;
+  onToggleShotFilter: (shotId: string) => void;
   onClearFilters: () => void;
 }
 
@@ -21,15 +24,25 @@ export function FiltersMenu({
   project,
   speakerFilter,
   statusFilter,
+  shotFilter,
   onToggleSpeakerFilter,
   onToggleStatusFilter,
+  onToggleShotFilter,
   onClearFilters,
 }: Props) {
   const tip = useTip();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const filterActive = hasActiveFilters(speakerFilter, statusFilter);
-  const filterCount = activeFilterCount(speakerFilter, statusFilter);
+  const filterActive = hasActiveFilters(
+    speakerFilter,
+    statusFilter,
+    shotFilter,
+  );
+  const filterCount = activeFilterCount(
+    speakerFilter,
+    statusFilter,
+    shotFilter,
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -101,6 +114,32 @@ export function FiltersMenu({
                       className="filters-menu-swatch"
                       style={{ background: s.color }}
                       aria-hidden
+                    />
+                    <span className="filters-menu-label">{displayName}</span>
+                  </label>
+                );
+              })
+            )}
+
+            <hr />
+
+            <div className="filters-menu-heading">Shot types</div>
+            {project.shots.length === 0 ? (
+              <p className="filters-menu-empty">No shot types defined yet.</p>
+            ) : (
+              project.shots.map((shot) => {
+                const displayName = shotDisplayLabel(shot.id, shot.label);
+                const checked = shotFilter.includes(shot.id);
+                return (
+                  <label
+                    key={shot.id}
+                    className="filters-menu-item"
+                    role="menuitemcheckbox"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => onToggleShotFilter(shot.id)}
                     />
                     <span className="filters-menu-label">{displayName}</span>
                   </label>

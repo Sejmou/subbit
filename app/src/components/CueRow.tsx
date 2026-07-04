@@ -17,6 +17,7 @@ import { isCueBeforeReferenceStart } from "../lib/program-start";
 import { useShortcutLabel } from "../hooks/useShortcutLabel";
 import { CueTimeField } from "./CueTimeField";
 import { useTip } from "./Tooltip";
+import { shotDisplayLabel } from "../lib/shot-display";
 import type { FocusCueDetail } from "../lib/focus-cue";
 import {
   buildHighlightChunks,
@@ -399,8 +400,7 @@ function CueRowImpl({
       >
         <button
           type="button"
-          className="speaker-select role-trigger"
-          style={{ color: speaker?.color }}
+          className="cue-meta-select speaker-select role-trigger"
           disabled={locked}
           onClick={(e) => {
             if (locked) return;
@@ -409,11 +409,11 @@ function CueRowImpl({
             openRolePicker(cue.id);
           }}
         >
-          <span className="role-trigger-label">
+          <span
+            className="role-trigger-label"
+            style={speaker?.color ? { color: speaker.color } : undefined}
+          >
             {speaker?.name?.trim() || NO_ROLE_LABEL}
-          </span>
-          <span className="role-trigger-chevron" aria-hidden>
-            ▾
           </span>
         </button>
       </span>
@@ -429,14 +429,17 @@ function CueRowImpl({
             )}
           >
             <select
-              className="shot-select"
+              className="cue-meta-select shot-select"
               value={cue.shot}
               disabled={locked}
               onChange={(e) => setSegmentShot(cue.id, 0, e.target.value)}
             >
+              {!project.shots.some((s) => s.id === cue.shot) && (
+                <option value={cue.shot}>{cue.shot}</option>
+              )}
               {project.shots.map((sh) => (
-                <option key={sh.id} value={sh.id}>
-                  {sh.id}
+                <option key={sh.id} value={sh.id} title={sh.id}>
+                  {shotDisplayLabel(sh.id, sh.label)}
                 </option>
               ))}
             </select>

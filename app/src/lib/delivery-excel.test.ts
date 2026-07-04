@@ -60,6 +60,22 @@ describe("cuesFromDeliveryRows", () => {
     );
   });
 
+  it("resolves human-readable shot labels to ids", () => {
+    const project = makeProject({ speakers: [], cues: [] });
+    const rows: DeliveryRowValues[] = [
+      {
+        no: "1",
+        timecodeIn: "",
+        timecodeOut: "",
+        role: "",
+        info: "On-screen",
+        subtitle: "Hello",
+      },
+    ];
+    const { cues } = cuesFromDeliveryRows(project, rows);
+    expect(cues[0]?.shot).toBe("ON");
+  });
+
   it("splits a ' / ' subtitle into a joined run of cues", () => {
     const project = makeProject({
       startTimecode: "10:00:00:00",
@@ -273,5 +289,21 @@ describe("applyDeliveryImport", () => {
     ]);
     expect(next.name).toBe("Opernball");
     expect(next.cues).toHaveLength(1);
+  });
+
+  it("registers custom shot types from the spreadsheet", () => {
+    const project = makeProject({ cues: [] });
+    const next = applyDeliveryImport(project, [
+      {
+        no: "1",
+        timecodeIn: "",
+        timecodeOut: "",
+        role: "",
+        info: "VO",
+        subtitle: "Narration",
+      },
+    ]);
+    expect(next.shots.map((s) => s.id)).toContain("VO");
+    expect(next.cues[0]?.shot).toBe("VO");
   });
 });

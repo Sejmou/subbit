@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import type { Project, ShotType } from "../types";
 import {
   DEFAULT_DELIVERY_COLUMNS,
   type DeliveryColumnMapping,
 } from "../lib/delivery-columns";
+import { parseDeliveryExcel } from "../lib/delivery-excel";
+import { previewAddedShots } from "../lib/delivery-rows";
 import { DeliveryColumnMappingFields } from "./DeliveryColumnMappingFields";
 import { ImportDeliveryConfirmDialog } from "./ImportDeliveryConfirmDialog";
 
@@ -13,6 +16,7 @@ interface PendingImport {
 
 interface Props {
   open: boolean;
+  project: Project;
   cueCount: number;
   onExportBackup: () => void;
   onConfirmImport: (
@@ -25,6 +29,7 @@ interface Props {
 /** Pick columns/file, then confirm before replacing cues. */
 export function ImportDeliveryDialog({
   open,
+  project,
   cueCount,
   onExportBackup,
   onConfirmImport,
@@ -34,6 +39,8 @@ export function ImportDeliveryDialog({
     ...DEFAULT_DELIVERY_COLUMNS,
   });
   const [pending, setPending] = useState<PendingImport | null>(null);
+  const [addedShots, setAddedShots] = useState<ShotType[]>([]);
+  const [previewBusy, setPreviewBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [backupHint, setBackupHint] = useState<string | null>(null);
@@ -43,6 +50,8 @@ export function ImportDeliveryDialog({
     if (!open) return;
     setColumns({ ...DEFAULT_DELIVERY_COLUMNS });
     setPending(null);
+    setAddedShots([]);
+    setPreviewBusy(false);
     setBusy(false);
     setError(null);
     setBackupHint(null);
@@ -66,6 +75,33 @@ export function ImportDeliveryDialog({
     return () => window.clearTimeout(id);
   }, [backupHint]);
 
+  useEffect(() => {
+    if (!pending) {
+      setAddedShots([]);
+      setPreviewBusy(false);
+      return;
+    }
+
+    let cancelled = false;
+    setPreviewBusy(true);
+    void (async () => {
+      try {
+        const data = await pending.file.arrayBuffer();
+        const rows = await parseDeliveryExcel(data, pending.columns);
+        const nextAdded = previewAddedShots(project, rows);
+        if (!cancelled) setAddedShots(nextAdded);
+      } catch {
+        if (!cancelled) setAddedShots([]);
+      } finally {
+        if (!cancelled) setPreviewBusy(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pending, project]);
+
   const onPickFile = () => {
     setError(null);
     const input = document.createElement("input");
@@ -86,6 +122,7 @@ export function ImportDeliveryDialog({
 
   const cancelConfirm = () => {
     setPending(null);
+    setAddedShots([]);
     setError(null);
     setBackupHint(null);
   };
@@ -153,6 +190,8 @@ export function ImportDeliveryDialog({
         open={pending != null}
         fileName={pending?.file.name ?? ""}
         cueCount={cueCount}
+        addedShots={addedShots}
+        previewBusy={previewBusy}
         busy={busy}
         error={error}
         backupHint={backupHint}

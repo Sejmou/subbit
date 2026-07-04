@@ -1,10 +1,14 @@
 import { useEffect, type MouseEvent } from "react";
+import type { ShotType } from "../types";
 import { useModalFocusTrap } from "../hooks/useModalFocusTrap";
+import { shotDisplayLabel } from "../lib/shot-display";
 
 interface Props {
   open: boolean;
   fileName: string;
   cueCount: number;
+  addedShots?: ShotType[];
+  previewBusy?: boolean;
   busy?: boolean;
   error?: string | null;
   backupHint?: string | null;
@@ -20,6 +24,8 @@ export function ImportDeliveryConfirmDialog({
   open,
   fileName,
   cueCount,
+  addedShots = [],
+  previewBusy = false,
   busy = false,
   error = null,
   backupHint = null,
@@ -81,6 +87,23 @@ export function ImportDeliveryConfirmDialog({
           button also saves <strong>pre-excel-import</strong> and{" "}
           <strong>excel-import (cues overwritten)</strong> for restore.
         </p>
+
+        {previewBusy && (
+          <p className="hint" role="status">
+            Checking shot labels…
+          </p>
+        )}
+        {!previewBusy && addedShots.length > 0 && (
+          <p className="hint" role="status">
+            New shot types from the spreadsheet will be added:{" "}
+            <strong>
+              {addedShots
+                .map((shot) => shotDisplayLabel(shot.id, shot.label))
+                .join(", ")}
+            </strong>
+            . You can rename their labels in the Shot types panel after import.
+          </p>
+        )}
 
         <div className="import-delivery-confirm-backup">
           <button type="button" onClick={onExportBackup} disabled={busy}>
