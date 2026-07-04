@@ -14,7 +14,7 @@ import {
 } from "./delivery-excel";
 import { exportCsv } from "./export-csv";
 import { DEFAULT_DELIVERY_COLUMNS } from "./delivery-columns";
-import { joinShotRanges } from "./export-shot-ranges";
+import { cueDisplayText } from "./word-model/render";
 import { makeCue, makeProject } from "../test-fixtures";
 
 function writeBufferToArrayBuffer(
@@ -54,10 +54,45 @@ describe("cuesFromDeliveryRows", () => {
     expect(cues).toHaveLength(1);
     expect(speakers).toHaveLength(1);
     expect(speakers[0]?.name).toBe("Lukas");
-    expect(cues[0]?.shotRanges[0]?.shot).toBe("OFF");
+    expect(cues[0]?.shot).toBe("OFF");
     expect(cues[0]?.words.map((w) => w.text).join(" ")).toBe(
       "Ich habe nicht gefragt.",
     );
+  });
+
+  it("splits a ' / ' subtitle into a joined run of cues", () => {
+    const project = makeProject({
+      startTimecode: "10:00:00:00",
+      speakers: [],
+      cues: [],
+    });
+    const rows: DeliveryRowValues[] = [
+      {
+        no: "1",
+        timecodeIn: "10:00:01:00",
+        timecodeOut: "10:00:05:00",
+        role: "Anna",
+        info: "ON / OFF",
+        subtitle: "Hallo Welt / wie geht es",
+      },
+    ];
+    const { cues, speakers } = cuesFromDeliveryRows(project, rows);
+    expect(cues).toHaveLength(2);
+
+    // first cue: shot ON, speaker Anna, run head
+    expect(cues[0]?.shot).toBe("ON");
+    expect(cues[0]?.joinedToPrev).toBeUndefined();
+    expect(cues[0]?.speakerId).toBe(speakers[0]?.id);
+    expect(cues[0]?.words.map((w) => w.text).join(" ")).toBe("Hallo Welt");
+
+    // second cue: shot OFF, joined, no speaker
+    expect(cues[1]?.shot).toBe("OFF");
+    expect(cues[1]?.joinedToPrev).toBe(true);
+    expect(cues[1]?.speakerId).toBeNull();
+    expect(cues[1]?.words.map((w) => w.text).join(" ")).toBe("wie geht es");
+
+    // cues abut in time
+    expect(cues[0]?.end).toBeCloseTo(cues[1]?.start ?? 0, 5);
   });
 
   it("parses annotated SMPTE timecodes from delivery sheets", () => {
@@ -136,7 +171,41 @@ describe("delivery excel round-trip", () => {
     expect(imported.speakers[0]?.name).toBe("Mia");
     expect(imported.cues[0]?.start).toBeCloseTo(65, 2);
     expect(imported.cues[0]?.end).toBeCloseTo(68, 2);
-    expect(joinShotRanges(imported.cues[0]!).subtitle).toBe("Hello there");
+    expect(cueDisplayText(imported.cues[0]!)).toBe("Hello there");
+  });
+
+  it("round-trips a joined run through xlsx as one row", async () => {
+    const project = makeProject({
+      startTimecode: "10:00:00:00",
+      speakers: [{ id: "s1", name: "Mia", color: "#fff" }],
+      cues: [
+        makeCue(
+          { id: "c1", start: 65, end: 67, speakerId: "s1" },
+          "Hello",
+          "ON",
+        ),
+        {
+          ...makeCue({ id: "c2", start: 67, end: 69 }, "there friend", "OFF"),
+          joinedToPrev: true,
+        },
+      ],
+    });
+
+    const buffer = await exportDeliveryExcel(project);
+    const rows = await parseDeliveryExcel(buffer);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.info).toBe("ON / OFF");
+    expect(rows[0]?.subtitle).toBe("Hello / there friend");
+    expect(rows[0]?.role).toBe("Mia");
+
+    const imported = await importDeliveryExcel(
+      { ...project, cues: [], speakers: [] },
+      buffer,
+    );
+    expect(imported.cues).toHaveLength(2);
+    expect(imported.cues[1]?.joinedToPrev).toBe(true);
+    expect(imported.cues[0]?.shot).toBe("ON");
+    expect(imported.cues[1]?.shot).toBe("OFF");
   });
 
   it("matches csv export row content", async () => {

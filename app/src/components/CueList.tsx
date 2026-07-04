@@ -16,7 +16,19 @@ import {
   type FindHighlightState,
   INACTIVE_FIND_HIGHLIGHT,
 } from "../lib/find-highlight";
-import { CueRow } from "./CueRow";
+import { CueRow, type BracketKind } from "./CueRow";
+
+/** 0 → "a", 1 → "b", … 26 → "aa" (spreadsheet-style). */
+function runLetter(i: number): string {
+  let n = i + 1;
+  let s = "";
+  while (n > 0) {
+    const r = (n - 1) % 26;
+    s = String.fromCharCode(97 + r) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
 
 interface Props {
   project: Project;
@@ -54,6 +66,33 @@ export function CueList({
     () => indexMatchesBySegment(findHighlight.matches),
     [findHighlight.matches],
   );
+
+  // Group labels: a group is a head cue plus cues joined to it. Lone cue → "3";
+  // joined cues → "1a"/"1b"/… Labels are derived from the FULL cue list, so
+  // they stay stable no matter how the list is filtered.
+  const runLabels = useMemo(() => {
+    const map = new Map<string, string>();
+    const cues = project.cues;
+    let groupNumber = 0;
+    let letterIndex = 0;
+    for (let i = 0; i < cues.length; i++) {
+      const isHead = i === 0 || !cues[i].joinedToPrev;
+      if (isHead) {
+        groupNumber++;
+        letterIndex = 0;
+      } else {
+        letterIndex++;
+      }
+      const grouped = isHead ? (cues[i + 1]?.joinedToPrev ?? false) : true;
+      map.set(
+        cues[i].id,
+        grouped
+          ? `${groupNumber}${runLetter(letterIndex)}`
+          : String(groupNumber),
+      );
+    }
+    return map;
+  }, [project.cues]);
 
   const virtualizer = useVirtualizer({
     count: entries.length,
@@ -147,6 +186,23 @@ export function CueList({
       <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
         {items.map((item) => {
           const { cue, index } = entries[item.index];
+          const label = runLabels.get(cue.id) ?? String(index + 1);
+          // Bracket segment from the VISIBLE neighbours: connect only to a
+          // group member that is both adjacent in the full list and on screen.
+          const prev = entries[item.index - 1];
+          const next = entries[item.index + 1];
+          const joinAbove =
+            !!prev && prev.index === index - 1 && !!cue.joinedToPrev;
+          const joinBelow =
+            !!next && next.index === index + 1 && !!next.cue.joinedToPrev;
+          const bracket: BracketKind =
+            joinAbove && joinBelow
+              ? "mid"
+              : joinBelow
+                ? "top"
+                : joinAbove
+                  ? "bottom"
+                  : "none";
           return (
             <div
               key={cue.id}
@@ -166,6 +222,8 @@ export function CueList({
                 project={project}
                 selected={cue.id === selectedCueId}
                 active={index === activeIndex}
+                runLabel={label}
+                bracket={bracket}
                 findHighlight={findHighlight}
                 segmentMatchIndex={segmentMatchIndex}
               />

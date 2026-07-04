@@ -11,14 +11,13 @@ import {
   DEFAULT_DELIVERY_COLUMNS,
   type DeliveryColumnMapping,
 } from "./delivery-columns";
-import { joinShotRanges } from "./export-shot-ranges";
+import { groupCuesIntoRuns, joinRun } from "./export-shot-ranges";
 import { cueExportFrame } from "./program-start";
 import { parseEditableText } from "./word-model/tokenize";
 import {
   requiredDuration,
   respreadCharacterWeighted,
 } from "./word-model/timing";
-import type { ShotRange } from "../types";
 
 export interface DeliveryRowValues {
   no: string;
@@ -79,7 +78,7 @@ export function splitDeliverySlices(value: string): string[] {
   return value.split(" / ");
 }
 
-/** Build spreadsheet rows (header + one row per cue). */
+/** Build spreadsheet rows (header + one row per run of joined cues). */
 export function buildDeliveryRows(
   project: Project,
   columns: DeliveryColumnMapping = DEFAULT_DELIVERY_COLUMNS,
@@ -94,13 +93,15 @@ export function buildDeliveryRows(
   ];
   const rows: string[][] = [header];
 
-  project.cues.forEach((cue, i) => {
-    const { info, subtitle } = joinShotRanges(cue);
+  groupCuesIntoRuns(project.cues).forEach((run, i) => {
+    const first = run[0]!;
+    const last = run[run.length - 1]!;
+    const { info, subtitle } = joinRun(run);
     rows.push([
       String(i + 1),
-      cueDeliveryTimecode(cue.start, project),
-      cueDeliveryTimecode(cue.end, project),
-      roleName(project, cue),
+      cueDeliveryTimecode(first.start, project),
+      cueDeliveryTimecode(last.end, project),
+      roleName(project, first),
       info,
       subtitle,
     ]);
@@ -133,48 +134,65 @@ function normalizeShotSlices(
   return { shotLabels, textSlices };
 }
 
-function wordsFromDeliveryText(
+/**
+ * Build one cue per non-empty " / " slice as a run: words are spread
+ * character-weighted across the whole row's [start, end] (so timing matches a
+ * single-cue layout), then sliced into abutting cues. The speaker is assigned
+ * to the first cue only; the rest are `joinedToPrev: true`.
+ */
+function buildRowCues(
   textSlices: string[],
   shotLabels: string[],
   start: number,
   end: number,
-): Pick<Cue, "words" | "lineBreakAfterWordIndices" | "shotRanges"> {
-  const allTokens: string[] = [];
-  const lineBreakAfterWordIndices: number[] = [];
-  const shotRanges: ShotRange[] = [];
+  speakerId: string | null,
+): Cue[] {
+  const slices = textSlices
+    .map((text, i) => {
+      const { tokens, lineBreakAfterWordIndices } = parseEditableText(
+        text ?? "",
+      );
+      return {
+        tokens,
+        breaks: lineBreakAfterWordIndices,
+        shot: shotLabels[i] ?? shotLabels[shotLabels.length - 1] ?? "ON",
+      };
+    })
+    .filter((s) => s.tokens.length > 0);
 
-  for (let i = 0; i < textSlices.length; i++) {
-    const { tokens, lineBreakAfterWordIndices: sliceBreaks } =
-      parseEditableText(textSlices[i] ?? "");
-    if (tokens.length === 0) continue;
-    const fromWord = allTokens.length;
-    allTokens.push(...tokens);
-    for (const b of sliceBreaks) {
-      lineBreakAfterWordIndices.push(fromWord + b);
-    }
-    shotRanges.push({
-      fromWord,
-      toWord: allTokens.length - 1,
-      shot: shotLabels[i] ?? shotLabels[shotLabels.length - 1] ?? "ON",
-    });
-  }
-
-  if (allTokens.length === 0) {
-    const shot = shotLabels[0] ?? "ON";
-    return {
-      words: [],
-      lineBreakAfterWordIndices: [],
-      shotRanges: [{ fromWord: 0, toWord: 0, shot }],
-    };
-  }
+  if (slices.length === 0) return [];
 
   const words = respreadCharacterWeighted(
-    allTokens.map((text) => ({ text, start, end })),
+    slices.flatMap((s) => s.tokens).map((text) => ({ text, start, end })),
     start,
     end,
   );
 
-  return { words, lineBreakAfterWordIndices, shotRanges };
+  const cues: Cue[] = [];
+  let offset = 0;
+  let prevEnd = start;
+  slices.forEach((slice, i) => {
+    const sliceWords = words.slice(offset, offset + slice.tokens.length);
+    offset += slice.tokens.length;
+    const cueStart = prevEnd;
+    const natural =
+      i === slices.length - 1 ? end : (sliceWords.at(-1)?.end ?? cueStart);
+    const cueEnd = natural > cueStart ? natural : cueStart + 1e-3;
+    prevEnd = cueEnd;
+    cues.push({
+      id: newId(),
+      start: cueStart,
+      end: cueEnd,
+      speakerId: i === 0 ? speakerId : null,
+      words: sliceWords,
+      lineBreakAfterWordIndices: slice.breaks,
+      shot: slice.shot,
+      reviewed: false,
+      inferredSpeaker: null,
+      ...(i === 0 ? {} : { joinedToPrev: true }),
+    });
+  });
+  return cues;
 }
 
 function resolveSpeakerId(
@@ -263,17 +281,7 @@ export function cuesFromDeliveryRows(
     );
     speakers = nextSpeakers;
 
-    const content = wordsFromDeliveryText(textSlices, shotLabels, start, end);
-
-    cues.push({
-      id: newId(),
-      start,
-      end,
-      speakerId,
-      reviewed: false,
-      inferredSpeaker: null,
-      ...content,
-    });
+    cues.push(...buildRowCues(textSlices, shotLabels, start, end, speakerId));
   }
 
   return { cues, speakers };

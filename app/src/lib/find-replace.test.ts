@@ -11,17 +11,7 @@ import { makeCue } from "../test-fixtures";
 
 const cues: Cue[] = [
   makeCue({ id: "a", start: 0, end: 1, speakerId: null }, "hello hello"),
-  {
-    ...makeCue({ id: "b", start: 1, end: 2, speakerId: null }, ""),
-    words: [
-      { text: "Hello", start: 1, end: 1.5 },
-      { text: "world", start: 1.5, end: 2 },
-    ],
-    shotRanges: [
-      { fromWord: 0, toWord: 0, shot: "ON" },
-      { fromWord: 1, toWord: 1, shot: "OFF" },
-    ],
-  },
+  makeCue({ id: "b", start: 1, end: 2, speakerId: null }, "Hello world"),
 ];
 
 describe("findTextMatches", () => {
@@ -60,11 +50,11 @@ describe("replace helpers", () => {
     expect(replaceMatchesInText("hello hello", matches, "x")).toBe("x x");
   });
 
-  it("builds replace-all updates grouped by segment", () => {
+  it("builds replace-all updates grouped by cue", () => {
     const matches = findTextMatches(cues, "hello");
     expect(buildReplaceAllUpdates(cues, matches, "hi")).toEqual([
       { cueId: "a", segIndex: 0, text: "hi hi" },
-      { cueId: "b", segIndex: 0, text: "hi" },
+      { cueId: "b", segIndex: 0, text: "hi world" },
     ]);
   });
 });

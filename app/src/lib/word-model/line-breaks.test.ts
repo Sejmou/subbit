@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeCue } from "../../test-fixtures";
-import { setShotRangeText } from "./cue-ops";
-import { cueDisplayText, shotRangeText } from "./render";
+import { setCueText } from "./cue-ops";
+import { cueDisplayText } from "./render";
 import { parseEditableText } from "./tokenize";
 
 describe("parseEditableText", () => {
@@ -20,12 +20,11 @@ describe("parseEditableText", () => {
   });
 });
 
-describe("setShotRangeText", () => {
+describe("setCueText", () => {
   it("preserves line breaks typed in the editor", () => {
     const cue = makeCue({ id: "c1", start: 0, end: 2 }, "hello world");
-    const next = setShotRangeText(cue, 0, "hello\nworld", "ON");
+    const next = setCueText(cue, "hello\nworld");
 
-    expect(shotRangeText(next, next.shotRanges[0])).toBe("hello\nworld");
     expect(cueDisplayText(next)).toBe("hello\nworld");
     expect(next.lineBreakAfterWordIndices).toEqual([0]);
   });
@@ -35,9 +34,9 @@ describe("setShotRangeText", () => {
       ...makeCue({ id: "c1", start: 0, end: 2 }, "hello world"),
       lineBreakAfterWordIndices: [0],
     };
-    const next = setShotRangeText(cue, 0, "hello world", "ON");
+    const next = setCueText(cue, "hello world");
 
-    expect(shotRangeText(next, next.shotRanges[0])).toBe("hello world");
+    expect(cueDisplayText(next)).toBe("hello world");
     expect(next.lineBreakAfterWordIndices).toEqual([]);
   });
 });

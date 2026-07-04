@@ -25,12 +25,19 @@ import {
   INACTIVE_FIND_HIGHLIGHT,
 } from "../lib/find-highlight";
 import type { TextMatch } from "../lib/find-replace";
-import { effectiveShotRanges, shotRangeText } from "../lib/word-model/render";
+import { cueDisplayText } from "../lib/word-model/render";
 import {
   cueHasValidationIssues,
   formatCueValidationTooltip,
   validateCue,
 } from "../lib/word-model/validation";
+
+/**
+ * Group bracket segment drawn in the gutter, computed against the *visible*
+ * (filtered) list so it only ever connects adjacent visible group members.
+ * "none" = no bracket (lone cue, or an isolated visible member of a group).
+ */
+export type BracketKind = "none" | "top" | "mid" | "bottom";
 
 interface Props {
   cue: Cue;
@@ -38,6 +45,9 @@ interface Props {
   project: Project;
   selected: boolean;
   active: boolean;
+  /** Display label for the gutter: "3" for a lone cue, "1a"/"1b"/… within a group. */
+  runLabel: string;
+  bracket: BracketKind;
   findHighlight?: FindHighlightState;
   segmentMatchIndex?: Map<string, TextMatch[]>;
 }
@@ -180,6 +190,8 @@ function CueRowImpl({
   project,
   selected,
   active,
+  runLabel,
+  bracket,
   findHighlight = INACTIVE_FIND_HIGHLIGHT,
   segmentMatchIndex,
 }: Props) {
@@ -227,7 +239,6 @@ function CueRowImpl({
   const invalid = isCueBeforeReferenceStart(cue, project);
   const validationIssues = useMemo(() => validateCue(cue), [cue]);
   const validationTip = formatCueValidationTooltip(validationIssues);
-  const shotRanges = effectiveShotRanges(cue, project.defaultShot);
   const cls = [
     "cue-row",
     selected && "selected",
@@ -235,6 +246,8 @@ function CueRowImpl({
     cue.reviewed && "reviewed",
     locked && "reviewed-locked",
     invalid && "cue-invalid",
+    bracket !== "none" && `cue-row--bracket-${bracket}`,
+    (bracket === "top" || bracket === "mid") && "cue-row--join-below",
   ]
     .filter(Boolean)
     .join(" ");
@@ -246,7 +259,7 @@ function CueRowImpl({
       style={{ borderLeftColor: speaker?.color ?? "transparent" }}
     >
       <div className="cue-gutter">
-        <span className="cue-no">{index + 1}</span>
+        <span className="cue-no">{runLabel}</span>
         {invalid && (
           <span
             className="cue-invalid-badge"
@@ -329,47 +342,45 @@ function CueRowImpl({
       </span>
 
       <div className="cue-segments">
-        {shotRanges.map((range, i) => (
-          <div key={i} className="segment">
-            <span
-              className="tooltip-wrap"
-              {...tip(
-                locked
-                  ? "Reviewed (locked) — uncheck to change shot"
-                  : `Cycle shot type (${cycleShotLabel})`,
-              )}
+        <div className="segment">
+          <span
+            className="tooltip-wrap"
+            {...tip(
+              locked
+                ? "Reviewed (locked) — uncheck to change shot"
+                : `Cycle shot type (${cycleShotLabel})`,
+            )}
+          >
+            <select
+              className="shot-select"
+              value={cue.shot}
+              disabled={locked}
+              onChange={(e) => setSegmentShot(cue.id, 0, e.target.value)}
             >
-              <select
-                className="shot-select"
-                value={range.shot}
-                disabled={locked}
-                onChange={(e) => setSegmentShot(cue.id, i, e.target.value)}
-              >
-                {project.shots.map((sh) => (
-                  <option key={sh.id} value={sh.id}>
-                    {sh.id}
-                  </option>
-                ))}
-              </select>
-            </span>
-            <SegmentTextarea
-              inputRef={i === 0 ? firstTextarea : undefined}
-              cueId={cue.id}
-              segIndex={i}
-              value={shotRangeText(cue, range)}
-              readOnly={locked}
-              findHighlight={findHighlight}
-              segmentMatches={
-                segmentMatchIndex?.get(segmentMatchKey(cue.id, i)) ?? []
-              }
-              onFocus={() => {
-                selectCue(cue.id);
-                selectSegment(i);
-              }}
-              onChange={(text) => setSegmentText(cue.id, i, text)}
-            />
-          </div>
-        ))}
+              {project.shots.map((sh) => (
+                <option key={sh.id} value={sh.id}>
+                  {sh.id}
+                </option>
+              ))}
+            </select>
+          </span>
+          <SegmentTextarea
+            inputRef={firstTextarea}
+            cueId={cue.id}
+            segIndex={0}
+            value={cueDisplayText(cue)}
+            readOnly={locked}
+            findHighlight={findHighlight}
+            segmentMatches={
+              segmentMatchIndex?.get(segmentMatchKey(cue.id, 0)) ?? []
+            }
+            onFocus={() => {
+              selectCue(cue.id);
+              selectSegment(0);
+            }}
+            onChange={(text) => setSegmentText(cue.id, 0, text)}
+          />
+        </div>
       </div>
 
       <span

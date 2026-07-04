@@ -1,7 +1,6 @@
 import { findActiveCueIndex } from "./active-cue";
-import { activeShotRangeIndex, shotRangeAtIndex } from "./segment-timing";
 import type { Project } from "../types";
-import { shotRangeText } from "./word-model/render";
+import { cueDisplayText } from "./word-model/render";
 
 export interface PreviewSubtitle {
   cueId: string;
@@ -17,9 +16,7 @@ export function previewAtTime(
   if (idx < 0) return null;
 
   const cue = project.cues[idx];
-  const rangeIdx = activeShotRangeIndex(cue, t, project);
-  const range = shotRangeAtIndex(cue, rangeIdx, project.defaultShot);
-  const text = shotRangeText(cue, range).trim();
+  const text = cueDisplayText(cue).trim();
   if (!text) return null;
 
   return { cueId: cue.id, text };

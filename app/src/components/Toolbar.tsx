@@ -70,17 +70,21 @@ function saveStateLabel(
 function ReviewProgress({
   reviewed,
   total,
+  groups,
 }: {
   reviewed: number;
   total: number;
+  groups: number;
 }) {
   const tip = useTip();
   const radius = 8;
   const circumference = 2 * Math.PI * radius;
   const ratio = total > 0 ? reviewed / total : 0;
   const dashOffset = circumference * (1 - ratio);
-  const percent = (ratio * 100).toFixed(1);
-  const summary = `${reviewed} of ${total} cues reviewed (${percent}%)`;
+  const percentLabel = (ratio * 100).toFixed(1);
+  const summary =
+    `${reviewed} of ${total} cues reviewed (${percentLabel}%)` +
+    (groups < total ? ` · ${groups} group${groups === 1 ? "" : "s"}` : "");
 
   return (
     <span className="review-progress" aria-label={summary} {...tip(summary)}>
@@ -95,9 +99,7 @@ function ReviewProgress({
           strokeDashoffset={dashOffset}
         />
       </svg>
-      <span className="review-progress-label">
-        {reviewed}/{total} reviewed
-      </span>
+      <span className="review-progress-label">{percentLabel}%</span>
     </span>
   );
 }
@@ -144,6 +146,10 @@ export function Toolbar({
   const saveLabel = useShortcutLabel("save");
   const reviewed = project.cues.filter((c) => c.reviewed).length;
   const total = project.cues.length;
+  const groups = project.cues.reduce(
+    (n, c, i) => (i === 0 || !c.joinedToPrev ? n + 1 : n),
+    0,
+  );
 
   // Re-render periodically so "Last save … ago" stays fresh.
   const [, tick] = useState(0);
@@ -179,7 +185,7 @@ export function Toolbar({
         onToggleStatusFilter={onToggleStatusFilter}
         onClearFilters={onClearFilters}
       />
-      <ReviewProgress reviewed={reviewed} total={total} />
+      <ReviewProgress reviewed={reviewed} total={total} groups={groups} />
 
       <span className="btn-group">
         <span className="tooltip-wrap" {...tip(`Undo (${undoLabel})`)}>

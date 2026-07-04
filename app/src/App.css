@@ -1381,6 +1381,45 @@
 .cue-row.cue-invalid .cue-no {
   color: var(--warn, #ffb74d);
 }
+
+/* Joined-cue groups: a single bracket in the gutter ties the members together.
+   The bracket segment for each row is chosen from the VISIBLE neighbours, so it
+   only ever connects on-screen adjacent members and never dangles when the list
+   is filtered. */
+.cue-row {
+  position: relative;
+}
+/* Drop the divider only when the next VISIBLE row continues this group. */
+.cue-row--join-below {
+  border-bottom-color: transparent;
+}
+.cue-row--bracket-top::before,
+.cue-row--bracket-mid::before,
+.cue-row--bracket-bottom::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  width: 5px;
+  border-left: 1.5px solid var(--text-dim);
+  opacity: 0.55;
+  pointer-events: none;
+}
+.cue-row--bracket-top::before {
+  top: 10px;
+  bottom: -1px;
+  border-top: 1.5px solid var(--text-dim);
+  border-top-left-radius: 4px;
+}
+.cue-row--bracket-mid::before {
+  top: -1px;
+  bottom: -1px;
+}
+.cue-row--bracket-bottom::before {
+  top: -1px;
+  bottom: 10px;
+  border-bottom: 1.5px solid var(--text-dim);
+  border-bottom-left-radius: 4px;
+}
 .cue-invalid-badge {
   display: inline-flex;
   align-items: center;

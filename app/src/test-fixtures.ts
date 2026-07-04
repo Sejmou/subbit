@@ -8,17 +8,13 @@ import {
   type Project,
   type ShotId,
 } from "./types";
-import {
-  effectiveShotRanges,
-  shotRangeText,
-  singleShotRange,
-} from "./lib/word-model/render";
+import { cueDisplayText } from "./lib/word-model/render";
 import { respreadCharacterWeighted } from "./lib/word-model/timing";
 import { tokenize } from "./lib/word-model/tokenize";
 
 let fixtureCueCounter = 0;
 
-/** Build a cue with words derived from plain text (one default shot range). */
+/** Build a single-shot cue with words derived from plain text. */
 export function makeCue(
   partial: Partial<Cue> & Pick<Cue, "id" | "start" | "end">,
   text = "hello",
@@ -37,27 +33,19 @@ export function makeCue(
           partial.end,
         )
       : [];
-  const shotRanges =
-    words.length > 0
-      ? singleShotRange(words.length, shot)
-      : [{ fromWord: 0, toWord: 0, shot }];
   return {
     speakerId: null,
     lineBreakAfterWordIndices: [],
     reviewed: false,
+    shot,
     ...partial,
     words,
-    shotRanges: partial.shotRanges ?? shotRanges,
   };
 }
 
-export function cueShotText(
-  cue: Cue,
-  rangeIndex = 0,
-  defaultShot: ShotId = "ON",
-): string {
-  const ranges = effectiveShotRanges(cue, defaultShot);
-  return shotRangeText(cue, ranges[rangeIndex]);
+/** Full display text of a cue (helper for tests). */
+export function cueShotText(cue: Cue): string {
+  return cueDisplayText(cue);
 }
 
 export function makeProject(overrides: Partial<Project> = {}): Project {

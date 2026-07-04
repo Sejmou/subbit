@@ -15,7 +15,6 @@ import {
   type Word,
 } from "../types";
 import { newProjectId, resolveProjectName } from "./project-meta";
-import { singleShotRange } from "./word-model/render";
 import { tokenize } from "./word-model/tokenize";
 import { respreadCharacterWeighted } from "./word-model/timing";
 
@@ -103,7 +102,7 @@ function wordsFromWhisperxSegment(seg: WhisperxSegment): Word[] {
 
 /**
  * Build a fresh Project from whisperx JSON.
- * Each whisperx segment becomes one cue with words and a single default shot range.
+ * Each whisperx segment becomes one cue with words and the default shot.
  */
 export function importWhisperx(json: WhisperxJson, videoName: string): Project {
   const segments = json.segments ?? [];
@@ -124,8 +123,7 @@ export function importWhisperx(json: WhisperxJson, videoName: string): Project {
       inferredSpeaker,
       words,
       lineBreakAfterWordIndices: [],
-      shotRanges:
-        words.length > 0 ? singleShotRange(words.length, defaultShot) : [],
+      shot: defaultShot,
       reviewed: false,
     };
   });

@@ -13,13 +13,11 @@ import {
   applyCueBlockMove,
   applyCueEndChange,
   applyCueStartChange,
-  insertShotSplitAtOffset,
   newCueAtPlayhead,
-  setShotRangeShot,
-  setShotRangeText,
+  setCueShot,
+  setCueText,
   splitCueAtCaretOffset,
 } from "../lib/word-model/cue-ops";
-import { effectiveShotRanges } from "../lib/word-model/render";
 import { useReferenceStartNoticeStore } from "./reference-start-notice";
 
 const DEFAULT_CUE_DURATION = 2;
@@ -370,41 +368,25 @@ export const useProject = create<ProjectState>((set, getState) => {
       const p = getState().project;
       if (!p || cueIsLocked(p, cueId)) return;
       update(
-        (proj) =>
-          mapCue(proj, cueId, (c) =>
-            setShotRangeText(c, segIndex, text, proj.defaultShot),
-          ),
+        (proj) => mapCue(proj, cueId, (c) => setCueText(c, text)),
         `text:${cueId}:${segIndex}`,
       );
     },
 
     replaceSegmentTexts: (updates) =>
       update((p) => {
-        const allowed = updates.filter((u) => !cueIsLocked(p, u.cueId));
-        if (allowed.length === 0) return p;
-        const lookup = new Map(
-          allowed.map((u) => [`${u.cueId}:${u.segIndex}`, u.text] as const),
-        );
+        const byCue = new Map<string, string>();
+        for (const u of updates) {
+          if (!cueIsLocked(p, u.cueId)) byCue.set(u.cueId, u.text);
+        }
+        if (byCue.size === 0) return p;
         let changed = false;
         const cues = p.cues.map((c) => {
-          if (cueIsLocked(p, c.id)) return c;
-          let next = c;
-          for (const [key, text] of lookup) {
-            const [cueId, segIndexStr] = key.split(":");
-            if (cueId !== c.id) continue;
-            const segIndex = Number(segIndexStr);
-            const updated = setShotRangeText(
-              next,
-              segIndex,
-              text,
-              p.defaultShot,
-            );
-            if (updated !== next) {
-              next = updated;
-              changed = true;
-            }
-          }
-          return next;
+          const text = byCue.get(c.id);
+          if (text === undefined) return c;
+          const updated = setCueText(c, text);
+          if (updated !== c) changed = true;
+          return updated;
         });
         return changed ? { ...p, cues } : p;
       }),
@@ -482,24 +464,21 @@ export const useProject = create<ProjectState>((set, getState) => {
       if (!p || cueIsLocked(p, cueId)) return;
       update((proj) => mapCue(proj, cueId, (c) => ({ ...c, speakerId })));
     },
-    setSegmentShot: (cueId, segIndex, shot) => {
+    setSegmentShot: (cueId, _segIndex, shot) => {
       const p = getState().project;
       if (!p || cueIsLocked(p, cueId)) return;
-      update((proj) =>
-        mapCue(proj, cueId, (c) => setShotRangeShot(c, segIndex, shot)),
-      );
+      update((proj) => mapCue(proj, cueId, (c) => setCueShot(c, shot)));
     },
-    cycleSegmentShot: (cueId, segIndex) => {
+    cycleSegmentShot: (cueId, _segIndex) => {
       const p = getState().project;
       if (!p || cueIsLocked(p, cueId)) return;
       update((proj) => {
         const order = proj.shots.map((s) => s.id);
         const cue = findCue(proj, cueId);
         if (!cue) return proj;
-        const ranges = effectiveShotRanges(cue, proj.defaultShot);
-        const current = ranges[segIndex]?.shot ?? proj.defaultShot;
-        const next = order[(order.indexOf(current) + 1) % order.length];
-        return mapCue(proj, cueId, (c) => setShotRangeShot(c, segIndex, next));
+        const current = cue.shot || proj.defaultShot;
+        const next = order[(order.indexOf(current) + 1) % order.length]!;
+        return mapCue(proj, cueId, (c) => setCueShot(c, next));
       });
     },
     toggleReviewed: (cueId) =>
@@ -509,28 +488,13 @@ export const useProject = create<ProjectState>((set, getState) => {
         return mapCue(p, cueId, (c) => ({ ...c, reviewed: !c.reviewed }));
       }),
 
-    splitCueAtCaret: (cueId, segIndex, charOffset, time) => {
+    splitCueAtCaret: (cueId, _segIndex, charOffset, _time) => {
       const p = getState().project;
       if (!p || cueIsLocked(p, cueId)) return;
       update((proj) => {
         const idx = proj.cues.findIndex((c) => c.id === cueId);
         if (idx === -1) return proj;
-        const c = proj.cues[idx];
-        const splitTime = snapToFrame(time, proj);
-        const gap = frameStep(proj);
-        const t =
-          splitTime > c.start + gap && splitTime < c.end - gap
-            ? splitTime
-            : (c.start + c.end) / 2;
-
-        const result = splitCueAtCaretOffset(
-          c,
-          segIndex,
-          charOffset,
-          t,
-          proj.defaultShot,
-          newId,
-        );
+        const result = splitCueAtCaretOffset(proj.cues[idx], charOffset, newId);
         if (!result) return proj;
         const [left, right] = result;
         const cues = [
@@ -543,19 +507,33 @@ export const useProject = create<ProjectState>((set, getState) => {
       });
     },
 
-    insertShotSplit: (cueId, segIndex, charOffset) => {
+    // Split the cue at the caret into a joined run whose second half takes the
+    // next shot — the in-app equivalent of a delivery-sheet " / " cut.
+    insertShotSplit: (cueId, _segIndex, charOffset) => {
       const p = getState().project;
       if (!p || cueIsLocked(p, cueId)) return;
       update((proj) => {
+        const idx = proj.cues.findIndex((c) => c.id === cueId);
+        if (idx === -1) return proj;
+        const c = proj.cues[idx];
+        const result = splitCueAtCaretOffset(c, charOffset, newId);
+        if (!result) return proj;
         const order = proj.shots.map((s) => s.id);
-        const cue = findCue(proj, cueId);
-        if (!cue) return proj;
-        const ranges = effectiveShotRanges(cue, proj.defaultShot);
-        const current = ranges[segIndex]?.shot ?? proj.defaultShot;
-        const nextShot = order[(order.indexOf(current) + 1) % order.length];
-        return mapCue(proj, cueId, (c) =>
-          insertShotSplitAtOffset(c, segIndex, charOffset, nextShot),
-        );
+        const current = c.shot || proj.defaultShot;
+        const nextShot = order[(order.indexOf(current) + 1) % order.length]!;
+        const [left, right] = result;
+        const joinedRight: Cue = {
+          ...right,
+          joinedToPrev: true,
+          shot: nextShot,
+        };
+        const cues = [
+          ...proj.cues.slice(0, idx),
+          left,
+          joinedRight,
+          ...proj.cues.slice(idx + 1),
+        ];
+        return { ...proj, cues };
       });
     },
 

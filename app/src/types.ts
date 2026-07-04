@@ -1,7 +1,10 @@
 /**
- * Core domain model for Subbit (schema version 1).
+ * Core domain model for Subbit (schema version 2).
  *
- * Cues are word lists with timed tokens, shot ranges, and optional line breaks.
+ * Cues are word lists with timed tokens, a single shot, and optional line breaks.
+ * Consecutive cues may be linked together into a 'group'/'run' by setting {@link Cue.joinedToPrev} to true on each subsequent cue
+ * (in which case the previous cue's end time is used as the start time for the next cue; the two values should be equal!).
+ *
  * Display text and exports are derived from words — see `lib/word-model`.
  */
 
@@ -16,13 +19,6 @@ export interface Word {
   score?: number;
 }
 
-/** Contiguous word indices sharing one shot type (CSV "Info" slice). */
-export interface ShotRange {
-  fromWord: number;
-  toWord: number;
-  shot: ShotId;
-}
-
 /** Diarization guess from whisperx import; kept even after manual role assignment. */
 export interface InferredSpeaker {
   speakerId: string;
@@ -31,8 +27,9 @@ export interface InferredSpeaker {
 }
 
 /**
- * One editable subtitle. Maps 1:1 to a row in the delivery CSV.
- * Text is derived from {@link Word} tokens; shot ranges map to CSV " / " slices.
+ * One editable subtitle. A single cue maps to one CSV " / " slice; a run of
+ * cues linked by {@link Cue.joinedToPrev} maps to one delivery-sheet row.
+ * Text is derived from {@link Word} tokens.
  */
 export interface Cue {
   id: string;
@@ -44,7 +41,14 @@ export interface Cue {
   speakerId: string | null;
   words: Word[];
   lineBreakAfterWordIndices: number[];
-  shotRanges: ShotRange[];
+  /** Shot type for this cue (CSV "Info" slice). */
+  shot: ShotId;
+  /**
+   * True when this cue is an internal cut of the same spoken sequence as the
+   * immediately preceding cue (a delivery-sheet " / " boundary). Cues in such a
+   * run abut in time (`prev.end === this.start`) and export to one row.
+   */
+  joinedToPrev?: boolean;
   /** Manually confirmed by the user (helps track editing progress). */
   reviewed?: boolean;
   /** Import-time diarization guess; confidence drives auto-assign at import. */
@@ -107,7 +111,7 @@ export interface Project {
   cues: Cue[];
 }
 
-export const PROJECT_VERSION = 1;
+export const PROJECT_VERSION = 2;
 
 export const DEFAULT_SHOTS: ShotType[] = [
   { id: "ON", label: "On-screen" },

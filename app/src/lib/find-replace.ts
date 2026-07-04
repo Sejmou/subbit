@@ -1,9 +1,10 @@
 import type { Cue } from "../types";
 import { isReviewedCueLocked } from "./cue-lock";
-import { effectiveShotRanges, shotRangeText } from "./word-model/render";
+import { cueDisplayText } from "./word-model/render";
 
 export interface TextMatch {
   cueId: string;
+  /** Always 0 — one segment per cue; retained for stable UI/highlight keys. */
   segIndex: number;
   start: number;
   end: number;
@@ -13,36 +14,32 @@ export interface FindReplaceOptions {
   caseSensitive?: boolean;
 }
 
-/** All non-overlapping literal matches in cue shot-range text, in cue order. */
+/** All non-overlapping literal matches in cue text, in cue order. */
 export function findTextMatches(
   cues: readonly Cue[],
   query: string,
-  opts: FindReplaceOptions & { defaultShot?: string } = {},
+  opts: FindReplaceOptions = {},
 ): TextMatch[] {
   if (!query) return [];
 
   const matches: TextMatch[] = [];
   const caseSensitive = opts.caseSensitive ?? false;
-  const defaultShot = opts.defaultShot ?? "ON";
+  const needle = caseSensitive ? query : query.toLowerCase();
 
   for (const cue of cues) {
-    const ranges = effectiveShotRanges(cue, defaultShot);
-    for (let segIndex = 0; segIndex < ranges.length; segIndex++) {
-      const text = shotRangeText(cue, ranges[segIndex]);
-      const haystack = caseSensitive ? text : text.toLowerCase();
-      const needle = caseSensitive ? query : query.toLowerCase();
-      let from = 0;
-      while (from < haystack.length) {
-        const idx = haystack.indexOf(needle, from);
-        if (idx === -1) break;
-        matches.push({
-          cueId: cue.id,
-          segIndex,
-          start: idx,
-          end: idx + query.length,
-        });
-        from = idx + Math.max(needle.length, 1);
-      }
+    const text = cueDisplayText(cue);
+    const haystack = caseSensitive ? text : text.toLowerCase();
+    let from = 0;
+    while (from < haystack.length) {
+      const idx = haystack.indexOf(needle, from);
+      if (idx === -1) break;
+      matches.push({
+        cueId: cue.id,
+        segIndex: 0,
+        start: idx,
+        end: idx + query.length,
+      });
+      from = idx + Math.max(needle.length, 1);
     }
   }
 
@@ -57,7 +54,7 @@ export function replaceMatchInText(
   return text.slice(0, match.start) + replacement + text.slice(match.end);
 }
 
-/** Apply many replacements within one segment (indices refer to the original text). */
+/** Apply many replacements within one cue (indices refer to the original text). */
 export function replaceMatchesInText(
   text: string,
   matchRanges: readonly Pick<TextMatch, "start" | "end">[],
@@ -90,36 +87,25 @@ export function filterReplaceableMatches(
   return matches.filter((m) => !lockedIds.has(m.cueId));
 }
 
-/** Build segment text updates for replace-all across many matches. */
+/** Build cue text updates for replace-all across many matches. */
 export function buildReplaceAllUpdates(
   cues: readonly Cue[],
   matches: readonly TextMatch[],
   replacement: string,
-  defaultShot = "ON",
 ): SegmentTextUpdate[] {
-  const bySegment = new Map<string, TextMatch[]>();
+  const byCue = new Map<string, TextMatch[]>();
   for (const match of matches) {
-    const key = `${match.cueId}:${match.segIndex}`;
-    const list = bySegment.get(key);
+    const list = byCue.get(match.cueId);
     if (list) list.push(match);
-    else bySegment.set(key, [match]);
+    else byCue.set(match.cueId, [match]);
   }
 
   const updates: SegmentTextUpdate[] = [];
-  for (const [key, ranges] of bySegment) {
-    const [cueId, segIndexStr] = key.split(":");
-    const segIndex = Number(segIndexStr);
+  for (const [cueId, ranges] of byCue) {
     const cue = cues.find((c) => c.id === cueId);
     if (!cue) continue;
-    const shotRanges = effectiveShotRanges(cue, defaultShot);
-    const range = shotRanges[segIndex];
-    if (!range) continue;
-    const text = replaceMatchesInText(
-      shotRangeText(cue, range),
-      ranges,
-      replacement,
-    );
-    updates.push({ cueId, segIndex, text });
+    const text = replaceMatchesInText(cueDisplayText(cue), ranges, replacement);
+    updates.push({ cueId, segIndex: 0, text });
   }
   return updates;
 }
