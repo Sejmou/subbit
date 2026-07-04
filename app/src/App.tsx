@@ -1160,10 +1160,14 @@ export default function App() {
             <SpeakerPanel
               project={project}
               speakerFilter={speakerFilter}
+              statusFilter={statusFilter}
+              shotFilter={shotFilter}
               onToggleSpeakerFilter={toggleSpeakerFilter}
             />
             <ShotPanel
               project={project}
+              speakerFilter={speakerFilter}
+              statusFilter={statusFilter}
               shotFilter={shotFilter}
               onToggleShotFilter={toggleShotFilter}
             />

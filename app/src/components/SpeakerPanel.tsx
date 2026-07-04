@@ -1,15 +1,18 @@
 import { useMemo, useState } from "react";
 import type { Project } from "../types";
 import {
-  countCueAppearancesBySpeaker,
-  isSpeakerReferenced,
-} from "../lib/speaker-refs";
+  countCueAppearancesBySpeakerWithFilters,
+  type ReviewStatusFilter,
+} from "../lib/cue-filters";
+import { isSpeakerReferenced } from "../lib/speaker-refs";
 import { useProject } from "../store/project";
 import { useTip } from "./Tooltip";
 
 interface Props {
   project: Project;
   speakerFilter: string[];
+  statusFilter: ReviewStatusFilter[];
+  shotFilter: string[];
   onToggleSpeakerFilter: (speakerId: string) => void;
 }
 
@@ -17,6 +20,8 @@ interface Props {
 export function SpeakerPanel({
   project,
   speakerFilter,
+  statusFilter,
+  shotFilter,
   onToggleSpeakerFilter,
 }: Props) {
   const tip = useTip();
@@ -25,8 +30,13 @@ export function SpeakerPanel({
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
   const cueCounts = useMemo(
-    () => countCueAppearancesBySpeaker(project),
-    [project.cues],
+    () =>
+      countCueAppearancesBySpeakerWithFilters(
+        project,
+        statusFilter,
+        shotFilter,
+      ),
+    [project.cues, statusFilter, shotFilter],
   );
 
   const commitNewSpeaker = () => {

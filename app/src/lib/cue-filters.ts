@@ -1,4 +1,4 @@
-import type { Cue } from "../types";
+import type { Cue, Project } from "../types";
 import { cueMatchesSpeakerFilter } from "./speaker-refs";
 import { cueMatchesShotFilter } from "./shot-refs";
 
@@ -66,4 +66,35 @@ export function hasActiveFilters(
   return (
     speakerFilter.length > 0 || statusFilter.length > 0 || shotFilter.length > 0
   );
+}
+
+/** Role counts for cues matching status and shot filters (speaker filter excluded). */
+export function countCueAppearancesBySpeakerWithFilters(
+  project: Project,
+  statusFilter: readonly ReviewStatusFilter[],
+  shotFilter: readonly string[],
+): ReadonlyMap<string, number> {
+  const counts = new Map<string, number>();
+  for (const cue of project.cues) {
+    if (!cue.speakerId) continue;
+    if (!cueMatchesReviewStatusFilter(cue, new Set(statusFilter))) continue;
+    if (!cueMatchesShotFilter(cue, new Set(shotFilter))) continue;
+    counts.set(cue.speakerId, (counts.get(cue.speakerId) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/** Shot counts for cues matching role and status filters (shot filter excluded). */
+export function countCueAppearancesByShotWithFilters(
+  project: Project,
+  speakerFilter: readonly string[],
+  statusFilter: readonly ReviewStatusFilter[],
+): ReadonlyMap<string, number> {
+  const counts = new Map<string, number>();
+  for (const cue of project.cues) {
+    if (!cueMatchesSpeakerFilter(cue, new Set(speakerFilter))) continue;
+    if (!cueMatchesReviewStatusFilter(cue, new Set(statusFilter))) continue;
+    counts.set(cue.shot, (counts.get(cue.shot) ?? 0) + 1);
+  }
+  return counts;
 }

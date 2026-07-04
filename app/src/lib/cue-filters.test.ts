@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import type { Project } from "../types";
 import {
   activeFilterCount,
+  countCueAppearancesByShotWithFilters,
+  countCueAppearancesBySpeakerWithFilters,
   cueMatchesListFilters,
   cueMatchesReviewStatusFilter,
   hasActiveFilters,
@@ -69,5 +72,66 @@ describe("cue filters", () => {
     expect(activeFilterCount(["A"], ["reviewed"], ["ON"])).toBe(3);
     expect(hasActiveFilters([], ["not-reviewed"], [])).toBe(true);
     expect(hasActiveFilters([], [], ["VO"])).toBe(true);
+  });
+
+  it("counts role appearances with status and shot filters applied", () => {
+    const project = {
+      cues: [
+        { ...cue(true), id: "c1", speakerId: "A", shot: "ON" },
+        { ...cue(true), id: "c2", speakerId: "A", shot: "ON" },
+        { ...cue(false), id: "c3", speakerId: "A", shot: "ON" },
+        { ...cue(true), id: "c4", speakerId: "B", shot: "OFF" },
+      ],
+    } as Project;
+
+    expect(countCueAppearancesBySpeakerWithFilters(project, [], [])).toEqual(
+      new Map([
+        ["A", 3],
+        ["B", 1],
+      ]),
+    );
+    expect(
+      countCueAppearancesBySpeakerWithFilters(project, ["reviewed"], []),
+    ).toEqual(
+      new Map([
+        ["A", 2],
+        ["B", 1],
+      ]),
+    );
+    expect(
+      countCueAppearancesBySpeakerWithFilters(project, [], ["ON"]),
+    ).toEqual(new Map([["A", 3]]));
+  });
+
+  it("counts shot appearances with role and status filters applied", () => {
+    const project = {
+      cues: [
+        { ...cue(true), id: "c1", speakerId: "A", shot: "ON" },
+        { ...cue(true), id: "c2", speakerId: "A", shot: "ON" },
+        { ...cue(false), id: "c3", speakerId: "A", shot: "OFF" },
+        { ...cue(true), id: "c4", speakerId: "B", shot: "OFF" },
+      ],
+    } as Project;
+
+    expect(countCueAppearancesByShotWithFilters(project, [], [])).toEqual(
+      new Map([
+        ["ON", 2],
+        ["OFF", 2],
+      ]),
+    );
+    expect(countCueAppearancesByShotWithFilters(project, ["A"], [])).toEqual(
+      new Map([
+        ["ON", 2],
+        ["OFF", 1],
+      ]),
+    );
+    expect(
+      countCueAppearancesByShotWithFilters(project, [], ["reviewed"]),
+    ).toEqual(
+      new Map([
+        ["ON", 2],
+        ["OFF", 1],
+      ]),
+    );
   });
 });

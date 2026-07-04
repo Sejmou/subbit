@@ -1,6 +1,10 @@
 import { useMemo, useState } from "react";
 import type { Project } from "../types";
-import { countCueAppearancesByShot, isShotReferenced } from "../lib/shot-refs";
+import {
+  countCueAppearancesByShotWithFilters,
+  type ReviewStatusFilter,
+} from "../lib/cue-filters";
+import { isShotReferenced } from "../lib/shot-refs";
 import { isDefaultShotId } from "../lib/delivery-shot";
 import { shotDisplayLabel } from "../lib/shot-display";
 import { useProject } from "../store/project";
@@ -8,20 +12,33 @@ import { useTip } from "./Tooltip";
 
 interface Props {
   project: Project;
+  speakerFilter: string[];
+  statusFilter: ReviewStatusFilter[];
   shotFilter: string[];
   onToggleShotFilter: (shotId: string) => void;
 }
 
 /** Project shot types (Info column tokens) with labels and custom entries. */
-export function ShotPanel({ project, shotFilter, onToggleShotFilter }: Props) {
+export function ShotPanel({
+  project,
+  speakerFilter,
+  statusFilter,
+  shotFilter,
+  onToggleShotFilter,
+}: Props) {
   const tip = useTip();
   const { addShot, renameShotLabel, removeShot } = useProject();
   const [adding, setAdding] = useState(false);
   const [newId, setNewId] = useState("");
   const [newLabel, setNewLabel] = useState("");
   const cueCounts = useMemo(
-    () => countCueAppearancesByShot(project),
-    [project.cues],
+    () =>
+      countCueAppearancesByShotWithFilters(
+        project,
+        speakerFilter,
+        statusFilter,
+      ),
+    [project.cues, speakerFilter, statusFilter],
   );
 
   const commitNewShot = () => {
