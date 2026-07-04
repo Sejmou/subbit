@@ -149,6 +149,70 @@ describe("cue boundary clamping", () => {
   });
 });
 
+describe("group boundary enforcement", () => {
+  const loadGroup = () =>
+    store().loadProject(
+      makeProject({
+        cues: [
+          makeCue({ id: "g1", start: 0, end: 2 }, "one"),
+          makeCue({ id: "g2", start: 2, end: 4, joinedToPrev: true }, "two"),
+          makeCue({ id: "g3", start: 4, end: 6, joinedToPrev: true }, "three"),
+        ],
+      }),
+    );
+
+  beforeEach(loadGroup);
+
+  it("drags a joined cue's In when its predecessor Out shrinks", () => {
+    store().setCueEnd("g1", 1.6);
+    const cues = store().project!.cues;
+    expect(cues[0].end).toBeCloseTo(1.6, 5);
+    expect(cues[1].start).toBe(cues[0].end);
+  });
+
+  it("drags a joined cue's In when its predecessor Out grows into the group", () => {
+    store().setCueEnd("g1", 3);
+    const cues = store().project!.cues;
+    expect(cues[0].end).toBeCloseTo(3, 5);
+    expect(cues[1].start).toBe(cues[0].end);
+    // The follower's own Out and the next boundary are untouched.
+    expect(cues[1].end).toBe(4);
+    expect(cues[2].start).toBe(4);
+  });
+
+  it("drags the predecessor Out when a joined cue's In grows", () => {
+    store().setCueStart("g2", 3);
+    const cues = store().project!.cues;
+    expect(cues[1].start).toBeCloseTo(3, 5);
+    expect(cues[0].end).toBe(cues[1].start);
+  });
+
+  it("drags the predecessor Out when a joined cue's In slides left into it", () => {
+    store().setCueStart("g2", 1);
+    const cues = store().project!.cues;
+    expect(cues[1].start).toBeCloseTo(1, 5);
+    expect(cues[0].end).toBe(cues[1].start);
+    expect(cues[0].start).toBe(0);
+  });
+
+  it("detaches the follower when a group's head is deleted", () => {
+    store().deleteCue("g1");
+    const cues = store().project!.cues;
+    expect(cues[0].id).toBe("g2");
+    expect(cues[0].joinedToPrev).toBe(false);
+    expect(cues[1].joinedToPrev).toBe(true);
+  });
+
+  it("re-abuts the follower to the earlier member when a middle cue is deleted", () => {
+    store().deleteCue("g2");
+    const cues = store().project!.cues;
+    expect(cues.map((c) => c.id)).toEqual(["g1", "g3"]);
+    expect(cues[1].joinedToPrev).toBe(true);
+    expect(cues[1].start).toBe(cues[0].end);
+    expect(cues[1].start).toBe(2);
+  });
+});
+
 describe("setReferenceStartSeconds", () => {
   it("does not move cues when subtitle start is set", () => {
     store().setReferenceStartSeconds(1);

@@ -17,6 +17,8 @@ import {
   setCueShot,
   setCueText,
   splitCueAtCaretOffset,
+  syncJoinedCueStartAt,
+  syncPrevCueEndAt,
 } from "../lib/word-model/cue-ops";
 import { useReferenceStartNoticeStore } from "./reference-start-notice";
 
@@ -151,6 +153,28 @@ function findCue(project: Project, cueId: string): Cue | undefined {
   return project.cues.find((c) => c.id === cueId);
 }
 
+/**
+ * Repair the single group boundary at `index` so the invariant
+ * `cues[index - 1].end === cues[index].start` holds for a joined cue (see
+ * {@link syncJoinedCueStartAt}). Called by the specific action that moved a
+ * cue's `end` or position — no global scan needed since the fix can't cascade.
+ * Returns the same project reference when nothing needed fixing.
+ */
+function reabut(project: Project, index: number): Project {
+  const cues = syncJoinedCueStartAt(project.cues, index);
+  return cues === project.cues ? project : { ...project, cues };
+}
+
+/**
+ * Reverse of {@link reabut}: pull the predecessor's Out to the joined cue at
+ * `index` (its In is authoritative). Used when the shared group boundary is
+ * dragged from the follower's In. Same project reference when nothing changed.
+ */
+function reabutPrev(project: Project, index: number): Project {
+  const cues = syncPrevCueEndAt(project.cues, index);
+  return cues === project.cues ? project : { ...project, cues };
+}
+
 function cueIsLocked(project: Project, cueId: string): boolean {
   const cue = findCue(project, cueId);
   return cue !== undefined && isReviewedCueLocked(cue);
@@ -179,7 +203,13 @@ function clampCueStart(
   project: Project,
 ): number {
   const gap = frameStep(project);
-  const min = minCueStartSeconds(project, prev?.end);
+  // A joined cue shares its In with the predecessor's Out (a group boundary):
+  // it may slide left into the predecessor (whose Out follows), down to one
+  // frame after the predecessor's own In. A normal cue stops at prev.end.
+  const min =
+    cue.joinedToPrev && prev
+      ? Math.max(minCueStartSeconds(project), prev.start + gap)
+      : minCueStartSeconds(project, prev?.end);
   const max = cue.end - gap;
   if (min > max) return cue.start;
   return Math.min(Math.max(min, start), max);
@@ -193,7 +223,14 @@ function clampCueEnd(
 ): number {
   const gap = frameStep(project);
   const min = cue.start + gap;
-  const max = next ? next.start : Infinity;
+  // A joined follower shares this boundary: the Out may grow into it (the
+  // follower's In follows), up to one frame before the follower's own Out. A
+  // normal next cue is a hard wall at its In.
+  const max = next
+    ? next.joinedToPrev
+      ? next.end - gap
+      : next.start
+    : Infinity;
   if (min > max) return cue.end;
   return Math.min(Math.max(min, end), max);
 }
@@ -405,7 +442,12 @@ export const useProject = create<ProjectState>((set, getState) => {
           proj,
         );
         if (start === c.start) return proj;
-        return mapCue(proj, cueId, (cue) => applyCueStartChange(cue, start));
+        // For a joined cue the In is the shared group boundary — dragging it
+        // pulls the predecessor's Out along.
+        const withStart = mapCue(proj, cueId, (cue) =>
+          applyCueStartChange(cue, start),
+        );
+        return reabutPrev(withStart, idx);
       }, `start:${cueId}`);
     },
     setCueEnd: (cueId, time) => {
@@ -422,7 +464,11 @@ export const useProject = create<ProjectState>((set, getState) => {
           proj,
         );
         if (end === c.end) return proj;
-        return mapCue(proj, cueId, (cue) => applyCueEndChange(cue, end));
+        // Moving this cue's Out may open a gap before a joined follower.
+        const withEnd = mapCue(proj, cueId, (cue) =>
+          applyCueEndChange(cue, end),
+        );
+        return reabut(withEnd, idx + 1);
       }, `end:${cueId}`);
     },
     setCueTimes: (cueId, start, end) => {
@@ -441,9 +487,11 @@ export const useProject = create<ProjectState>((set, getState) => {
           proj,
         );
         if (next.start === c.start && next.end === c.end) return proj;
-        return mapCue(proj, cueId, (cue) =>
+        const moved = mapCue(proj, cueId, (cue) =>
           applyCueBlockMove(cue, next.start, next.end),
         );
+        // Pin the moved cue itself if it is joined, and re-abut a joined follower.
+        return reabut(reabut(moved, idx), idx + 1);
       }, `move:${cueId}`);
     },
     nudgeCueStart: (cueId, deltaFrames) => {
@@ -599,11 +647,21 @@ export const useProject = create<ProjectState>((set, getState) => {
         const idx = state.project.cues.findIndex((c) => c.id === cueId);
         if (idx === -1) return state;
 
+        const deleted = state.project.cues[idx];
         const cues = [
           ...state.project.cues.slice(0, idx),
           ...state.project.cues.slice(idx + 1),
         ];
-        const project = { ...state.project, cues };
+        // Deleting a group's head orphans the cue that was joined to it: its new
+        // predecessor is an unrelated cue (or none), so break the link and let
+        // it become a standalone/head cue. A joined cue deleted from the middle
+        // leaves its follower validly joined to the earlier group member.
+        if (!deleted.joinedToPrev && cues[idx]?.joinedToPrev) {
+          cues[idx] = { ...cues[idx], joinedToPrev: false };
+        }
+        // The follower (now at idx) may need re-abutting to its new predecessor
+        // (middle-of-group delete); a detached head was already cleared above.
+        const project = reabut({ ...state.project, cues }, idx);
         const nextSelected = cues[Math.min(idx, cues.length - 1)]?.id ?? null;
 
         lastTag = null;

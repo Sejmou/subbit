@@ -147,6 +147,50 @@ export function setCueShot(cue: Cue, shot: string): Cue {
   return { ...cue, shot };
 }
 
+/**
+ * Enforce the group invariant at a SINGLE boundary: if the cue at `index` is
+ * joined to its predecessor, pin its start to `cues[index - 1].end` (the
+ * predecessor's `end` is authoritative), remapping its words into the corrected
+ * window (see {@link applyCueStartChange}).
+ *
+ * This is deliberately local — no full scan is needed because the invariant is
+ * cascade-free: re-abutting changes a cue's `start`, never its `end`, so it can
+ * never disturb the boundary with the *following* cue. Any single timing/
+ * structural edit therefore breaks at most the one boundary just after the cue
+ * it touched; callers repair exactly that index.
+ *
+ * Returns the same array reference when the boundary already holds (or the cue
+ * isn't joined), so callers can cheaply detect a no-op. A fix that would invert
+ * the cue (`prev.end >= cue.end`) is skipped rather than producing a degenerate
+ * window.
+ */
+export function syncJoinedCueStartAt(cues: Cue[], index: number): Cue[] {
+  const cue = cues[index];
+  if (index <= 0 || !cue?.joinedToPrev) return cues;
+  const prevEnd = cues[index - 1].end;
+  if (cue.start === prevEnd || prevEnd >= cue.end) return cues;
+  const out = cues.slice();
+  out[index] = applyCueStartChange(cue, prevEnd);
+  return out;
+}
+
+/**
+ * Reverse of {@link syncJoinedCueStartAt}: when the shared group boundary is
+ * dragged from the follower's side, this cue's `start` is authoritative and the
+ * predecessor's `end` follows it (words remapped). Use when the cue at `index`
+ * is joined and its `start` was just moved. Same-ref when already aligned; skips
+ * a fix that would invert the predecessor (`cue.start <= prev.start`).
+ */
+export function syncPrevCueEndAt(cues: Cue[], index: number): Cue[] {
+  const cue = cues[index];
+  if (index <= 0 || !cue?.joinedToPrev) return cues;
+  const prev = cues[index - 1];
+  if (prev.end === cue.start || cue.start <= prev.start) return cues;
+  const out = cues.slice();
+  out[index - 1] = applyCueEndChange(prev, cue.start);
+  return out;
+}
+
 export { splitWordTiming, mergeWordTiming } from "./timing";
 
 /** Split a cue at a caret offset within its display text. */
