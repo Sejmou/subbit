@@ -213,6 +213,57 @@ describe("group boundary enforcement", () => {
   });
 });
 
+describe("toggleJoinedToPrev", () => {
+  const loadGap = () =>
+    store().loadProject(
+      makeProject({
+        cues: [
+          makeCue({ id: "a", start: 0, end: 2 }, "one"),
+          makeCue({ id: "b", start: 3, end: 5 }, "two"),
+          makeCue({ id: "c", start: 6, end: 8 }, "three"),
+        ],
+      }),
+    );
+
+  beforeEach(loadGap);
+
+  it("joins two independent cues at the word-gap midpoint", () => {
+    store().toggleJoinedToPrev("b");
+    const cues = store().project!.cues;
+    // Words fill each window, so the boundary lands ~mid the [2, 3] gap
+    // (snapped to the 25fps grid → 2.52).
+    expect(cues[1].joinedToPrev).toBe(true);
+    expect(cues[1].start).toBeCloseTo(2.5, 1);
+    expect(cues[0].end).toBe(cues[1].start);
+    // The far cue is untouched.
+    expect(cues[2].start).toBe(6);
+  });
+
+  it("keeps the joined boundary in sync afterwards", () => {
+    store().toggleJoinedToPrev("b");
+    store().setCueEnd("a", 2.8);
+    const cues = store().project!.cues;
+    expect(cues[0].end).toBeCloseTo(2.8, 5);
+    expect(cues[1].start).toBe(cues[0].end);
+  });
+
+  it("unjoins without moving timing", () => {
+    store().toggleJoinedToPrev("b");
+    const boundary = store().project!.cues[1].start;
+    store().toggleJoinedToPrev("b");
+    const cues = store().project!.cues;
+    expect(cues[1].joinedToPrev).toBe(false);
+    expect(cues[1].start).toBeCloseTo(boundary, 5);
+    expect(cues[0].end).toBeCloseTo(boundary, 5);
+  });
+
+  it("is a no-op for the first cue", () => {
+    const before = store().project;
+    store().toggleJoinedToPrev("a");
+    expect(store().project).toBe(before);
+  });
+});
+
 describe("setReferenceStartSeconds", () => {
   it("does not move cues when subtitle start is set", () => {
     store().setReferenceStartSeconds(1);

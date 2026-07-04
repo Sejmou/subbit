@@ -191,6 +191,19 @@ export function syncPrevCueEndAt(cues: Cue[], index: number): Cue[] {
   return out;
 }
 
+/**
+ * Default shared boundary when joining the cue at `index` to its predecessor:
+ * the midpoint between the predecessor's last word end and this cue's first
+ * word start (a side with no words falls back to its cue window edge). The
+ * caller snaps this to the frame grid and clamps it inside the merged span —
+ * see `toggleJoinedToPrev` in the store.
+ */
+export function joinBoundaryTime(prev: Cue, cue: Cue): number {
+  const prevWordEnd = prev.words.at(-1)?.end ?? prev.end;
+  const cueWordStart = cue.words[0]?.start ?? cue.start;
+  return (prevWordEnd + cueWordStart) / 2;
+}
+
 export { splitWordTiming, mergeWordTiming } from "./timing";
 
 /** Split a cue at a caret offset within its display text. */

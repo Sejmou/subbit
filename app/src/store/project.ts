@@ -13,6 +13,7 @@ import {
   applyCueBlockMove,
   applyCueEndChange,
   applyCueStartChange,
+  joinBoundaryTime,
   newCueAtPlayhead,
   setCueShot,
   setCueText,
@@ -96,6 +97,13 @@ interface ProjectState {
   setCueTimes: (cueId: string, start: number, end: number) => void;
   nudgeCueStart: (cueId: string, deltaFrames: number) => void;
   nudgeCueEnd: (cueId: string, deltaFrames: number) => void;
+
+  /**
+   * Toggle whether the cue joins the immediately preceding cue into one group.
+   * Joining seats the shared boundary at the word-gap midpoint (see
+   * {@link joinBoundaryTime}); unjoining leaves the timing untouched.
+   */
+  toggleJoinedToPrev: (cueId: string) => void;
 
   // metadata
   setCueSpeaker: (cueId: string, speakerId: string | null) => void;
@@ -511,6 +519,48 @@ export const useProject = create<ProjectState>((set, getState) => {
       const p = getState().project;
       if (!p || cueIsLocked(p, cueId)) return;
       update((proj) => mapCue(proj, cueId, (c) => ({ ...c, speakerId })));
+    },
+    toggleJoinedToPrev: (cueId) => {
+      const p = getState().project;
+      if (!p) return;
+      const idx = p.cues.findIndex((c) => c.id === cueId);
+      // A cue can only join the one before it — the first cue has no predecessor.
+      if (idx <= 0) return;
+      // Joining moves timing on both cues, so require both to be unlocked.
+      if (cueIsLocked(p, cueId) || isReviewedCueLocked(p.cues[idx - 1])) return;
+
+      update((proj) => {
+        const i = proj.cues.findIndex((c) => c.id === cueId);
+        if (i <= 0) return proj;
+        const follower = proj.cues[i];
+        const prev = proj.cues[i - 1];
+        const cues = proj.cues.slice();
+
+        if (follower.joinedToPrev) {
+          // Unjoin: drop the link only. The two cues already abut, so their
+          // shared boundary simply stops staying in sync.
+          cues[i] = { ...follower, joinedToPrev: false };
+          return { ...proj, cues };
+        }
+
+        // Join: seat the shared boundary at the word-gap midpoint, snapped to
+        // the frame grid and kept one frame inside the merged span so neither
+        // cue collapses.
+        const gap = frameStep(proj);
+        const min = prev.start + gap;
+        const max = follower.end - gap;
+        if (min > max) return proj;
+        const boundary = Math.min(
+          Math.max(snapToFrame(joinBoundaryTime(prev, follower), proj), min),
+          max,
+        );
+        cues[i - 1] = applyCueEndChange(prev, boundary);
+        cues[i] = {
+          ...applyCueStartChange(follower, boundary),
+          joinedToPrev: true,
+        };
+        return { ...proj, cues };
+      });
     },
     setSegmentShot: (cueId, _segIndex, shot) => {
       const p = getState().project;

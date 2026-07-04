@@ -1420,6 +1420,57 @@
   border-bottom: 1.5px solid var(--text-dim);
   border-bottom-left-radius: 4px;
 }
+/* Join/unjoin chain: a chip straddling the divider at the timecode column, so
+   it visually sits between the upper cue's Out and the lower cue's In (the pair
+   it keeps in sync). Hidden until the row is hovered/selected — unless the cues
+   are already joined, when the closed chain stays visible as a group marker. */
+.cue-join-toggle-wrap {
+  position: absolute;
+  top: -11px;
+  left: 58px;
+  z-index: 3;
+}
+.cue-join-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-3);
+  color: var(--text-dim);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.12s ease,
+    color 0.12s ease,
+    border-color 0.12s ease;
+}
+.cue-row:hover .cue-join-toggle,
+.cue-row.selected .cue-join-toggle {
+  opacity: 1;
+}
+.cue-join-toggle:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--text-dim);
+}
+.cue-join-toggle.joined {
+  opacity: 1;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.cue-join-toggle:disabled {
+  cursor: default;
+}
+.cue-join-toggle svg {
+  width: 13px;
+  height: 13px;
+  /* Rotate the horizontal chain to vertical so it reads as linking the row
+     above to the row below. */
+  transform: rotate(90deg);
+}
 .cue-invalid-badge {
   display: inline-flex;
   align-items: center;

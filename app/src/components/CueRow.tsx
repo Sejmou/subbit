@@ -48,8 +48,49 @@ interface Props {
   /** Display label for the gutter: "3" for a lone cue, "1a"/"1b"/… within a group. */
   runLabel: string;
   bracket: BracketKind;
+  /** Show the join/unjoin chain to the previous cue (true predecessor is visible). */
+  canToggleJoinPrev: boolean;
   findHighlight?: FindHighlightState;
   segmentMatchIndex?: Map<string, TextMatch[]>;
+}
+
+/** Closed chain — the two cues' In/Out are linked and move together. */
+function LinkIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9 17H7A5 5 0 0 1 7 7h2" />
+      <path d="M15 7h2a5 5 0 1 1 0 10h-2" />
+      <line x1="8" y1="12" x2="16" y2="12" />
+    </svg>
+  );
+}
+
+/** Broken chain — the cues are independent; click to link them. */
+function LinkBrokenIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9 17H7A5 5 0 0 1 7 7" />
+      <path d="M15 7h2a5 5 0 0 1 4 8" />
+      <line x1="8" y1="12" x2="12" y2="12" />
+      <line x1="2" y1="2" x2="22" y2="22" />
+    </svg>
+  );
 }
 
 function TrashIcon() {
@@ -192,6 +233,7 @@ function CueRowImpl({
   active,
   runLabel,
   bracket,
+  canToggleJoinPrev,
   findHighlight = INACTIVE_FIND_HIGHLIGHT,
   segmentMatchIndex,
 }: Props) {
@@ -202,6 +244,7 @@ function CueRowImpl({
     setSegmentText,
     setSegmentShot,
     toggleReviewed,
+    toggleJoinedToPrev,
     deleteCue,
   } = useProject();
   const cycleShotLabel = useShortcutLabel("cycle-shot");
@@ -211,6 +254,10 @@ function CueRowImpl({
   const tip = useTip();
   useLockReviewedStore((s) => s.enabled);
   const locked = isReviewedCueLocked(cue);
+  // Joining moves timing on both cues, so it needs the predecessor unlocked too.
+  const prevCue = index > 0 ? project.cues[index - 1] : undefined;
+  const joinLocked = locked || (!!prevCue && isReviewedCueLocked(prevCue));
+  const joined = !!cue.joinedToPrev;
 
   // Focus this row's text when navigation mode requests editing.
   useEffect(() => {
@@ -258,6 +305,36 @@ function CueRowImpl({
       onMouseDown={() => selectCue(cue.id)}
       style={{ borderLeftColor: speaker?.color ?? "transparent" }}
     >
+      {canToggleJoinPrev && (
+        <span
+          className="tooltip-wrap cue-join-toggle-wrap"
+          {...tip(
+            joinLocked
+              ? "Reviewed (locked) — uncheck to change joining"
+              : joined
+                ? "Unjoin from previous cue — In and Out stop staying in sync"
+                : "Join with previous cue — the boundary snaps between the two nearest words and their In/Out then move together",
+          )}
+        >
+          <button
+            type="button"
+            className={`cue-join-toggle${joined ? " joined" : ""}`}
+            aria-pressed={joined}
+            aria-label={
+              joined ? "Unjoin from previous cue" : "Join with previous cue"
+            }
+            disabled={joinLocked}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (joinLocked) return;
+              toggleJoinedToPrev(cue.id);
+            }}
+          >
+            {joined ? <LinkIcon /> : <LinkBrokenIcon />}
+          </button>
+        </span>
+      )}
       <div className="cue-gutter">
         <span className="cue-no">{runLabel}</span>
         {invalid && (

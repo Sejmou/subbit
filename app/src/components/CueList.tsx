@@ -191,8 +191,10 @@ export function CueList({
           // group member that is both adjacent in the full list and on screen.
           const prev = entries[item.index - 1];
           const next = entries[item.index + 1];
-          const joinAbove =
-            !!prev && prev.index === index - 1 && !!cue.joinedToPrev;
+          // The join toggle only makes sense when the row directly above is the
+          // TRUE predecessor (adjacent in the full list, not hidden by a filter).
+          const adjacentPrevVisible = !!prev && prev.index === index - 1;
+          const joinAbove = adjacentPrevVisible && !!cue.joinedToPrev;
           const joinBelow =
             !!next && next.index === index + 1 && !!next.cue.joinedToPrev;
           const bracket: BracketKind =
@@ -224,6 +226,7 @@ export function CueList({
                 active={index === activeIndex}
                 runLabel={label}
                 bracket={bracket}
+                canToggleJoinPrev={adjacentPrevVisible}
                 findHighlight={findHighlight}
                 segmentMatchIndex={segmentMatchIndex}
               />
