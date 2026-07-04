@@ -27,6 +27,8 @@ import {
 } from "../lib/find-highlight";
 import type { TextMatch } from "../lib/find-replace";
 import { cueDisplayText } from "../lib/word-model/render";
+import { cueHasNote } from "../lib/cue-filters";
+import type { ToggleCueNoteDetail } from "../lib/focus-cue";
 import {
   cueHasValidationIssues,
   formatCueValidationTooltip,
@@ -110,6 +112,24 @@ function TrashIcon() {
       <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
       <path d="M10 11v6" />
       <path d="M14 11v6" />
+    </svg>
+  );
+}
+
+function NoteIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z" />
+      <path d="M15 3v5h5" />
+      {filled ? <path d="M8 13h8M8 17h5" /> : null}
     </svg>
   );
 }
@@ -239,11 +259,14 @@ function CueRowImpl({
   segmentMatchIndex,
 }: Props) {
   const firstTextarea = useRef<HTMLTextAreaElement>(null);
+  const noteTextarea = useRef<HTMLTextAreaElement>(null);
+  const [noteOpen, setNoteOpen] = useState(false);
   const {
     selectCue,
     selectSegment,
     setSegmentText,
     setSegmentShot,
+    setCueNote,
     toggleReviewed,
     toggleJoinedToPrev,
     deleteCue,
@@ -252,9 +275,13 @@ function CueRowImpl({
   const deleteCueLabel = useShortcutLabel("delete-cue");
   const assignRoleLabel = useShortcutLabel("assign-role");
   const toggleReviewedLabel = useShortcutLabel("toggle-reviewed");
+  const toggleNoteLabel = useShortcutLabel("toggle-note");
   const tip = useTip();
   useLockReviewedStore((s) => s.enabled);
   const locked = isReviewedCueLocked(cue);
+  const hasNote = cueHasNote(cue);
+  const noteValue = cue.note ?? "";
+  useAutosizeTextarea(noteTextarea, noteValue);
   // Joining moves timing on both cues, so it needs the predecessor unlocked too.
   const prevCue = index > 0 ? project.cues[index - 1] : undefined;
   const joinLocked = locked || (!!prevCue && isReviewedCueLocked(prevCue));
@@ -283,6 +310,30 @@ function CueRowImpl({
     return () => window.removeEventListener("subbit:edit", onEdit);
   }, [cue.id, locked]);
 
+  useEffect(() => {
+    function onToggleNote(e: Event) {
+      const detail = (e as CustomEvent<ToggleCueNoteDetail>).detail;
+      if (detail.cueId !== cue.id) return;
+      setNoteOpen((open) => {
+        const next = detail.open ?? !open;
+        if (next && detail.focus) {
+          requestAnimationFrame(() => noteTextarea.current?.focus());
+        }
+        return next;
+      });
+    }
+    window.addEventListener("subbit:toggle-note", onToggleNote);
+    return () => window.removeEventListener("subbit:toggle-note", onToggleNote);
+  }, [cue.id]);
+
+  useEffect(() => {
+    if (!selected) {
+      setNoteOpen(false);
+      return;
+    }
+    if (hasNote) setNoteOpen(true);
+  }, [selected, cue.id, hasNote]);
+
   const speaker = project.speakers.find((s) => s.id === cue.speakerId);
   const invalid = isCueBeforeReferenceStart(cue, project);
   const validationIssues = useMemo(() => validateCue(cue), [cue]);
@@ -294,197 +345,257 @@ function CueRowImpl({
     cue.reviewed && "reviewed",
     locked && "reviewed-locked",
     invalid && "cue-invalid",
+    hasNote && "cue-row--has-note",
     bracket !== "none" && `cue-row--bracket-${bracket}`,
     (bracket === "top" || bracket === "mid") && "cue-row--join-below",
   ]
     .filter(Boolean)
     .join(" ");
 
+  const notePreview = noteValue.trim().split(/\r?\n/, 1)[0] ?? "";
+
   return (
-    <div
-      className={cls}
-      onMouseDown={() => selectCue(cue.id)}
-      style={{ borderLeftColor: speaker?.color ?? "transparent" }}
-    >
-      {canToggleJoinPrev && (
+    <div className="cue-row-wrap">
+      <div
+        className={cls}
+        onMouseDown={() => selectCue(cue.id)}
+        style={{ borderLeftColor: speaker?.color ?? "transparent" }}
+      >
+        {canToggleJoinPrev && (
+          <span
+            className="tooltip-wrap cue-join-toggle-wrap"
+            {...tip(
+              joinLocked
+                ? "Reviewed (locked) — uncheck to change joining"
+                : joined
+                  ? "Unjoin from previous cue — In and Out stop staying in sync"
+                  : "Join with previous cue — the boundary snaps between the two nearest words and their In/Out then move together",
+            )}
+          >
+            <button
+              type="button"
+              className={`cue-join-toggle${joined ? " joined" : ""}`}
+              aria-pressed={joined}
+              aria-label={
+                joined ? "Unjoin from previous cue" : "Join with previous cue"
+              }
+              disabled={joinLocked}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (joinLocked) return;
+                toggleJoinedToPrev(cue.id);
+              }}
+            >
+              {joined ? <LinkIcon /> : <LinkBrokenIcon />}
+            </button>
+          </span>
+        )}
+        <div className="cue-gutter">
+          <span className="cue-no">{runLabel}</span>
+          {invalid && (
+            <span
+              className="cue-invalid-badge"
+              aria-label="Invalid: In is before subtitle start"
+              {...tip(
+                "In is before subtitle start — move In to subtitle start or later",
+              )}
+            >
+              !
+            </span>
+          )}
+          {!invalid && cueHasValidationIssues(cue) && (
+            <span
+              className="cue-validation-badge"
+              aria-label="Timing validation warning"
+              {...tip(validationTip)}
+            >
+              ⚠
+            </span>
+          )}
+          <span
+            className="tooltip-wrap cue-note-toggle-wrap"
+            {...tip(
+              locked
+                ? hasNote
+                  ? `Note: ${notePreview} (reviewed — locked)`
+                  : "Reviewed (locked) — uncheck to add a note"
+                : hasNote
+                  ? `Note: ${notePreview} (${toggleNoteLabel})`
+                  : `Add cue note (${toggleNoteLabel})`,
+            )}
+          >
+            <button
+              type="button"
+              className={`cue-note-toggle${hasNote ? " has-note" : ""}${noteOpen ? " open" : ""}`}
+              aria-pressed={noteOpen}
+              aria-label={hasNote ? "Edit cue note" : "Add cue note"}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                selectCue(cue.id);
+                setNoteOpen((open) => {
+                  const next = !open;
+                  if (next)
+                    requestAnimationFrame(() => noteTextarea.current?.focus());
+                  return next;
+                });
+              }}
+            >
+              <NoteIcon filled={hasNote} />
+            </button>
+          </span>
+          <input
+            type="checkbox"
+            checked={!!cue.reviewed}
+            disabled={invalid}
+            onChange={() => toggleReviewed(cue.id)}
+            {...tip(
+              invalid
+                ? "Fix In time before marking reviewed"
+                : locked
+                  ? "Reviewed (locked) — uncheck to edit"
+                  : `Reviewed (${toggleReviewedLabel})`,
+            )}
+          />
+        </div>
+
+        <div className="cue-times">
+          <CueTimeField
+            cueId={cue.id}
+            fileSeconds={cueStartSeconds(cue)}
+            project={project}
+            kind="in"
+            locked={locked}
+          />
+          <CueTimeField
+            cueId={cue.id}
+            fileSeconds={cueEndSeconds(cue)}
+            project={project}
+            kind="out"
+            locked={locked}
+          />
+        </div>
+
         <span
-          className="tooltip-wrap cue-join-toggle-wrap"
+          className="tooltip-wrap"
           {...tip(
-            joinLocked
-              ? "Reviewed (locked) — uncheck to change joining"
-              : joined
-                ? "Unjoin from previous cue — In and Out stop staying in sync"
-                : "Join with previous cue — the boundary snaps between the two nearest words and their In/Out then move together",
+            locked
+              ? "Reviewed (locked) — uncheck to assign role"
+              : `Assign role (${assignRoleLabel})`,
           )}
         >
           <button
             type="button"
-            className={`cue-join-toggle${joined ? " joined" : ""}`}
-            aria-pressed={joined}
-            aria-label={
-              joined ? "Unjoin from previous cue" : "Join with previous cue"
-            }
-            disabled={joinLocked}
-            onMouseDown={(e) => e.stopPropagation()}
+            className="cue-meta-select speaker-select role-trigger"
+            disabled={locked}
             onClick={(e) => {
+              if (locked) return;
               e.stopPropagation();
-              if (joinLocked) return;
-              toggleJoinedToPrev(cue.id);
+              selectCue(cue.id);
+              openRolePicker(cue.id);
             }}
           >
-            {joined ? <LinkIcon /> : <LinkBrokenIcon />}
+            <span
+              className="role-trigger-label"
+              style={speaker?.color ? { color: speaker.color } : undefined}
+            >
+              {speaker?.name?.trim() || NO_ROLE_LABEL}
+            </span>
           </button>
         </span>
-      )}
-      <div className="cue-gutter">
-        <span className="cue-no">{runLabel}</span>
-        {invalid && (
-          <span
-            className="cue-invalid-badge"
-            aria-label="Invalid: In is before subtitle start"
-            {...tip(
-              "In is before subtitle start — move In to subtitle start or later",
-            )}
-          >
-            !
-          </span>
-        )}
-        {!invalid && cueHasValidationIssues(cue) && (
-          <span
-            className="cue-validation-badge"
-            aria-label="Timing validation warning"
-            {...tip(validationTip)}
-          >
-            ⚠
-          </span>
-        )}
-        <input
-          type="checkbox"
-          checked={!!cue.reviewed}
-          disabled={invalid}
-          onChange={() => toggleReviewed(cue.id)}
-          {...tip(
-            invalid
-              ? "Fix In time before marking reviewed"
-              : locked
-                ? "Reviewed (locked) — uncheck to edit"
-                : `Reviewed (${toggleReviewedLabel})`,
-          )}
-        />
-      </div>
 
-      <div className="cue-times">
-        <CueTimeField
-          cueId={cue.id}
-          fileSeconds={cueStartSeconds(cue)}
-          project={project}
-          kind="in"
-          locked={locked}
-        />
-        <CueTimeField
-          cueId={cue.id}
-          fileSeconds={cueEndSeconds(cue)}
-          project={project}
-          kind="out"
-          locked={locked}
-        />
-      </div>
-
-      <span
-        className="tooltip-wrap"
-        {...tip(
-          locked
-            ? "Reviewed (locked) — uncheck to assign role"
-            : `Assign role (${assignRoleLabel})`,
-        )}
-      >
-        <button
-          type="button"
-          className="cue-meta-select speaker-select role-trigger"
-          disabled={locked}
-          onClick={(e) => {
-            if (locked) return;
-            e.stopPropagation();
-            selectCue(cue.id);
-            openRolePicker(cue.id);
-          }}
-        >
-          <span
-            className="role-trigger-label"
-            style={speaker?.color ? { color: speaker.color } : undefined}
-          >
-            {speaker?.name?.trim() || NO_ROLE_LABEL}
-          </span>
-        </button>
-      </span>
-
-      <div className="cue-segments">
-        <div className="segment">
-          <span
-            className="tooltip-wrap"
-            {...tip(
-              locked
-                ? "Reviewed (locked) — uncheck to change shot"
-                : `Cycle shot type (${cycleShotLabel})`,
-            )}
-          >
-            <select
-              className="cue-meta-select shot-select"
-              value={cue.shot}
-              disabled={locked}
-              onChange={(e) => setSegmentShot(cue.id, 0, e.target.value)}
-            >
-              {!project.shots.some((s) => s.id === cue.shot) && (
-                <option value={cue.shot}>{cue.shot}</option>
+        <div className="cue-segments">
+          <div className="segment">
+            <span
+              className="tooltip-wrap"
+              {...tip(
+                locked
+                  ? "Reviewed (locked) — uncheck to change shot"
+                  : `Cycle shot type (${cycleShotLabel})`,
               )}
-              {project.shots.map((sh) => (
-                <option key={sh.id} value={sh.id} title={sh.id}>
-                  {shotDisplayLabel(sh.id, sh.label)}
-                </option>
-              ))}
-            </select>
-          </span>
-          <SegmentTextarea
-            inputRef={firstTextarea}
-            cueId={cue.id}
-            segIndex={0}
-            value={cueDisplayText(cue)}
-            readOnly={locked}
-            findHighlight={findHighlight}
-            segmentMatches={
-              segmentMatchIndex?.get(segmentMatchKey(cue.id, 0)) ?? []
-            }
-            onFocus={() => {
-              selectCue(cue.id);
-              selectSegment(0);
+            >
+              <select
+                className="cue-meta-select shot-select"
+                value={cue.shot}
+                disabled={locked}
+                onChange={(e) => setSegmentShot(cue.id, 0, e.target.value)}
+              >
+                {!project.shots.some((s) => s.id === cue.shot) && (
+                  <option value={cue.shot}>{cue.shot}</option>
+                )}
+                {project.shots.map((sh) => (
+                  <option key={sh.id} value={sh.id} title={sh.id}>
+                    {shotDisplayLabel(sh.id, sh.label)}
+                  </option>
+                ))}
+              </select>
+            </span>
+            <SegmentTextarea
+              inputRef={firstTextarea}
+              cueId={cue.id}
+              segIndex={0}
+              value={cueDisplayText(cue)}
+              readOnly={locked}
+              findHighlight={findHighlight}
+              segmentMatches={
+                segmentMatchIndex?.get(segmentMatchKey(cue.id, 0)) ?? []
+              }
+              onFocus={() => {
+                selectCue(cue.id);
+                selectSegment(0);
+              }}
+              onChange={(text) => setSegmentText(cue.id, 0, text)}
+            />
+          </div>
+        </div>
+
+        <span
+          className="tooltip-wrap"
+          {...tip(
+            locked
+              ? "Reviewed (locked) — uncheck to delete"
+              : `Delete cue (${deleteCueLabel})`,
+          )}
+        >
+          <button
+            type="button"
+            className="cue-delete-btn"
+            aria-label={`Delete cue ${index + 1}`}
+            disabled={locked}
+            onClick={(e) => {
+              if (locked) return;
+              e.stopPropagation();
+              deleteCue(cue.id);
             }}
-            onChange={(text) => setSegmentText(cue.id, 0, text)}
+          >
+            <TrashIcon />
+          </button>
+        </span>
+      </div>
+
+      {noteOpen && (
+        <div className="cue-note-row">
+          <label className="cue-note-label" htmlFor={`cue-note-${cue.id}`}>
+            Note
+          </label>
+          <textarea
+            ref={noteTextarea}
+            id={`cue-note-${cue.id}`}
+            className="cue-note-text"
+            rows={1}
+            value={noteValue}
+            readOnly={locked}
+            placeholder="Editorial note (not exported)"
+            onMouseDown={(e) => e.stopPropagation()}
+            onFocus={() => selectCue(cue.id)}
+            onBlur={(e) => {
+              if (!e.target.value.trim()) setNoteOpen(false);
+            }}
+            onChange={(e) => setCueNote(cue.id, e.target.value)}
           />
         </div>
-      </div>
-
-      <span
-        className="tooltip-wrap"
-        {...tip(
-          locked
-            ? "Reviewed (locked) — uncheck to delete"
-            : `Delete cue (${deleteCueLabel})`,
-        )}
-      >
-        <button
-          type="button"
-          className="cue-delete-btn"
-          aria-label={`Delete cue ${index + 1}`}
-          disabled={locked}
-          onClick={(e) => {
-            if (locked) return;
-            e.stopPropagation();
-            deleteCue(cue.id);
-          }}
-        >
-          <TrashIcon />
-        </button>
-      </span>
+      )}
     </div>
   );
 }

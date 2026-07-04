@@ -51,6 +51,8 @@ export interface Cue {
   joinedToPrev?: boolean;
   /** Manually confirmed by the user (helps track editing progress). */
   reviewed?: boolean;
+  /** Editorial note for this cue; not exported to delivery sheets. */
+  note?: string;
   /** Import-time diarization guess; confidence drives auto-assign at import. */
   inferredSpeaker?: InferredSpeaker | null;
 }

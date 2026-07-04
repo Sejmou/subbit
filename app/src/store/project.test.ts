@@ -488,6 +488,25 @@ describe("shot types", () => {
   });
 });
 
+describe("setCueNote", () => {
+  it("stores and clears cue notes", () => {
+    store().setCueNote("c1", "lip sync?");
+    expect(store().project!.cues[0].note).toBe("lip sync?");
+
+    store().setCueNote("c1", "   ");
+    expect(store().project!.cues[0].note).toBeUndefined();
+  });
+
+  it("coalesces rapid edits to one undo step", () => {
+    store().setCueNote("c1", "a");
+    store().setCueNote("c1", "ab");
+    expect(store().past).toHaveLength(1);
+
+    store().undo();
+    expect(store().project!.cues[0].note).toBeUndefined();
+  });
+});
+
 describe("reviewed cue lock", () => {
   beforeEach(() => {
     writeLockReviewedCues(true);
@@ -510,6 +529,11 @@ describe("reviewed cue lock", () => {
   it("blocks delete on reviewed cues", () => {
     store().deleteCue("c1");
     expect(store().project!.cues).toHaveLength(2);
+  });
+
+  it("blocks note edits on reviewed cues", () => {
+    store().setCueNote("c1", "blocked");
+    expect(store().project!.cues[0].note).toBeUndefined();
   });
 
   it("allows edits after unreviewing", () => {

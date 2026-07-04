@@ -3,6 +3,7 @@ import { cueMatchesSpeakerFilter } from "./speaker-refs";
 import { cueMatchesShotFilter } from "./shot-refs";
 
 export type ReviewStatusFilter = "reviewed" | "not-reviewed";
+export type NoteFilter = "has-note" | "no-note";
 
 export const REVIEW_STATUS_OPTIONS: {
   id: ReviewStatusFilter;
@@ -11,6 +12,26 @@ export const REVIEW_STATUS_OPTIONS: {
   { id: "reviewed", label: "Reviewed" },
   { id: "not-reviewed", label: "Not reviewed" },
 ];
+
+export const NOTE_FILTER_OPTIONS: { id: NoteFilter; label: string }[] = [
+  { id: "has-note", label: "Has note" },
+  { id: "no-note", label: "No note" },
+];
+
+export function cueHasNote(cue: Cue): boolean {
+  return !!cue.note?.trim();
+}
+
+export function cueMatchesNoteFilter(
+  cue: Cue,
+  filter: ReadonlySet<NoteFilter>,
+): boolean {
+  if (filter.size === 0) return true;
+  const hasNote = cueHasNote(cue);
+  if (filter.has("has-note") && hasNote) return true;
+  if (filter.has("no-note") && !hasNote) return true;
+  return false;
+}
 
 export function cueMatchesReviewStatusFilter(
   cue: Cue,
@@ -28,6 +49,7 @@ export function cueMatchesListFilters(
   speakerFilter: readonly string[],
   statusFilter: readonly ReviewStatusFilter[],
   shotFilter: readonly string[] = [],
+  noteFilter: readonly NoteFilter[] = [],
 ): boolean {
   if (
     speakerFilter.length > 0 &&
@@ -47,6 +69,12 @@ export function cueMatchesListFilters(
   ) {
     return false;
   }
+  if (
+    noteFilter.length > 0 &&
+    !cueMatchesNoteFilter(cue, new Set(noteFilter))
+  ) {
+    return false;
+  }
   return true;
 }
 
@@ -54,17 +82,27 @@ export function activeFilterCount(
   speakerFilter: readonly string[],
   statusFilter: readonly ReviewStatusFilter[],
   shotFilter: readonly string[] = [],
+  noteFilter: readonly NoteFilter[] = [],
 ): number {
-  return speakerFilter.length + statusFilter.length + shotFilter.length;
+  return (
+    speakerFilter.length +
+    statusFilter.length +
+    shotFilter.length +
+    noteFilter.length
+  );
 }
 
 export function hasActiveFilters(
   speakerFilter: readonly string[],
   statusFilter: readonly ReviewStatusFilter[],
   shotFilter: readonly string[] = [],
+  noteFilter: readonly NoteFilter[] = [],
 ): boolean {
   return (
-    speakerFilter.length > 0 || statusFilter.length > 0 || shotFilter.length > 0
+    speakerFilter.length > 0 ||
+    statusFilter.length > 0 ||
+    shotFilter.length > 0 ||
+    noteFilter.length > 0
   );
 }
 

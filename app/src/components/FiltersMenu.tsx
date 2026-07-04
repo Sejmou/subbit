@@ -3,7 +3,9 @@ import type { Project } from "../types";
 import {
   activeFilterCount,
   hasActiveFilters,
+  NOTE_FILTER_OPTIONS,
   REVIEW_STATUS_OPTIONS,
+  type NoteFilter,
   type ReviewStatusFilter,
 } from "../lib/cue-filters";
 import { shotDisplayLabel } from "../lib/shot-display";
@@ -14,9 +16,11 @@ interface Props {
   speakerFilter: string[];
   statusFilter: ReviewStatusFilter[];
   shotFilter: string[];
+  noteFilter: NoteFilter[];
   onToggleSpeakerFilter: (speakerId: string) => void;
   onToggleStatusFilter: (status: ReviewStatusFilter) => void;
   onToggleShotFilter: (shotId: string) => void;
+  onToggleNoteFilter: (note: NoteFilter) => void;
   onClearFilters: () => void;
 }
 
@@ -25,9 +29,11 @@ export function FiltersMenu({
   speakerFilter,
   statusFilter,
   shotFilter,
+  noteFilter,
   onToggleSpeakerFilter,
   onToggleStatusFilter,
   onToggleShotFilter,
+  onToggleNoteFilter,
   onClearFilters,
 }: Props) {
   const tip = useTip();
@@ -37,11 +43,13 @@ export function FiltersMenu({
     speakerFilter,
     statusFilter,
     shotFilter,
+    noteFilter,
   );
   const filterCount = activeFilterCount(
     speakerFilter,
     statusFilter,
     shotFilter,
+    noteFilter,
   );
 
   useEffect(() => {
@@ -85,6 +93,24 @@ export function FiltersMenu({
                   type="checkbox"
                   checked={statusFilter.includes(id)}
                   onChange={() => onToggleStatusFilter(id)}
+                />
+                <span className="filters-menu-label">{label}</span>
+              </label>
+            ))}
+
+            <hr />
+
+            <div className="filters-menu-heading">Notes</div>
+            {NOTE_FILTER_OPTIONS.map(({ id, label }) => (
+              <label
+                key={id}
+                className="filters-menu-item"
+                role="menuitemcheckbox"
+              >
+                <input
+                  type="checkbox"
+                  checked={noteFilter.includes(id)}
+                  onChange={() => onToggleNoteFilter(id)}
                 />
                 <span className="filters-menu-label">{label}</span>
               </label>

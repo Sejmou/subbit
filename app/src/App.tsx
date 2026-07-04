@@ -93,7 +93,7 @@ import {
   parseWaveformPeaksFile,
 } from "./lib/waveform-peaks";
 import { usePlayback } from "./store/playback";
-import type { ReviewStatusFilter } from "./lib/cue-filters";
+import type { NoteFilter, ReviewStatusFilter } from "./lib/cue-filters";
 import type { DeliveryColumnMapping } from "./lib/delivery-columns";
 import { importDeliveryExcel } from "./lib/delivery-excel";
 import {
@@ -171,6 +171,7 @@ export default function App() {
   const [speakerFilter, setSpeakerFilter] = useState<string[]>([]);
   const [shotFilter, setShotFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<ReviewStatusFilter[]>([]);
+  const [noteFilter, setNoteFilter] = useState<NoteFilter[]>([]);
   const [rolePickerCueId, setRolePickerCueId] = useState<string | null>(null);
   const [setupOpen, setSetupOpen] = useState(false);
   const [setupBusy, setSetupBusy] = useState<string | null>(null);
@@ -899,10 +900,17 @@ export default function App() {
     );
   }, []);
 
+  const toggleNoteFilter = useCallback((note: NoteFilter) => {
+    setNoteFilter((prev) =>
+      prev.includes(note) ? prev.filter((n) => n !== note) : [...prev, note],
+    );
+  }, []);
+
   const clearFilters = useCallback(() => {
     setSpeakerFilter([]);
     setShotFilter([]);
     setStatusFilter([]);
+    setNoteFilter([]);
   }, []);
 
   const speakers = project?.speakers;
@@ -1078,9 +1086,11 @@ export default function App() {
         speakerFilter={speakerFilter}
         statusFilter={statusFilter}
         shotFilter={shotFilter}
+        noteFilter={noteFilter}
         onToggleSpeakerFilter={toggleSpeakerFilter}
         onToggleStatusFilter={toggleStatusFilter}
         onToggleShotFilter={toggleShotFilter}
+        onToggleNoteFilter={toggleNoteFilter}
         onClearFilters={clearFilters}
       />
       <ExportDialog
@@ -1182,12 +1192,14 @@ export default function App() {
             speakerFilter={speakerFilter}
             statusFilter={statusFilter}
             shotFilter={shotFilter}
+            noteFilter={noteFilter}
           />
           <CueList
             project={project}
             speakerFilter={speakerFilter}
             statusFilter={statusFilter}
             shotFilter={shotFilter}
+            noteFilter={noteFilter}
             findHighlight={findHighlight}
           />
         </div>

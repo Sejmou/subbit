@@ -22,6 +22,25 @@ describe("parseProjectData", () => {
     expect(parsed.cues[0].words[0].text).toBe("hello");
   });
 
+  it("accepts optional cue notes", () => {
+    const parsed = parseProjectData({
+      ...validFixture,
+      cues: [
+        makeCue(
+          {
+            id: "c1",
+            start: 0,
+            end: 2,
+            speakerId: "SPEAKER_00",
+            note: "lip sync?",
+          },
+          "hello",
+        ),
+      ],
+    });
+    expect(parsed.cues[0].note).toBe("lip sync?");
+  });
+
   it("rejects missing required fields", () => {
     expect(() =>
       parseProjectData({ ...validFixture, version: undefined }),

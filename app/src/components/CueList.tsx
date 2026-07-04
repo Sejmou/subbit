@@ -7,10 +7,15 @@ import { findActiveCueIndex } from "../lib/active-cue";
 import {
   cueMatchesListFilters,
   hasActiveFilters,
+  type NoteFilter,
   type ReviewStatusFilter,
 } from "../lib/cue-filters";
 import { useShortcutLabel } from "../hooks/useShortcutLabel";
-import { focusCueForEdit, type FocusCueDetail } from "../lib/focus-cue";
+import {
+  focusCueForEdit,
+  type FocusCueDetail,
+  type ToggleCueNoteDetail,
+} from "../lib/focus-cue";
 import {
   indexMatchesBySegment,
   type FindHighlightState,
@@ -35,6 +40,7 @@ interface Props {
   speakerFilter?: string[];
   statusFilter?: ReviewStatusFilter[];
   shotFilter?: string[];
+  noteFilter?: NoteFilter[];
   findHighlight?: FindHighlightState;
 }
 
@@ -43,6 +49,7 @@ export function CueList({
   speakerFilter = [],
   statusFilter = [],
   shotFilter = [],
+  noteFilter = [],
   findHighlight = INACTIVE_FIND_HIGHLIGHT,
 }: Props) {
   const parentRef = useRef<HTMLDivElement>(null);
@@ -55,16 +62,24 @@ export function CueList({
 
   const entries = useMemo(() => {
     const all = project.cues.map((cue, index) => ({ cue, index }));
-    if (!hasActiveFilters(speakerFilter, statusFilter, shotFilter)) return all;
+    if (!hasActiveFilters(speakerFilter, statusFilter, shotFilter, noteFilter))
+      return all;
     return all.filter(({ cue }) =>
-      cueMatchesListFilters(cue, speakerFilter, statusFilter, shotFilter),
+      cueMatchesListFilters(
+        cue,
+        speakerFilter,
+        statusFilter,
+        shotFilter,
+        noteFilter,
+      ),
     );
-  }, [project.cues, speakerFilter, statusFilter, shotFilter]);
+  }, [project.cues, speakerFilter, statusFilter, shotFilter, noteFilter]);
 
   const filterActive = hasActiveFilters(
     speakerFilter,
     statusFilter,
     shotFilter,
+    noteFilter,
   );
   const filteredEmpty = filterActive && entries.length === 0;
 
@@ -146,6 +161,20 @@ export function CueList({
 
     window.addEventListener("subbit:focus-cue", onFocusCue);
     return () => window.removeEventListener("subbit:focus-cue", onFocusCue);
+  }, [entries, virtualizer, isEmpty, filteredEmpty]);
+
+  useEffect(() => {
+    if (isEmpty || filteredEmpty) return;
+
+    function onToggleNote(e: Event) {
+      const detail = (e as CustomEvent<ToggleCueNoteDetail>).detail;
+      if (detail.open === false) return;
+      const idx = entries.findIndex(({ cue }) => cue.id === detail.cueId);
+      if (idx >= 0) virtualizer.scrollToIndex(idx, { align: "auto" });
+    }
+
+    window.addEventListener("subbit:toggle-note", onToggleNote);
+    return () => window.removeEventListener("subbit:toggle-note", onToggleNote);
   }, [entries, virtualizer, isEmpty, filteredEmpty]);
 
   if (isEmpty) {

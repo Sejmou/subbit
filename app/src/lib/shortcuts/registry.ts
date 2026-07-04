@@ -1,6 +1,6 @@
 import { MOD_LABEL } from "./mod-label";
 import type { ShortcutContext } from "./context";
-import { focusCueForEdit } from "../focus-cue";
+import { focusCueForEdit, toggleCueNote } from "../focus-cue";
 import { isReviewedCueLocked } from "../cue-lock";
 import { openRolePicker } from "../role-picker";
 import { createKeyLabeler, type KeyLabeler } from "../keyboard-layout";
@@ -499,6 +499,23 @@ export const SHORTCUTS: ShortcutDef[] = [
       canEditSelectedCue(ctx) &&
       e.key === "Backspace",
     run: (ctx) => ctx.ps.deleteCue(ctx.cue!.id),
+    preventDefault: true,
+  },
+  {
+    id: "toggle-note",
+    group: "Metadata",
+    label: (_, k) => k.shift("KeyN"),
+    description: "Toggle cue note editor",
+    match: (e, ctx) =>
+      plainKey(e) &&
+      !ctx.editing &&
+      !!ctx.cue &&
+      e.shiftKey &&
+      (e.key === "n" || e.key === "N"),
+    run: (ctx) => {
+      ctx.ps.selectCue(ctx.cue!.id);
+      toggleCueNote(ctx.cue!.id, { focus: true });
+    },
     preventDefault: true,
   },
   {

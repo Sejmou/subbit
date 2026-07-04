@@ -59,6 +59,7 @@ const cueSchemaV2 = z
     shot: z.string(),
     joinedToPrev: z.boolean().optional(),
     reviewed: z.boolean().optional(),
+    note: z.string().optional(),
     inferredSpeaker: inferredSpeakerSchema.nullable().optional(),
   })
   .refine((c) => c.end > c.start, {

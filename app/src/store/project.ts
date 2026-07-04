@@ -116,6 +116,7 @@ interface ProjectState {
   setSegmentShot: (cueId: string, segIndex: number, shot: ShotId) => void;
   cycleSegmentShot: (cueId: string, segIndex: number) => void;
   toggleReviewed: (cueId: string) => void;
+  setCueNote: (cueId: string, note: string) => void;
 
   // structural ops
   splitCueAtCaret: (
@@ -603,6 +604,20 @@ export const useProject = create<ProjectState>((set, getState) => {
         if (!cue || isCueBeforeReferenceStart(cue, p)) return p;
         return mapCue(p, cueId, (c) => ({ ...c, reviewed: !c.reviewed }));
       }),
+
+    setCueNote: (cueId, note) => {
+      const p = getState().project;
+      if (!p || cueIsLocked(p, cueId)) return;
+      const trimmed = note.trim();
+      update(
+        (proj) =>
+          mapCue(proj, cueId, (c) => ({
+            ...c,
+            note: trimmed || undefined,
+          })),
+        `note:${cueId}`,
+      );
+    },
 
     splitCueAtCaret: (cueId, _segIndex, charOffset, _time) => {
       const p = getState().project;

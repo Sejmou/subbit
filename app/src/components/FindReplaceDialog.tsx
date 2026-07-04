@@ -4,6 +4,7 @@ import { useProject } from "../store/project";
 import {
   cueMatchesListFilters,
   hasActiveFilters,
+  type NoteFilter,
   type ReviewStatusFilter,
 } from "../lib/cue-filters";
 import {
@@ -32,6 +33,7 @@ interface Props {
   speakerFilter: string[];
   statusFilter: ReviewStatusFilter[];
   shotFilter: string[];
+  noteFilter: NoteFilter[];
 }
 
 function revealMatch(match: TextMatch, focus: boolean) {
@@ -55,6 +57,7 @@ export function FindReplaceDialog({
   speakerFilter,
   statusFilter,
   shotFilter,
+  noteFilter,
 }: Props) {
   const tip = useTip();
   const replaceSegmentTexts = useProject((s) => s.replaceSegmentTexts);
@@ -73,12 +76,19 @@ export function FindReplaceDialog({
     speakerFilter,
     statusFilter,
     shotFilter,
+    noteFilter,
   );
 
   const searchCues = useMemo(() => {
     if (!searchFilteredOnly || !filtersActive) return project.cues;
     return project.cues.filter((cue) =>
-      cueMatchesListFilters(cue, speakerFilter, statusFilter, shotFilter),
+      cueMatchesListFilters(
+        cue,
+        speakerFilter,
+        statusFilter,
+        shotFilter,
+        noteFilter,
+      ),
     );
   }, [
     project.cues,
@@ -87,6 +97,7 @@ export function FindReplaceDialog({
     speakerFilter,
     statusFilter,
     shotFilter,
+    noteFilter,
   ]);
 
   const matches = useMemo(

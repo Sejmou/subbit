@@ -6,7 +6,7 @@ import { formatRelativeTime } from "../lib/relative-time";
 import { FileMenu } from "./FileMenu";
 import { ProjectNameField } from "./ProjectNameField";
 import { FiltersMenu } from "./FiltersMenu";
-import type { ReviewStatusFilter } from "../lib/cue-filters";
+import type { NoteFilter, ReviewStatusFilter } from "../lib/cue-filters";
 import { useTip } from "./Tooltip";
 
 type SaveStateVariant = "saving" | "edited" | "unsaved" | "saved";
@@ -37,9 +37,11 @@ interface Props {
   speakerFilter: string[];
   statusFilter: ReviewStatusFilter[];
   shotFilter: string[];
+  noteFilter: NoteFilter[];
   onToggleSpeakerFilter: (speakerId: string) => void;
   onToggleStatusFilter: (status: ReviewStatusFilter) => void;
   onToggleShotFilter: (shotId: string) => void;
+  onToggleNoteFilter: (note: NoteFilter) => void;
   onClearFilters: () => void;
 }
 
@@ -132,9 +134,11 @@ export function Toolbar({
   speakerFilter,
   statusFilter,
   shotFilter,
+  noteFilter,
   onToggleSpeakerFilter,
   onToggleStatusFilter,
   onToggleShotFilter,
+  onToggleNoteFilter,
   onClearFilters,
 }: Props) {
   const tip = useTip();
@@ -186,9 +190,11 @@ export function Toolbar({
         speakerFilter={speakerFilter}
         statusFilter={statusFilter}
         shotFilter={shotFilter}
+        noteFilter={noteFilter}
         onToggleSpeakerFilter={onToggleSpeakerFilter}
         onToggleStatusFilter={onToggleStatusFilter}
         onToggleShotFilter={onToggleShotFilter}
+        onToggleNoteFilter={onToggleNoteFilter}
         onClearFilters={onClearFilters}
       />
       <ReviewProgress reviewed={reviewed} total={total} groups={groups} />
