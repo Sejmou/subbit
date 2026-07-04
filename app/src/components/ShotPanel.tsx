@@ -5,7 +5,6 @@ import {
   type ReviewStatusFilter,
 } from "../lib/cue-filters";
 import { isShotReferenced } from "../lib/shot-refs";
-import { isDefaultShotId } from "../lib/delivery-shot";
 import { shotDisplayLabel } from "../lib/shot-display";
 import { useProject } from "../store/project";
 import { useTip } from "./Tooltip";
@@ -55,14 +54,10 @@ export function ShotPanel({
     <div className="shot-panel">
       <div className="shot-panel-header">
         <h3>Shot types</h3>
-        <p className="hint">
-          Info column tokens for on/off camera and custom labels.
-        </p>
       </div>
       <ul className="shot-panel-list">
         {project.shots.map((shot, i) => {
           const referenced = isShotReferenced(project, shot.id);
-          const isDefault = isDefaultShotId(shot.id);
           const cueCount = cueCounts.get(shot.id) ?? 0;
           const cueLabel = cueCount === 1 ? "cue" : "cues";
           const filterActive = shotFilter.includes(shot.id);
@@ -70,9 +65,9 @@ export function ShotPanel({
           return (
             <li key={shot.id}>
               <span className="qk">{i + 1}</span>
-              <code className="shot-id" title="Export token">
-                {shot.id}
-              </code>
+              <span className="tooltip-wrap" {...tip("Label used in exports")}>
+                <code className="shot-id">{shot.id}</code>
+              </span>
               <input
                 className="shot-label"
                 value={shot.label}
@@ -109,17 +104,15 @@ export function ShotPanel({
               <span
                 className="tooltip-wrap"
                 {...tip(
-                  isDefault
-                    ? `${displayLabel} is a built-in shot type`
-                    : referenced
-                      ? `${displayLabel} is assigned to cues and cannot be removed`
-                      : `Remove ${displayLabel}`,
+                  referenced
+                    ? `${displayLabel} is assigned to cues and cannot be removed`
+                    : `Remove ${displayLabel}`,
                 )}
               >
                 <button
                   type="button"
                   className="shot-remove-btn"
-                  disabled={isDefault || referenced}
+                  disabled={referenced}
                   aria-label={`Remove ${displayLabel}`}
                   onClick={() => removeShot(shot.id)}
                 >

@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type HTMLAttributes,
@@ -15,6 +16,7 @@ import { createPortal } from "react-dom";
 export type TipAnchor = "element" | "cursor";
 
 const DEFAULT_DELAY_MS = 500;
+const VIEWPORT_PADDING = 8;
 
 const CURSOR_OFFSET_X = 12;
 const CURSOR_OFFSET_Y = 16;
@@ -26,6 +28,95 @@ function elementAnchor(el: Element): { x: number; y: number } {
     x: rect.left + rect.width / 2,
     y: rect.bottom,
   };
+}
+
+/** Keep tooltip box inside the viewport with a small margin. */
+export function clampTooltipToViewport(
+  anchor: TipAnchor,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  viewportWidth: number,
+  viewportHeight: number,
+): { left: number; top: number } {
+  const minLeft = VIEWPORT_PADDING;
+  const minTop = VIEWPORT_PADDING;
+  const maxLeft = Math.max(minLeft, viewportWidth - VIEWPORT_PADDING - width);
+  const maxTop = Math.max(minTop, viewportHeight - VIEWPORT_PADDING - height);
+
+  if (anchor === "element") {
+    let left = x - width / 2;
+    left = Math.min(Math.max(left, minLeft), maxLeft);
+
+    let top = y + ELEMENT_OFFSET_Y;
+    if (top > maxTop) {
+      const above = y - height - ELEMENT_OFFSET_Y;
+      top = above >= minTop ? above : Math.min(Math.max(top, minTop), maxTop);
+    } else {
+      top = Math.min(Math.max(top, minTop), maxTop);
+    }
+    return { left, top };
+  }
+
+  const left = Math.min(Math.max(x + CURSOR_OFFSET_X, minLeft), maxLeft);
+  const top = Math.min(Math.max(y + CURSOR_OFFSET_Y, minTop), maxTop);
+  return { left, top };
+}
+
+function tooltipStyle(
+  anchor: TipAnchor,
+  x: number,
+  y: number,
+): { left: number; top: number; transform?: string } {
+  if (anchor === "element") {
+    return {
+      left: x,
+      top: y + ELEMENT_OFFSET_Y,
+      transform: "translateX(-50%)",
+    };
+  }
+  return {
+    left: x + CURSOR_OFFSET_X,
+    top: y + CURSOR_OFFSET_Y,
+  };
+}
+
+function AppTooltip({
+  label,
+  x,
+  y,
+  anchor,
+}: {
+  label: string;
+  x: number;
+  y: number;
+  anchor: TipAnchor;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [style, setStyle] = useState(() => tooltipStyle(anchor, x, y));
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const { width, height } = el.getBoundingClientRect();
+    const { left, top } = clampTooltipToViewport(
+      anchor,
+      x,
+      y,
+      width,
+      height,
+      window.innerWidth,
+      window.innerHeight,
+    );
+    setStyle({ left, top });
+  }, [anchor, label, x, y]);
+
+  return (
+    <span ref={ref} className="app-tooltip" role="tooltip" style={style}>
+      {label}
+    </span>
+  );
 }
 
 export type TipOptions = {
@@ -167,24 +258,12 @@ export function TooltipProvider({ children }: { children: ReactNode }) {
       {children}
       {visible &&
         createPortal(
-          <span
-            className="app-tooltip"
-            role="tooltip"
-            style={
-              visible.anchor === "element"
-                ? {
-                    left: visible.x,
-                    top: visible.y + ELEMENT_OFFSET_Y,
-                    transform: "translateX(-50%)",
-                  }
-                : {
-                    left: visible.x + CURSOR_OFFSET_X,
-                    top: visible.y + CURSOR_OFFSET_Y,
-                  }
-            }
-          >
-            {visible.label}
-          </span>,
+          <AppTooltip
+            label={visible.label}
+            x={visible.x}
+            y={visible.y}
+            anchor={visible.anchor}
+          />,
           document.body,
         )}
     </TooltipContext.Provider>

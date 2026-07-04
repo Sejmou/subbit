@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { writeLockReviewedCues } from "../lib/lock-reviewed-settings";
 import { cueShotText, makeCue, makeProject } from "../test-fixtures";
+import { DEFAULT_SHOTS } from "../types";
 import { useLockReviewedStore } from "./lock-reviewed";
 import { useProject } from "./project";
 
@@ -480,8 +481,45 @@ describe("shot types", () => {
     expect(store().project!.shots.map((s) => s.id)).not.toContain("VO");
   });
 
-  it("refuses to remove built-in or referenced shot types", () => {
+  it("removes an unreferenced built-in shot type", () => {
+    expect(store().removeShot("OFF")).toBe(true);
+    expect(store().project!.shots.map((s) => s.id)).not.toContain("OFF");
+  });
+
+  it("reassigns defaultShot when removing the current default", () => {
+    store().loadProject(
+      makeProject({
+        cues: [
+          makeCue(
+            { id: "c1", start: 0, end: 2, speakerId: "SPEAKER_00" },
+            "hello",
+            "OFF",
+          ),
+        ],
+        defaultShot: "ON",
+        shots: DEFAULT_SHOTS,
+      }),
+    );
+    expect(store().removeShot("ON")).toBe(true);
+    expect(store().project!.defaultShot).toBe("OFF");
+  });
+
+  it("refuses to remove referenced shot types or the last shot type", () => {
     expect(store().removeShot("ON")).toBe(false);
+    store().loadProject(
+      makeProject({
+        cues: [
+          makeCue(
+            { id: "c1", start: 0, end: 2, speakerId: "SPEAKER_00" },
+            "hello",
+            "OFF",
+          ),
+        ],
+        defaultShot: "OFF",
+        shots: [{ id: "OFF", label: "Off-screen" }],
+      }),
+    );
+    expect(store().removeShot("OFF")).toBe(false);
     store().addShot("VO", "Voice-over");
     store().setSegmentShot("c1", 0, "VO");
     expect(store().removeShot("VO")).toBe(false);

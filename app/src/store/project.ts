@@ -8,11 +8,7 @@ import {
   minCueStartSeconds,
 } from "../lib/program-start";
 import { isSpeakerReferenced } from "../lib/speaker-refs";
-import {
-  isDefaultShotId,
-  ensureShotTypes,
-  syncShotTypesFromCues,
-} from "../lib/delivery-shot";
+import { ensureShotTypes, syncShotTypesFromCues } from "../lib/delivery-shot";
 import { isShotReferenced } from "../lib/shot-refs";
 import { resolveProjectName } from "../lib/project-meta";
 import {
@@ -812,11 +808,13 @@ export const useProject = create<ProjectState>((set, getState) => {
     removeShot: (id) => {
       const project = getState().project;
       if (!project || !project.shots.some((s) => s.id === id)) return false;
-      if (isDefaultShotId(id) || isShotReferenced(project, id)) return false;
-      update((p) => ({
-        ...p,
-        shots: p.shots.filter((s) => s.id !== id),
-      }));
+      if (isShotReferenced(project, id) || project.shots.length <= 1)
+        return false;
+      update((p) => {
+        const shots = p.shots.filter((s) => s.id !== id);
+        const defaultShot = p.defaultShot === id ? shots[0]!.id : p.defaultShot;
+        return { ...p, shots, defaultShot };
+      });
       return true;
     },
 
