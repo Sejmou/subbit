@@ -263,6 +263,8 @@
 }
 .filters-menu-panel {
   min-width: 220px;
+  max-height: min(70vh, 480px);
+  overflow-y: auto;
 }
 .filters-menu-heading {
   padding: 6px 10px 4px;
