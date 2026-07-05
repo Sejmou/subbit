@@ -51,6 +51,8 @@ interface Props {
   bracket: BracketKind;
   /** Show the join/unjoin chain to the previous cue (true predecessor is visible). */
   canToggleJoinPrev: boolean;
+  /** This cue's time range overlaps another cue's — flagged as a warning. */
+  overlapping: boolean;
   findHighlight?: FindHighlightState;
   segmentMatchIndex?: Map<string, TextMatch[]>;
 }
@@ -235,6 +237,7 @@ function CueRowImpl({
   runLabel,
   bracket,
   canToggleJoinPrev,
+  overlapping,
   findHighlight = INACTIVE_FIND_HIGHLIGHT,
   segmentMatchIndex,
 }: Props) {
@@ -295,6 +298,7 @@ function CueRowImpl({
     cue.reviewed && "reviewed",
     locked && "reviewed-locked",
     invalid && "cue-invalid",
+    overlapping && "cue-overlap",
     bracket !== "none" && `cue-row--bracket-${bracket}`,
     (bracket === "top" || bracket === "mid") && "cue-row--join-below",
   ]
@@ -357,6 +361,15 @@ function CueRowImpl({
             {...tip(validationTip)}
           >
             ⚠
+          </span>
+        )}
+        {overlapping && (
+          <span
+            className="cue-overlap-badge"
+            aria-label="Overlaps another subtitle"
+            {...tip("Overlaps another subtitle in time")}
+          >
+            ⧉
           </span>
         )}
         <input

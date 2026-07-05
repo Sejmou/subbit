@@ -43,11 +43,12 @@ function speakerColor(project: Project, cue: Cue): string {
 }
 
 const INVALID_CUE_COLOR = "#ffb74d";
+const OVERLAP_CUE_COLOR = "#ff5252";
 
 function segmentVisuals(
   project: Project,
   cue: Cue,
-  opts: { active: boolean; selected: boolean },
+  opts: { active: boolean; selected: boolean; overlapping: boolean },
 ): Pick<SegmentOptions, "color" | "borderColor" | "labelText"> {
   const invalid = isCueBeforeReferenceStart(cue, project);
   if (invalid) {
@@ -74,9 +75,11 @@ function segmentVisuals(
     color: rgba(base, overlayOpacity),
     borderColor: opts.selected
       ? "#ffffff"
-      : opts.active
-        ? base
-        : "rgba(255,255,255,0.15)",
+      : opts.overlapping
+        ? OVERLAP_CUE_COLOR
+        : opts.active
+          ? base
+          : "rgba(255,255,255,0.15)",
     labelText: cueLabelTextShort(cue),
   };
 }
@@ -85,7 +88,7 @@ function segmentVisuals(
 export function buildCueSegmentAddOptions(
   cue: Cue,
   project: Project,
-  opts: { active: boolean; selected: boolean },
+  opts: { active: boolean; selected: boolean; overlapping: boolean },
 ): SegmentOptions {
   return {
     id: cue.id,
@@ -102,7 +105,7 @@ export function buildCueSegmentAddOptions(
 export function buildCueSegmentUpdatePatch(
   cue: Cue,
   project: Project,
-  opts: { active: boolean; selected: boolean },
+  opts: { active: boolean; selected: boolean; overlapping: boolean },
 ): Pick<
   SegmentOptions,
   "startTime" | "endTime" | "labelText" | "color" | "borderColor"
@@ -137,7 +140,11 @@ export function syncPeaksVisibleCueSegments(
   project: Project,
   viewStart: number,
   viewEnd: number,
-  opts: { selectedCueId: string | null; currentTime: number },
+  opts: {
+    selectedCueId: string | null;
+    currentTime: number;
+    overlappingIds: Set<string>;
+  },
 ): SyncPeaksSegmentsResult {
   const activeId = findActiveCueId(project.cues, opts.currentTime);
   const selId = opts.selectedCueId;
@@ -160,6 +167,7 @@ export function syncPeaksVisibleCueSegments(
     const state = {
       active: cue.id === activeId,
       selected: cue.id === selId,
+      overlapping: opts.overlappingIds.has(cue.id),
     };
     const patch = buildCueSegmentUpdatePatch(cue, project, state);
     const seg = peaks.segments.getSegment(cue.id);
@@ -179,6 +187,7 @@ export function syncPeaksCueHighlight(
   project: Project,
   time: number,
   selectedCueId: string | null,
+  overlappingIds: Set<string>,
   prevActiveId?: string | null,
 ): void {
   const activeId = findActiveCueId(project.cues, time);
@@ -190,15 +199,16 @@ export function syncPeaksCueHighlight(
   for (const id of touchIds) {
     const cue = project.cues.find((c) => c.id === id);
     if (!cue) continue;
-    const active = cue.id === activeId;
-    const selected = cue.id === selectedCueId;
+    const state = {
+      active: cue.id === activeId,
+      selected: cue.id === selectedCueId,
+      overlapping: overlappingIds.has(cue.id),
+    };
     const seg = peaks.segments.getSegment(id);
     if (!seg) {
-      peaks.segments.add(
-        buildCueSegmentAddOptions(cue, project, { active, selected }),
-      );
+      peaks.segments.add(buildCueSegmentAddOptions(cue, project, state));
       continue;
     }
-    seg.update(buildCueSegmentUpdatePatch(cue, project, { active, selected }));
+    seg.update(buildCueSegmentUpdatePatch(cue, project, state));
   }
 }

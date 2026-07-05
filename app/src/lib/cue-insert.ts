@@ -16,8 +16,14 @@ export function computeInsertCueRange(
   if (!Number.isFinite(start) || start < minStart || duration <= 0) return null;
   if (findActiveCueIndex(cues, start) >= 0) return null;
 
-  const nextCue = cues.find((c) => c.start > start);
-  const endCap = Math.min(nextCue?.start ?? maxTime, maxTime);
+  // Nearest cue starting after the playhead. The array is run-atomic ordered,
+  // so it isn't guaranteed strictly sorted by start — scan for the minimum
+  // rather than taking the first — so a new cue keeps its default length
+  // without swallowing the next one.
+  let endCap = maxTime;
+  for (const c of cues) {
+    if (c.start > start && c.start < endCap) endCap = c.start;
+  }
   const end = Math.min(start + duration, endCap);
 
   if (end - start <= EPS) return null;

@@ -3,6 +3,7 @@ import type { Cue, Project, ShotId, Speaker, VideoIdentity } from "../types";
 import { computeInsertCueRange, findInsertCueIndex } from "../lib/cue-insert";
 import { isReviewedCueLocked } from "../lib/cue-lock";
 import { frameStep, snapToFrame } from "../lib/cue-timing";
+import { normalizeCueOrder } from "../lib/cue-order";
 import {
   isCueBeforeReferenceStart,
   minCueStartSeconds,
@@ -169,6 +170,19 @@ function findCue(project: Project, cueId: string): Cue | undefined {
 }
 
 /**
+ * Index range `[first, last]` of the linked run containing `index`: the run
+ * head (the first cue whose `joinedToPrev` is false) through every following
+ * cue joined to it. A standalone cue returns `[index, index]`.
+ */
+function joinedRunRange(cues: Cue[], index: number): [number, number] {
+  let first = index;
+  while (first > 0 && cues[first].joinedToPrev) first--;
+  let last = index;
+  while (last + 1 < cues.length && cues[last + 1].joinedToPrev) last++;
+  return [first, last];
+}
+
+/**
  * Repair the single group boundary at `index` so the invariant
  * `cues[index - 1].end === cues[index].start` holds for a joined cue (see
  * {@link syncJoinedCueStartAt}). Called by the specific action that moved a
@@ -220,11 +234,12 @@ function clampCueStart(
   const gap = frameStep(project);
   // A joined cue shares its In with the predecessor's Out (a group boundary):
   // it may slide left into the predecessor (whose Out follows), down to one
-  // frame after the predecessor's own In. A normal cue stops at prev.end.
+  // frame after the predecessor's own In. A normal cue may overlap its
+  // predecessor freely and is limited only by the subtitle/file floor.
   const min =
     cue.joinedToPrev && prev
       ? Math.max(minCueStartSeconds(project), prev.start + gap)
-      : minCueStartSeconds(project, prev?.end);
+      : minCueStartSeconds(project);
   const max = cue.end - gap;
   if (min > max) return cue.start;
   return Math.min(Math.max(min, start), max);
@@ -240,51 +255,10 @@ function clampCueEnd(
   const min = cue.start + gap;
   // A joined follower shares this boundary: the Out may grow into it (the
   // follower's In follows), up to one frame before the follower's own Out. A
-  // normal next cue is a hard wall at its In.
-  const max = next
-    ? next.joinedToPrev
-      ? next.end - gap
-      : next.start
-    : Infinity;
+  // normal next cue is no longer a wall — the Out may overlap it freely.
+  const max = next && next.joinedToPrev ? next.end - gap : Infinity;
   if (min > max) return cue.end;
   return Math.min(Math.max(min, end), max);
-}
-
-/** Move a cue as a block — keeps duration unless neighbors leave no room. */
-function clampCueMove(
-  cue: Cue,
-  start: number,
-  end: number,
-  prev: Cue | undefined,
-  next: Cue | undefined,
-  project: Project,
-): { start: number; end: number } {
-  const gap = frameStep(project);
-  const duration = end - start;
-  if (duration < gap) return { start: cue.start, end: cue.end };
-
-  const minStart = minCueStartSeconds(project, prev?.end);
-  const maxEnd = next ? next.start : Infinity;
-
-  let newStart = start;
-  let newEnd = end;
-
-  if (newStart < minStart) {
-    newStart = minStart;
-    newEnd = newStart + duration;
-  }
-  if (newEnd > maxEnd) {
-    newEnd = maxEnd;
-    newStart = newEnd - duration;
-  }
-  if (newStart < minStart) {
-    newStart = minStart;
-    newEnd = Math.min(newStart + duration, maxEnd);
-  }
-
-  newStart = Math.max(minCueStartSeconds(project), newStart);
-  if (newEnd - newStart < gap) return { start: cue.start, end: cue.end };
-  return { start: newStart, end: newEnd };
 }
 
 /** Cap the in-memory undo stack so long sessions don't grow unbounded. */
@@ -315,9 +289,14 @@ export const useProject = create<ProjectState>((set, getState) => {
   const update = (fn: (p: Project) => Project, tag: string | null = null) =>
     set((state) => {
       if (!state.project) return state;
-      const next = fn(state.project);
+      const raw = fn(state.project);
       // No-op transforms shouldn't pollute history.
-      if (next === state.project) return state;
+      if (raw === state.project) return state;
+
+      // Keep storage in run-atomic start order (only timing edits reorder;
+      // for everything else this is a ref-preserving no-op).
+      const cues = normalizeCueOrder(raw.cues);
+      const next = cues === raw.cues ? raw : { ...raw, cues };
 
       const now = Date.now();
       const coalesce =
@@ -342,7 +321,10 @@ export const useProject = create<ProjectState>((set, getState) => {
 
     loadProject: (project) => {
       lastTag = null;
-      const synced = syncShotTypesFromCues(project);
+      const shotSynced = syncShotTypesFromCues(project);
+      const cues = normalizeCueOrder(shotSynced.cues);
+      const synced =
+        cues === shotSynced.cues ? shotSynced : { ...shotSynced, cues };
       set({
         project: synced,
         selectedCueId: synced.cues[0]?.id ?? null,
@@ -495,20 +477,30 @@ export const useProject = create<ProjectState>((set, getState) => {
         const idx = proj.cues.findIndex((c) => c.id === cueId);
         if (idx === -1) return proj;
         const c = proj.cues[idx];
-        const next = clampCueMove(
-          c,
-          snapToFrame(start, proj),
-          snapToFrame(end, proj),
-          proj.cues[idx - 1],
-          proj.cues[idx + 1],
-          proj,
+        const gap = frameStep(proj);
+        const targetStart = snapToFrame(start, proj);
+        const targetEnd = snapToFrame(end, proj);
+        if (targetEnd - targetStart < gap) return proj;
+
+        // A linked run moves as one rigid unit: shift every member by the same
+        // delta so internal abutment is preserved and overlaps with outside
+        // neighbors are allowed. The only limit is the subtitle/file floor.
+        const [first, last] = joinedRunRange(proj.cues, idx);
+        for (let i = first; i <= last; i++) {
+          if (isReviewedCueLocked(proj.cues[i])) return proj;
+        }
+        let delta = targetStart - c.start;
+        const floor = minCueStartSeconds(proj);
+        const runStart = proj.cues[first].start;
+        if (runStart + delta < floor) delta = floor - runStart;
+        if (delta === 0) return proj;
+
+        const cues = proj.cues.map((cue, i) =>
+          i >= first && i <= last
+            ? applyCueBlockMove(cue, cue.start + delta, cue.end + delta)
+            : cue,
         );
-        if (next.start === c.start && next.end === c.end) return proj;
-        const moved = mapCue(proj, cueId, (cue) =>
-          applyCueBlockMove(cue, next.start, next.end),
-        );
-        // Pin the moved cue itself if it is joined, and re-abut a joined follower.
-        return reabut(reabut(moved, idx), idx + 1);
+        return { ...proj, cues };
       }, `move:${cueId}`);
     },
     nudgeCueStart: (cueId, deltaFrames) => {
@@ -681,11 +673,11 @@ export const useProject = create<ProjectState>((set, getState) => {
           ...newCueAtPlayhead(start, end, p.defaultShot),
         };
 
-        const cues = [
+        const cues = normalizeCueOrder([
           ...p.cues.slice(0, insertIdx),
           newCue,
           ...p.cues.slice(insertIdx),
-        ];
+        ]);
         const project = { ...p, cues };
 
         lastTag = null;

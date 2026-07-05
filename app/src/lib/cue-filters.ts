@@ -4,7 +4,12 @@ import { cueMatchesShotFilter } from "./shot-refs";
 
 export interface CueListEntry {
   cue: Cue;
-  /** Index in the full project cue list. */
+  /**
+   * Position in the full project cue array (kept in run-atomic storage order).
+   * Entries are returned in start-time order for display, but this preserves
+   * each cue's storage position for adjacency (run bracket) and active-cue
+   * checks, which must not depend on display order.
+   */
   index: number;
 }
 
@@ -81,9 +86,18 @@ export function listFilteredCueEntries(
   shotFilter: readonly string[] = [],
 ): CueListEntry[] {
   const all = cues.map((cue, index) => ({ cue, index }));
-  if (!hasActiveFilters(speakerFilter, statusFilter, shotFilter)) return all;
-  return all.filter(({ cue }) =>
-    cueMatchesListFilters(cue, speakerFilter, statusFilter, shotFilter),
+  const filtered = hasActiveFilters(speakerFilter, statusFilter, shotFilter)
+    ? all.filter(({ cue }) =>
+        cueMatchesListFilters(cue, speakerFilter, statusFilter, shotFilter),
+      )
+    : all;
+  // Display in chronological order. Storage is run-atomic ordered (runs
+  // contiguous, join-safe) which can differ from strict start order, so the
+  // list is a sorted view. Ties keep storage order so equal-time cues don't
+  // shuffle.
+  return filtered.sort(
+    (a, b) =>
+      a.cue.start - b.cue.start || a.cue.end - b.cue.end || a.index - b.index,
   );
 }
 

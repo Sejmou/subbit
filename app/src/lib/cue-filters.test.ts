@@ -138,6 +138,17 @@ describe("cue filters", () => {
     );
   });
 
+  it("returns entries in start order while keeping document index", () => {
+    const cues = [
+      makeCue({ id: "late", start: 5, end: 7, speakerId: "A" }, "b"),
+      makeCue({ id: "early", start: 1, end: 3, speakerId: "A" }, "a"),
+    ];
+    const entries = listFilteredCueEntries(cues, [], [], []);
+    expect(entries.map((e) => e.cue.id)).toEqual(["early", "late"]);
+    // Index still points at the document (storage) position, not the sorted one.
+    expect(entries.map((e) => e.index)).toEqual([1, 0]);
+  });
+
   it("navigates adjacent cues within active filters", () => {
     const cues = [
       { ...cue(true), id: "c1", speakerId: "A" },

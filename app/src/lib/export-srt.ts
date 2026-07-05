@@ -1,5 +1,6 @@
 import type { Cue, Project } from "../types";
 import { cuePlainText } from "./export-text";
+import { cuesByStartTime } from "./cue-order";
 import { fileSecondsToSubtitleSeconds } from "./program-start";
 
 /** SRT timestamp "HH:MM:SS,mmm" from subtitle seconds (from reference frame). */
@@ -31,7 +32,7 @@ function cueText(cue: Cue): string {
 
 /** Export plain SRT for round-tripping in other subtitle tools. */
 export function exportSrt(project: Project): string {
-  return project.cues
+  return cuesByStartTime(project.cues)
     .map((cue, i) => {
       const text = cueText(cue);
       return `${i + 1}\n${srtTime(cueExportSeconds(cue, project, "in"))} --> ${srtTime(cueExportSeconds(cue, project, "out"))}\n${text}\n`;

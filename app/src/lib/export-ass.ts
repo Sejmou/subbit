@@ -1,6 +1,7 @@
 import type { DiarizedExportOptions } from "./export-format";
 import type { Cue, Project, Speaker } from "../types";
 import { cuePlainText, speakerForCue, speakerRoleName } from "./export-text";
+import { cuesByStartTime } from "./cue-order";
 import { fileSecondsToSubtitleSeconds } from "./program-start";
 
 /** ASS timestamp H:MM:SS.cc (centiseconds). */
@@ -89,7 +90,7 @@ export function exportAss(
     }
   }
 
-  const dialogues = project.cues.map((cue) => {
+  const dialogues = cuesByStartTime(project.cues).map((cue) => {
     const text = assEscape(cuePlainText(cue));
     const speaker = speakerForCue(project, cue);
     const style =

@@ -4,6 +4,7 @@ import type { Project } from "../types";
 import { useProject } from "../store/project";
 import { usePlayback } from "../store/playback";
 import { findActiveCueIndex } from "../lib/active-cue";
+import { findOverlappingCueIds } from "../lib/cue-overlap";
 import {
   hasActiveFilters,
   listFilteredCueEntries,
@@ -74,6 +75,11 @@ export function CueList({
   const segmentMatchIndex = useMemo(
     () => indexMatchesBySegment(findHighlight.matches),
     [findHighlight.matches],
+  );
+
+  const overlappingCueIds = useMemo(
+    () => findOverlappingCueIds(project.cues),
+    [project.cues],
   );
 
   // Group labels: a group is a head cue plus cues joined to it. Lone cue → "3";
@@ -236,6 +242,7 @@ export function CueList({
                 runLabel={label}
                 bracket={bracket}
                 canToggleJoinPrev={adjacentPrevVisible}
+                overlapping={overlappingCueIds.has(cue.id)}
                 findHighlight={findHighlight}
                 segmentMatchIndex={segmentMatchIndex}
               />

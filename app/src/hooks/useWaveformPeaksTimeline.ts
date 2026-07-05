@@ -6,6 +6,7 @@ import { usePlayback } from "../store/playback";
 import { useWaveform } from "../store/waveform";
 import { focusCueForEdit } from "../lib/focus-cue";
 import { findActiveCueId } from "../lib/active-cue";
+import { findOverlappingCueIds } from "../lib/cue-overlap";
 import { TIMELINE_NEW_CUE_DURATION } from "../lib/cue-insert";
 import { createProgramStartPointMarker } from "../lib/program-start-point-marker";
 import {
@@ -110,6 +111,13 @@ export function useWaveformPeaksTimeline({
   const lastHighlightKey = useRef("");
   projectRef.current = project;
 
+  const overlappingCueIds = useMemo(
+    () => findOverlappingCueIds(project.cues),
+    [project.cues],
+  );
+  const overlappingCueIdsRef = useRef(overlappingCueIds);
+  overlappingCueIdsRef.current = overlappingCueIds;
+
   const storedPeaks = useWaveform((s) => s.peaks);
   const hasRealPeaks = storedPeaks !== null;
   const videoEl = usePlayback((s) => s.videoEl);
@@ -213,7 +221,14 @@ export function useWaveformPeaksTimeline({
     lastHighlightKey.current = key;
     lastActiveId.current = activeId ?? null;
 
-    syncPeaksCueHighlight(peaks, proj, time, selId, prevActive);
+    syncPeaksCueHighlight(
+      peaks,
+      proj,
+      time,
+      selId,
+      overlappingCueIdsRef.current,
+      prevActive,
+    );
   }
 
   function syncVisibleSegments(viewStart: number, viewEnd: number) {
@@ -227,7 +242,11 @@ export function useWaveformPeaksTimeline({
       proj,
       viewStart,
       viewEnd,
-      { selectedCueId: selectedCueIdRef.current, currentTime: time },
+      {
+        selectedCueId: selectedCueIdRef.current,
+        currentTime: time,
+        overlappingIds: overlappingCueIdsRef.current,
+      },
     );
     setSubtitlesHidden(result.subtitlesHidden);
     if (result.subtitlesHidden) {

@@ -107,26 +107,25 @@ describe("coalescing", () => {
   });
 });
 
-describe("cue boundary clamping", () => {
-  it("does not let In extend past the previous cue Out", () => {
+describe("cue boundary editing (overlaps allowed)", () => {
+  it("lets In extend past the previous cue Out (overlap)", () => {
     store().setCueStart("c2", 1);
-    expect(store().project!.cues[1].start).toBe(2);
+    expect(store().project!.cues[1].start).toBeCloseTo(1, 5);
   });
 
-  it("does not let Out extend past the next cue In", () => {
+  it("lets Out extend past the next cue In (overlap)", () => {
     store().setCueEnd("c1", 3);
-    expect(store().project!.cues[0].end).toBe(2);
+    expect(store().project!.cues[0].end).toBeCloseTo(3, 5);
   });
 
-  it("still allows touching boundaries", () => {
-    store().setCueEnd("c1", 2.5);
-    expect(store().project!.cues[0].end).toBe(2);
-    store().setCueStart("c2", 2);
-    expect(store().project!.cues[1].start).toBe(2);
+  it("still clamps In to at least one frame before its own Out", () => {
+    store().setCueStart("c1", 5);
+    const cue = store().project!.cues[0];
+    expect(cue.start).toBeLessThan(cue.end);
   });
 
-  it("does not record a no-op when clamping blocks the edit", () => {
-    store().setCueEnd("c1", 10);
+  it("does not record a no-op when the value is unchanged", () => {
+    store().setCueEnd("c1", 2);
     expect(store().past).toHaveLength(0);
   });
 
@@ -136,17 +135,81 @@ describe("cue boundary clamping", () => {
     expect(cueSeconds("c2", "end")).toBeCloseTo(4.5, 1);
   });
 
-  it("preserves duration when a move is clamped against the previous cue", () => {
+  it("moves a cue over its neighbor instead of clamping to it", () => {
     store().setCueTimes("c2", 1.5, 3.5);
     const cue = store().project!.cues[1];
-    expect(cue.start).toBe(2);
-    expect(cue.end).toBe(4);
+    expect(cue.start).toBeCloseTo(1.5, 1);
+    expect(cue.end).toBeCloseTo(3.5, 1);
   });
 
   it("does not let In move before subtitle start", () => {
     store().setReferenceStartSeconds(1);
     store().setCueStart("c1", 0);
     expect(store().project!.cues[0].start).toBe(1);
+  });
+
+  it("re-sorts storage after a cue is dragged past a neighbor", () => {
+    // c1 [0,2], c2 [2,4] → drag c1 to [5,7], now after c2 in time.
+    store().setCueTimes("c1", 5, 7);
+    const cues = store().project!.cues;
+    expect(cues.map((c) => c.id)).toEqual(["c2", "c1"]);
+    expect(cues[0].start).toBeLessThanOrEqual(cues[1].start);
+  });
+});
+
+describe("moving a linked run as a unit", () => {
+  const loadRun = () =>
+    store().loadProject(
+      makeProject({
+        cues: [
+          makeCue({ id: "g1", start: 2, end: 4 }, "one"),
+          makeCue({ id: "g2", start: 4, end: 6, joinedToPrev: true }, "two"),
+          makeCue({ id: "g3", start: 6, end: 8, joinedToPrev: true }, "three"),
+          makeCue({ id: "solo", start: 10, end: 12 }, "four"),
+        ],
+      }),
+    );
+
+  beforeEach(loadRun);
+
+  it("shifts every run member by the same delta when the head moves", () => {
+    store().setCueTimes("g1", 3, 5); // +1s
+    const cues = store().project!.cues;
+    expect([cues[0].start, cues[0].end]).toEqual([3, 5]);
+    expect([cues[1].start, cues[1].end]).toEqual([5, 7]);
+    expect([cues[2].start, cues[2].end]).toEqual([7, 9]);
+  });
+
+  it("shifts the whole run when a middle member is dragged", () => {
+    store().setCueTimes("g2", 3, 5); // g2 -1s → run shifts -1s
+    const cues = store().project!.cues;
+    expect(cues[0].start).toBeCloseTo(1, 5);
+    expect(cues[1].start).toBeCloseTo(3, 5);
+    expect(cues[2].start).toBeCloseTo(5, 5);
+    // Internal abutment preserved.
+    expect(cues[1].start).toBeCloseTo(cues[0].end, 5);
+    expect(cues[2].start).toBeCloseTo(cues[1].end, 5);
+  });
+
+  it("keeps a standalone cue unaffected by a run move", () => {
+    store().setCueTimes("g1", 3, 5);
+    expect(cueSeconds("solo", "start")).toBe(10);
+  });
+
+  it("keeps run members contiguous when a lone cue overlaps into the run", () => {
+    // Move solo to start inside the [2,8] run span; run must stay glued.
+    store().setCueTimes("solo", 3, 5);
+    const ids = store().project!.cues.map((c) => c.id);
+    const gi = ids.indexOf("g1");
+    expect(ids.slice(gi, gi + 3)).toEqual(["g1", "g2", "g3"]);
+  });
+
+  it("clamps the run to the floor by its earliest member", () => {
+    store().setReferenceStartSeconds(1);
+    store().setCueTimes("g2", 1, 3); // would push g1 below the floor
+    const cues = store().project!.cues;
+    expect(cues[0].start).toBe(1);
+    expect(cues[1].start).toBeCloseTo(3, 5);
   });
 });
 

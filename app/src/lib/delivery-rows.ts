@@ -98,7 +98,14 @@ export function buildDeliveryRows(
   ];
   const rows: string[][] = [header];
 
-  groupCuesIntoRuns(project.cues).forEach((run, i) => {
+  // Runs group by array adjacency (a run's members abut). Order the runs
+  // chronologically for the sheet and never reorder within a run. Storage is
+  // already run-atomic ordered, so this sort is defensive (keeps the export
+  // correct even for a not-yet-normalized project).
+  const runs = groupCuesIntoRuns(project.cues).sort(
+    (a, b) => a[0]!.start - b[0]!.start,
+  );
+  runs.forEach((run, i) => {
     const first = run[0]!;
     const last = run[run.length - 1]!;
     const { info, subtitle } = joinRun(run);

@@ -1,6 +1,7 @@
 import type { DiarizedExportOptions } from "./export-format";
 import type { Cue, Project, Speaker } from "../types";
 import { cuePlainText, speakerForCue, speakerRoleName } from "./export-text";
+import { cuesByStartTime } from "./cue-order";
 import { fileSecondsToSubtitleSeconds } from "./program-start";
 
 /** WebVTT timestamp HH:MM:SS.mmm */
@@ -55,7 +56,7 @@ export function exportVtt(
     }
   }
 
-  const cues = project.cues.map((cue) => {
+  const cues = cuesByStartTime(project.cues).map((cue) => {
     const text = escapeVttText(cuePlainText(cue));
     const speaker = speakerForCue(project, cue);
     const voice = speakerLabels && speaker ? speakerRoleName(project, cue) : "";
