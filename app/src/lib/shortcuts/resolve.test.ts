@@ -56,8 +56,10 @@ function ctx(overrides: Partial<ShortcutContext> = {}): ShortcutContext {
     selectCue: vi.fn(),
     setCueStart: vi.fn(),
     setCueEnd: vi.fn(),
+    setCueTimes: vi.fn(),
     nudgeCueStart: vi.fn(),
     nudgeCueEnd: vi.fn(),
+    nudgeCueTimes: vi.fn(),
     toggleReviewed: vi.fn(),
     toggleJoinedToPrev: vi.fn(),
     setCueSpeaker: vi.fn(),
@@ -187,6 +189,33 @@ describe("resolveShortcut", () => {
     const paused = ctx();
     resolveShortcut(makeKeyEvent("o"), paused)?.run(paused, makeKeyEvent("o"));
     expect(paused.ps.setCueEnd).toHaveBeenCalledWith("cue-1", 2);
+  });
+
+  it("moves the selected cue to the playhead on M, keeping its duration", () => {
+    const c = ctx({ pb: { ...ctx().pb, currentTime: 7 } });
+    resolveShortcut(makeKeyEvent("m"), c)?.run(c, makeKeyEvent("m"));
+    // cue spans 1..5 (4s); playhead at 7 -> 7..11
+    expect(c.ps.setCueTimes).toHaveBeenCalledWith("cue-1", 7, 11);
+  });
+
+  it("does not move a reviewed-locked cue on M", () => {
+    expect(
+      resolveShortcut(makeKeyEvent("m"), ctx({ cueLocked: true })),
+    ).toBeNull();
+  });
+
+  it("nudges the whole cue with Alt+arrows (Shift = 10 frames)", () => {
+    const c = ctx();
+    const back = makeKeyEvent("ArrowLeft", { altKey: true });
+    expect(resolveShortcut(back, c)?.id).toBe("nudge-cue-earlier");
+    resolveShortcut(back, c)?.run(c, back);
+    expect(c.ps.nudgeCueTimes).toHaveBeenCalledWith("cue-1", -1);
+
+    const c2 = ctx();
+    const fwd = makeKeyEvent("ArrowRight", { altKey: true, shiftKey: true });
+    expect(resolveShortcut(fwd, c2)?.id).toBe("nudge-cue-later");
+    resolveShortcut(fwd, c2)?.run(c2, fwd);
+    expect(c2.ps.nudgeCueTimes).toHaveBeenCalledWith("cue-1", 10);
   });
 
   it("plays from the selected cue In on shift+space", () => {

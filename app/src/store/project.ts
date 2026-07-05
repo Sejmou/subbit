@@ -100,6 +100,8 @@ interface ProjectState {
   setCueTimes: (cueId: string, start: number, end: number) => void;
   nudgeCueStart: (cueId: string, deltaFrames: number) => void;
   nudgeCueEnd: (cueId: string, deltaFrames: number) => void;
+  /** Shift the whole cue (and its linked run) by N frames, keeping durations. */
+  nudgeCueTimes: (cueId: string, deltaFrames: number) => void;
 
   /**
    * Toggle whether the cue joins the immediately preceding cue into one group.
@@ -514,6 +516,13 @@ export const useProject = create<ProjectState>((set, getState) => {
       const c = p?.cues.find((x) => x.id === cueId);
       if (!c || !p) return;
       getState().setCueEnd(cueId, c.end + deltaFrames * frameStep(p));
+    },
+    nudgeCueTimes: (cueId, deltaFrames) => {
+      const p = getState().project;
+      const c = p?.cues.find((x) => x.id === cueId);
+      if (!c || !p) return;
+      const delta = deltaFrames * frameStep(p);
+      getState().setCueTimes(cueId, c.start + delta, c.end + delta);
     },
 
     setCueSpeaker: (cueId, speakerId) => {

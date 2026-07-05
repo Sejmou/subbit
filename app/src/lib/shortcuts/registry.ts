@@ -394,6 +394,55 @@ export const SHORTCUTS: ShortcutDef[] = [
     run: (ctx) => ctx.ps.setCueEnd(ctx.cue!.id, ctx.pb.currentTime),
   },
   {
+    id: "move-cue-to-playhead",
+    group: "Timing",
+    label: (_, k) => k.code("KeyM"),
+    description: "Move the selected cue to the playhead (keep duration)",
+    match: (e, ctx) =>
+      plainKey(e) &&
+      !ctx.editing &&
+      canEditSelectedCue(ctx) &&
+      (e.key === "m" || e.key === "M"),
+    run: (ctx) => {
+      const cue = ctx.cue!;
+      const start = ctx.pb.currentTime;
+      const end = start + (cueEndSeconds(cue) - cueStartSeconds(cue));
+      ctx.ps.setCueTimes(cue.id, start, end);
+    },
+    preventDefault: true,
+  },
+  {
+    id: "nudge-cue-earlier",
+    group: "Timing",
+    label: (_, k) => `${k.alt("ArrowLeft")} / ${k.alt("ArrowRight")}`,
+    description: "Nudge whole cue earlier / later (Shift = 10 frames)",
+    match: (e, ctx) =>
+      e.altKey &&
+      !e.metaKey &&
+      !e.ctrlKey &&
+      !ctx.editing &&
+      canEditSelectedCue(ctx) &&
+      e.key === "ArrowLeft",
+    run: (ctx, e) => ctx.ps.nudgeCueTimes(ctx.cue!.id, -nudgeStep(ctx, e)),
+    preventDefault: true,
+  },
+  {
+    id: "nudge-cue-later",
+    group: "Timing",
+    label: (_, k) => `${k.alt("ArrowLeft")} / ${k.alt("ArrowRight")}`,
+    description: "Nudge whole cue earlier / later (Shift = 10 frames)",
+    showInHelp: false,
+    match: (e, ctx) =>
+      e.altKey &&
+      !e.metaKey &&
+      !e.ctrlKey &&
+      !ctx.editing &&
+      canEditSelectedCue(ctx) &&
+      e.key === "ArrowRight",
+    run: (ctx, e) => ctx.ps.nudgeCueTimes(ctx.cue!.id, nudgeStep(ctx, e)),
+    preventDefault: true,
+  },
+  {
     id: "nudge-in-earlier",
     group: "Timing",
     label: (_, k) => `${k.code("BracketLeft")} / ${k.code("BracketRight")}`,

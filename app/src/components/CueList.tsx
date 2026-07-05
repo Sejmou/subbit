@@ -114,6 +114,10 @@ export function CueList({
     getScrollElement: () => parentRef.current,
     estimateSize: () => 64,
     overscan: 8,
+    // Key the measurement cache by cue id, not list index: moving a cue
+    // reorders project.cues (normalizeCueOrder), so an index-keyed cache would
+    // keep a stale row height when a different cue lands at that index.
+    getItemKey: (index) => entries[index].cue.id,
   });
 
   // Track the active cue from the playhead without re-rendering every frame.
